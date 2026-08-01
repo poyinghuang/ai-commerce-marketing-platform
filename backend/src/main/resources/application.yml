@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: ai-commerce-marketing-platform-backend
+  datasource:
+    hikari:
+      connection-timeout: 5000
+      validation-timeout: 3000
+      initialization-fail-timeout: -1
+
+management:
+  endpoints:
+    web:
+      discovery:
+        enabled: false
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: false
+      show-details: never
+      show-components: never
+
+logging:
+  structured:
+    format:
+      console: ecs
