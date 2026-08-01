@@ -57,7 +57,7 @@
 - [x] Backend 單元測試與 PostgreSQL Testcontainers 整合測試成功。
 - [x] Frontend lint、typecheck、test、build 成功，並使用 `npm ci`。
 - [x] CI workflow 通過 actionlint，且 actions 固定 commit SHA。
-- [ ] Remote GitHub Actions CI 成功（等待 branch push 或 PR 後執行）。
+- [x] Remote GitHub Actions CI 成功；Push 與 Pull Request 觸發的 `quality-and-compose`、`secret-scan` 均通過。
 - [x] Gitleaks Git history 與目前目錄掃描無告警。
 - [x] `.dockerignore` 排除 `.git`、`.env*`、文件及本機輸出。
 - [x] Docker runtime 使用 non-root user。
@@ -75,6 +75,20 @@
 - Runtime users: Backend=`app`、Frontend=`node`，皆為 non-root。
 - Logging: console 為 ECS JSON，Request ID 透過 MDC 串接。
 - Secret scan: Gitleaks 8.28.0 history scan 與 directory scan 均為 no leaks found。
-- CI definition: actionlint 1.7.7 成功；Remote GitHub Actions 尚未執行。
+- CI definition: actionlint 1.7.7 成功；Remote GitHub Actions 的 Push 與 Pull Request Run 均通過。
 
-完成後必須等待人工驗收，不得自行合併或進入 Stage 02。
+## 最終驗收紀錄（2026-08-02）
+
+- 最終實作 Commit: `f4dda7fc1759885314f3e56125b5ff2f9a2e79d0`。
+- Push Run `30708714984`: `quality-and-compose`、`secret-scan` 全部通過。
+- Pull Request Run `30708716285`: `quality-and-compose`、`secret-scan` 全部通過。
+- 人工差異與架構審查：通過，無 blocking code findings。
+- Pull Request: `#1` 保持未合併，等待最終文件收尾 CI。
+
+## Known limitations / Technical debt
+
+- GitHub Actions Node.js 20 compatibility deprecation；Runner 目前強制使用 Node.js 24 執行既有 Actions，不影響本次 CI 結果。
+- Actions 內部仍會產生 `punycode` 與 `url.parse()` deprecation warning。
+- Backend 測試使用的 Byte Buddy dynamic Java agent 有 future deprecation warning。
+
+最終文件收尾 CI 通過後，Stage 01 正式完成；Pull Request 仍須由人工決定合併，不得自行進入 Stage 02。
