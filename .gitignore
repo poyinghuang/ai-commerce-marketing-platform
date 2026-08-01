@@ -5,6 +5,10 @@ node_modules/
 target/
 build/
 dist/
+.next/
+coverage/
+*.tsbuildinfo
+.testcontainers.properties
 .idea/
 .vscode/
 .DS_Store

@@ -1,0 +1,11 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Ignore generated dependency, build, and Git metadata directories"
+paths = [
+  '''(^|/)\.git/''',
+  '''(^|/)frontend/node_modules/''',
+  '''(^|/)frontend/\.next/''',
+  '''(^|/)backend/target/'''
+]

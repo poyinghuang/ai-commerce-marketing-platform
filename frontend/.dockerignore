@@ -1,0 +1,10 @@
+.git
+.env*
+docs
+node_modules
+.next
+coverage
+*.tsbuildinfo
+*.log
+.idea
+.vscode

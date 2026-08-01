@@ -1,20 +1,101 @@
 # AI Commerce Marketing Platform
 
-以 AI 為核心的電商素材、廣告投放、成效分析與決策平台。
+以 AI 為核心的電商素材、廣告投放、成效分析與決策平台。本 Repository 目前完成 Stage 01 專案基礎；尚未包含商品、AI、廣告平台、Dashboard 或 Decision Engine 功能。
 
-## 專案目標
+## Stage 01 技術基線
 
-建立一套可擴充的 AI 行銷作業系統，先支援 Meta Ads，後續可擴充至 Google Ads、LINE Ads、TikTok Ads 與其他平台。
+- Java 21.0.9+10 / Spring Boot 4.1.0 / Maven 3.9.11 Wrapper
+- Node.js 24.18.0 / npm 11.16.0 / Next.js 16.2.12
+- PostgreSQL 17.6
+- Docker Compose
 
-## 核心模組
+## 使用 Docker Compose 啟動
 
-1. 商品資料中心
-2. AI 素材工廠
-3. 廣告平台引擎
-4. Dashboard 與營運工作台
-5. 決策引擎
-6. Provider / Adapter 擴充架構
+需求：Docker 與 Docker Compose。
 
-## 開發方式
+```shell
+docker compose up --build
+```
 
-請依照 `docs/stages/` 中的 Stage 文件逐階段實作。每個 Stage 完成後，必須通過該文件中的驗收標準，才能進入下一個 Stage。
+服務啟動後：
+
+- Frontend: <http://localhost:3000>
+- Backend health: <http://localhost:8080/actuator/health>
+- Frontend 同源 health proxy: <http://localhost:3000/api/backend-health>
+
+停止服務：
+
+```shell
+docker compose down
+```
+
+連同本機 PostgreSQL volume 移除時才使用 `docker compose down --volumes`；此操作會刪除本機資料。
+
+## 跨平台 scripts
+
+Windows PowerShell：
+
+```powershell
+.\scripts\dev.ps1
+.\scripts\test.ps1
+```
+
+macOS / Linux：
+
+```shell
+sh ./scripts/dev.sh
+sh ./scripts/test.sh
+```
+
+## 個別啟動
+
+先啟動可供本機使用的 PostgreSQL，並依 `.env.example` 設定環境變數。
+
+Backend：
+
+```powershell
+cd backend
+$env:SPRING_PROFILES_ACTIVE="local"
+.\mvnw.cmd spring-boot:run
+```
+
+Frontend：
+
+```powershell
+cd frontend
+npm ci
+$env:BACKEND_INTERNAL_URL="http://localhost:8080"
+npm run dev
+```
+
+`BACKEND_INTERNAL_URL` 是 Next.js server-only 設定，禁止改成 `NEXT_PUBLIC_*`。Browser 只存取 `/api/backend-health`，不直接解析 Docker hostname `backend`。
+
+## 測試
+
+Backend 測試包含 PostgreSQL Testcontainers 整合驗證，因此必須先啟動 Docker：
+
+```powershell
+cd backend
+.\mvnw.cmd test
+```
+
+Frontend：
+
+```powershell
+cd frontend
+npm ci
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
+
+## 安全與設定
+
+- 複製 `.env.example` 為 `.env` 僅供本機使用；不得提交 `.env`。
+- Production Secret 必須使用部署平台的 Secret Manager 或安全環境變數。
+- `.env*`、Git metadata、文件及本機 build output 不會進入 Docker build context。
+- CI 使用 Gitleaks 獨立掃描 Repository。
+- Backend Actuator 只暴露 health，且不顯示 component details。
+
+Logging、Request ID 與錯誤格式請見 [Logging and Error Handling](docs/Logging-and-Error-Handling.md)。開發必須依照 [Development Rules](docs/Development-Rules.md) 與各 [Stage 文件](docs/stages/) 逐階段進行。
