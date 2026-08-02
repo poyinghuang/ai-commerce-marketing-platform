@@ -29,6 +29,7 @@ import com.aicommerce.platform.product.infrastructure.persistence.ProductJpaRepo
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.FlywayException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -95,11 +96,27 @@ class PersistenceFoundationIntegrationTest {
         assertThat(tableExists("products")).isTrue();
         assertThat(tableExists("audit_logs")).isTrue();
         assertThat(tableExists("audit_log_changes")).isTrue();
-        assertThat(tableExists("product_knowledge")).isFalse();
-        assertThat(tableExists("creative_plans")).isFalse();
-        assertThat(tableExists("campaigns")).isFalse();
-        assertThat(tableExists("assets")).isFalse();
-        assertThat(tableExists("quality_scores")).isFalse();
+        assertThat(List.of(
+                        "product_knowledge",
+                        "creative_plans",
+                        "campaign_plans",
+                        "campaign_products",
+                        "assets",
+                        "product_storage_folders",
+                        "quality_scores",
+                        "quality_score_blockers",
+                        "workflow_status",
+                        "sheet_import_jobs",
+                        "sheet_import_rows"))
+                .noneMatch(this::tableExists);
+    }
+
+    @Test
+    void flywayCleanIsExplicitlyDisabled() {
+        assertThat(environment.getProperty("spring.flyway.clean-disabled", Boolean.class)).isTrue();
+        assertThatThrownBy(flyway::clean)
+                .isInstanceOf(FlywayException.class)
+                .hasMessageContaining("disabled");
     }
 
     @Test
@@ -232,6 +249,34 @@ class PersistenceFoundationIntegrationTest {
                 INSERT INTO audit_log_changes
                     (audit_change_uuid, audit_uuid, field_name, value_type, change_order)
                 VALUES (?, ?, 'sku', 'STRING', NULL)
+                """, UUID.randomUUID(), auditUuid))
+                .isInstanceOf(DataAccessException.class);
+    }
+
+    @Test
+    void databaseRejectsInvalidAuditActionThroughDirectSql() {
+        assertThatThrownBy(() -> jdbcTemplate.update("""
+                INSERT INTO audit_logs
+                    (audit_uuid, operation_uuid, request_id, actor_type, actor_id, source,
+                     action, entity_type, entity_uuid, occurred_at)
+                VALUES (?, ?, 'request-invalid-action', 'SYSTEM', 'constraint-test', 'SYSTEM',
+                        'INVALID', 'PRODUCT', ?, CURRENT_TIMESTAMP)
+                """, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID()))
+                .isInstanceOf(DataAccessException.class);
+    }
+
+    @Test
+    void databaseRejectsInvalidAuditValueTypeThroughDirectSql() {
+        Product product = productService.createAsCurrentActor("INVALID-VALUE-TYPE", "request-invalid-value-type");
+        UUID auditUuid = jdbcTemplate.queryForObject(
+                "SELECT audit_uuid FROM audit_logs WHERE product_uuid = ? ORDER BY occurred_at DESC LIMIT 1",
+                UUID.class,
+                product.getProductUuid());
+
+        assertThatThrownBy(() -> jdbcTemplate.update("""
+                INSERT INTO audit_log_changes
+                    (audit_change_uuid, audit_uuid, field_name, value_type, change_order)
+                VALUES (?, ?, 'sku', 'INVALID', 100)
                 """, UUID.randomUUID(), auditUuid))
                 .isInstanceOf(DataAccessException.class);
     }

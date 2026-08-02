@@ -18,6 +18,8 @@ CREATE TABLE audit_logs (
         CHECK (actor_type IN ('LOCAL_ADMIN', 'SYSTEM', 'TRUSTED_ACTOR')),
     CONSTRAINT ck_audit_logs_source
         CHECK (source IN ('API', 'SYSTEM')),
+    CONSTRAINT ck_audit_logs_action
+        CHECK (action IN ('CREATE', 'UPDATE', 'ARCHIVE', 'RESTORE')),
     CONSTRAINT ck_audit_logs_actor_id_not_blank CHECK (BTRIM(actor_id) <> ''),
     CONSTRAINT ck_audit_logs_entity_type_not_blank CHECK (BTRIM(entity_type) <> '')
 );
@@ -34,6 +36,8 @@ CREATE TABLE audit_log_changes (
         FOREIGN KEY (audit_uuid) REFERENCES audit_logs(audit_uuid) ON DELETE RESTRICT,
     CONSTRAINT uq_audit_log_changes_order UNIQUE (audit_uuid, change_order),
     CONSTRAINT ck_audit_log_changes_order CHECK (change_order >= 0),
+    CONSTRAINT ck_audit_log_changes_value_type
+        CHECK (value_type IN ('STRING', 'UUID', 'ENUM', 'TIMESTAMP')),
     CONSTRAINT ck_audit_log_changes_field_not_blank CHECK (BTRIM(field_name) <> ''),
     CONSTRAINT ck_audit_log_changes_old_value_length
         CHECK (old_value IS NULL OR CHAR_LENGTH(old_value) <= 4096),

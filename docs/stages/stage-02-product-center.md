@@ -36,6 +36,7 @@ Sequence 保證配發值唯一、配發值遞增、`NO CYCLE`，並允許因 rol
 - local/test 使用 server-side `local-admin`。
 - SYSTEM flow 使用明確 SYSTEM actor；沒有 HTTP request 時由 server 產生非空 `request_id`，同一 operation 共用相同 context。
 - production 未設定可信 Actor Provider 時拒絕 Mutation。
+- `production` profile 永遠優先 fail closed；即使與 `local` 或 `test` 同時啟用，也不載入 Local Admin Provider。
 - Browser 不得透過 `X-Actor-ID` 或其他輸入指定 actor。
 - `old_value` 與 `new_value` 先依欄位名稱 Redact，再限制為最多 4096 Unicode code points；截斷值以 `[TRUNCATED]` 結尾。
 - `audit_logs` 與 `audit_log_changes` 由 PostgreSQL Trigger 強制 append-only。
@@ -49,6 +50,7 @@ Sequence 保證配發值唯一、配發值遞增、`NO CYCLE`，並允許因 rol
 - `V2__create_audit_foundation.sql`
   - `audit_logs`
   - `audit_log_changes`
+  - `action` 與 `value_type` database check constraints
   - `UNIQUE (audit_uuid, change_order)`
   - non-unique index `(audit_uuid, field_name)`
   - append-only triggers
@@ -66,6 +68,9 @@ Sequence 保證配發值唯一、配發值遞增、`NO CYCLE`，並允許因 rol
 - [x] `change_order` 為 `NOT NULL`、非負數且符合 `SMALLINT` 範圍。
 - [x] Audit values 先 Redact，再執行 4096 字元限制與截斷標示。
 - [x] SYSTEM operation 產生並共用非空 `request_id`。
+- [x] PostgreSQL 拒絕非法 Audit `action` 與 `value_type`。
+- [x] local/test 使用 Local Admin；default/production/production+local/production+test 均符合 fail-closed 規則。
+- [x] Flyway clean 明確停用，且 2A 未建立後續 Milestone tables。
 - [x] 直接 SQL 的 UPDATE／DELETE 無法繞過兩張 Audit table 的 append-only Trigger。
 - [x] Stage 01 Backend tests 維持通過。
 - [x] Frontend 鎖定映像內的 lint、typecheck、test 與 production build 通過。
