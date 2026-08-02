@@ -34,8 +34,8 @@ services:
       test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/actuator/health"]
       interval: 5s
       timeout: 3s
-      retries: 12
-      start_period: 15s
+      retries: 24
+      start_period: 45s
     restart: on-failure:3
 
   frontend:
