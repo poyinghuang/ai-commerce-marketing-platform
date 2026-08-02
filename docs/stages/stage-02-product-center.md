@@ -2,90 +2,137 @@
 
 ## 架構決策
 
-- PostgreSQL 是唯一 System of Record。
+- PostgreSQL 是唯一的 System of Record。
 - Google Sheets 僅作為 Import／Export Connector，不做自動雙向同步。
 - Google Drive 僅透過 `StorageProvider` 使用；正式環境優先使用 Shared Drive。
 - `product_uuid` 是永久且不可變的內部主鍵。
-- `product_id` 由 PostgreSQL Sequence 配發，格式為 `PROD-00000001`，建立後不可修改。
-- SKU 可修改且不設 Global Unique，只建立查詢 Index。
-- 所有 Mutation 必須透過可信的 `AuditActorProvider` 建立 Audit Log。
-- 已合併的 Flyway Migration 不修改；後續 Milestone 只能增加新版本。
+- `product_id` 由 PostgreSQL Sequence 產生，格式為 `PROD-00000001`，建立後不可修改。
+- Sheet 新增商品時，UUID 與 Product ID 留空並由系統產生；更新時優先使用 UUID，其次使用 Product ID。
+- SKU 不設 Global Unique，只建立查詢 Index。
+- 所有寫入操作必須建立 Audit Log。
+- Google API 必須透過 Adapter／Provider 隔離，測試使用 Mock／Stub。
+- 已合併的 Flyway Migration 不得修改，只能新增版本。
 
 ## Milestone 2A — Persistence and Audit Foundation
 
-狀態：實作完成，等待人工驗收；尚未 Commit／Push。
+### 驗收狀態
+
+- Implementation：Passed
+- Local verification：Passed
+- Remote CI：Passed
+- Human diff and architecture review：Passed
+- Merge：Pending
+
+### Commits
+
+- `fa221c4687c63b831e6dbe19ae46a9fff9833b04`
+- `d9fde3bb8a6ec9eaac37860eab837332e529f60d`
+- `d3f6da72158416814a0ef95fdb7b3b698721961e`
+
+### Remote CI
+
+- Push Run `30731526761`：Passed
+- PR Run `30731527681`：Passed
 
 ### 範圍
 
 - Spring Data JPA 與 Flyway 基礎。
-- V1 Product Foundation 與 V2 Audit Foundation。
-- Product UUID、timestamps、optimistic locking 與 archive 骨架。
-- Product ID Sequence 與格式化配發。
-- `AuditActorProvider`、Audit Writer、敏感值遮蔽與截斷。
-- Database Trigger 保護 Product identity 與 append-only Audit tables。
-- PostgreSQL Testcontainers migration、constraint、locking 與 transaction 測試。
-- CI push branch filter 支援 `main` 與 `codex/**`。
-- Backend Compose health budget 配合 Flyway/JPA 冷啟動調整，health endpoint 與依賴順序不變。
+- Product 最小持久化骨架。
+- UUID、timestamps、`@Version` 與 Archive 基礎。
+- `AuditActorProvider`。
+- Audit Log／Audit Change append-only schema。
+- PostgreSQL Sequence 與 `product_id` 產生機制。
+- PostgreSQL Testcontainers Migration／Constraint／Locking／Transaction 測試。
+- Hibernate `ddl-auto=validate`。
+- CI 支援 `codex/**` Stage Branch。
 
 ### Product ID Sequence 保證
 
-Sequence 保證配發值唯一、配發值遞增、`NO CYCLE`，並允許因 rollback 或並行操作產生缺號。Sequence 不保證連號，也不保證 transaction commit 順序。
+- Sequence 只保證配發值唯一、遞增、`NO CYCLE`，並允許缺號。
+- Sequence 不保證 Transaction Commit 順序。
+- Concurrent Sequence Test 不要求連號或 Commit Order。
 
 ### Audit 寫入規則
 
-- local/test 使用 server-side `local-admin`。
-- SYSTEM flow 使用明確 SYSTEM actor；沒有 HTTP request 時由 server 產生非空 `request_id`，同一 operation 共用相同 context。
-- production 未設定可信 Actor Provider 時拒絕 Mutation。
-- `production` profile 永遠優先 fail closed；即使與 `local` 或 `test` 同時啟用，也不載入 Local Admin Provider。
-- Browser 不得透過 `X-Actor-ID` 或其他輸入指定 actor。
-- `old_value` 與 `new_value` 先依欄位名稱 Redact，再限制為最多 4096 Unicode code points；截斷值以 `[TRUNCATED]` 結尾。
-- `audit_logs` 與 `audit_log_changes` 由 PostgreSQL Trigger 強制 append-only。
+- HTTP Mutation 的 actor 只能由可信的 `AuditActorProvider` 提供，不接受 Browser 傳入 `X-Actor-ID`。
+- `local`／`test` 使用 server-side `local-admin`；`production` 與未啟用 local/test 的 default profile 使用拒絕 Mutation 的 Provider。
+- `production,local` 與 `production,test` 組合仍必須 fail closed。
+- SYSTEM flow 必須使用明確的 SYSTEM actor，並由 Server 產生非空 `request_id`；同一 Operation 內保持一致。
+- Audit 寫入必須與業務 Mutation 位於同一 Transaction，任一失敗時一起 Rollback。
+- `audit_logs` 與 `audit_log_changes` 由資料庫 Trigger 強制 append-only。
+- `old_value` 與 `new_value` 寫入前先 Redact，再限制為最多 4096 字元；超出時加上 `[TRUNCATED]`。
+- 不得記錄 Token、Cookie、Authorization Header、密碼或其他敏感值。
 
-### 2A Migration
+### Migration
 
 - `V1__create_product_foundation.sql`
-  - `product_id_seq`
-  - `products`
-  - immutable `product_uuid`／`product_id` trigger
+  - 建立 Product ID Sequence。
+  - 建立 `products` 最小資料表與必要 Index。
+  - 以 Trigger 保護 `product_uuid` 與 `product_id` 不可變。
 - `V2__create_audit_foundation.sql`
-  - `audit_logs`
-  - `audit_log_changes`
-  - `action` 與 `value_type` database check constraints
-  - `UNIQUE (audit_uuid, change_order)`
-  - non-unique index `(audit_uuid, field_name)`
-  - append-only triggers
+  - 建立 `audit_logs` 與 `audit_log_changes`。
+  - `audit_logs.action` 限制為 `CREATE`、`UPDATE`、`ARCHIVE`、`RESTORE`。
+  - `audit_log_changes.value_type` 限制為 `STRING`、`UUID`、`ENUM`、`TIMESTAMP`。
+  - `change_order` 為 `NOT NULL`，且必須大於等於零。
+  - 使用 `unique(audit_uuid, change_order)`，並為 `(audit_uuid, field_name)` 建立普通 Index。
+  - 以 Trigger 禁止 Audit Log 與 Change 的 UPDATE／DELETE。
 
-### 2A 驗收項目
+### 驗收清單
 
-- [x] 空 PostgreSQL 可依序套用 V1、V2。
-- [x] Hibernate `ddl-auto=validate` 通過。
-- [x] Product UUID 與 Product ID 無法透過直接 SQL 修改。
-- [x] Product ID 符合格式，並行配發不重複；測試不假設連號或 commit order。
-- [x] timestamps、`@Version`、archive 與非唯一 SKU 行為已驗證。
-- [x] stale write 觸發 optimistic locking failure。
-- [x] Product 與 Audit 位於同一 transaction，Audit constraint failure 時一併 rollback。
-- [x] Audit change 以 `(audit_uuid, change_order)` 唯一，同欄位可出現多筆 change。
-- [x] `change_order` 為 `NOT NULL`、非負數且符合 `SMALLINT` 範圍。
-- [x] Audit values 先 Redact，再執行 4096 字元限制與截斷標示。
-- [x] SYSTEM operation 產生並共用非空 `request_id`。
-- [x] PostgreSQL 拒絕非法 Audit `action` 與 `value_type`。
-- [x] local/test 使用 Local Admin；default/production/production+local/production+test 均符合 fail-closed 規則。
-- [x] Flyway clean 明確停用，且 2A 未建立後續 Milestone tables。
-- [x] 直接 SQL 的 UPDATE／DELETE 無法繞過兩張 Audit table 的 append-only Trigger。
-- [x] Stage 01 Backend tests 維持通過。
-- [x] Frontend 鎖定映像內的 lint、typecheck、test 與 production build 通過。
-- [x] Docker Compose 三個服務 healthy，Backend 與同源 proxy 均回傳 `UP`。
-- [x] Gitleaks working tree 與 Git history 掃描無洩漏。
-- [ ] 人工差異與架構審查。
-- [ ] Commit、Push 與 Remote CI。
+- [x] Flyway 可由空 PostgreSQL 完整執行。
+- [x] 重複啟動時沒有 Pending Migration。
+- [x] Hibernate Schema Validation 通過。
+- [x] Product UUID、Product ID 與 Archive 基礎行為通過整合測試。
+- [x] Optimistic Locking 可阻止 stale update。
+- [x] Concurrent Sequence Test 證明 Product ID 唯一且遞增，不假設無缺號或 Commit Order。
+- [x] Audit 與業務 Mutation 在同一 Transaction Rollback。
+- [x] Redaction 與 4096 字元截斷規則通過測試。
+- [x] 直接 SQL／JDBC 測試證明 Product immutable 與 Audit append-only Trigger 生效。
+- [x] 直接 SQL／JDBC 測試證明非法 Audit action 與 value type 會被 PostgreSQL 拒絕。
+- [x] Profile 組合測試涵蓋 local、test、default、production、production/local 與 production/test。
+- [x] `spring.flyway.clean-disabled=true` 已明確驗證。
+- [x] Migration Scope 測試證明後續 Milestone 資料表尚未建立。
+- [x] Backend、Frontend、Docker Compose、Actionlint 與 Gitleaks Regression 通過。
+- [x] 人工差異與架構審查。
+- [x] Commit、Push 與 Remote CI。
+- [ ] Merge。
 
-## 後續 Milestone（本輪未實作）
+## 後續 Milestone（尚未開始）
 
-- 2B：Product CRUD、Knowledge、Creative Plan、Campaign 與 Aggregate API。
-- 2C：Quality Score 與 Workflow Status。
-- 2D：Google Sheets Import／Export 與 Google Drive `StorageProvider`。
-- Frontend Product 管理介面將隨對應 Milestone 實作，不提前建立 Stage 05 Dashboard。
+### Milestone 2B — Product Master Vertical Slice
+
+- Product CRUD
+- Archive／Restore
+- List／Search／Filter／Sort／Pagination
+- ETag／If-Match
+- Product UI
+- Product Audit
+
+### Milestone 2C — Knowledge, Plans, Campaigns and Assets
+
+- Product Knowledge
+- Creative Plans
+- Campaign Plans
+- Campaign Products
+- Asset Metadata
+- Aggregate API
+- Detail Tabs
+
+### Milestone 2D — Quality and Workflow
+
+- Deterministic Quality Score
+- Blocking Reasons
+- Manual Adjustment
+- Product Readiness Workflow
+- Quality UI
+
+### Milestone 2E — Google Connectors and Final Integration
+
+- Google Sheets Preview／Execute／Upsert
+- Google Drive `StorageProvider`
+- Connector UI
+- Full Stage 02 integration and acceptance
 
 ## 明確排除
 
-Milestone 2A 不包含 Product CRUD Controller、Frontend、Knowledge、Creative Plan、Campaign、Asset、Quality Score、Workflow、Google Sheets、Google Drive、AI 素材生成、Meta Ads、Dashboard、Decision Engine 或 Stage 03 以上功能。
+Milestone 2A 不包含 Product CRUD API、Product Frontend、Product Knowledge、Creative Plans、Campaigns、Assets、Quality Score、Workflow、Google Sheets、Google Drive、AI 素材生成、Meta Ads、Dashboard、Decision Engine 或 Stage 03 以上功能。
