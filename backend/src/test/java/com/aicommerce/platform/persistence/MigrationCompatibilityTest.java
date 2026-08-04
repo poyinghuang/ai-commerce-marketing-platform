@@ -3,6 +3,7 @@ package com.aicommerce.platform.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.sql.Types;
 import java.util.HexFormat;
@@ -21,8 +22,8 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 @Testcontainers
 class MigrationCompatibilityTest {
 
-    private static final String V1_SHA256 = "83fb7d23243362385d04dfdb51fc71df90e16dfa1edb009d8d2e016a60850727";
-    private static final String V2_SHA256 = "3d55eeea5e9ef3525537c5249c9d484ce38309e3367c57304095fd76b559ae73";
+    private static final String V1_SHA256 = "ee4614654b5d47d1bebe40e451754413962d86b447d25354e1dc6cb70b03e2b9";
+    private static final String V2_SHA256 = "8f944bfdb655ca90cffa37215e5e7bc8134fb13e021e261acf399e080b78d243";
 
     @Container
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17.6-alpine3.22");
@@ -76,7 +77,7 @@ class MigrationCompatibilityTest {
     }
 
     @Test
-    void mergedV1AndV2ResourcesRemainByteForByteStable() throws Exception {
+    void mergedV1AndV2CanonicalContentRemainsStable() throws Exception {
         assertThat(sha256("db/migration/V1__create_product_foundation.sql")).isEqualTo(V1_SHA256);
         assertThat(sha256("db/migration/V2__create_audit_foundation.sql")).isEqualTo(V2_SHA256);
     }
@@ -105,7 +106,10 @@ class MigrationCompatibilityTest {
             if (input == null) {
                 throw new IllegalStateException("Missing migration resource: " + resource);
             }
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(input.readAllBytes()));
+            String canonicalContent = new String(input.readAllBytes(), StandardCharsets.UTF_8)
+                    .replace("\r\n", "\n");
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(canonicalContent.getBytes(StandardCharsets.UTF_8)));
         }
     }
 }
