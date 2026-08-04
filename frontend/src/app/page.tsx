@@ -1,14 +1,16 @@
 import { BackendHealth } from "@/components/backend-health";
+import Link from "next/link";
 
 export default function Home() {
   return (
     <main>
-      <section className="panel">
-        <p className="eyebrow">Stage 01 · Project Foundation</p>
+      <section className="panel home-panel">
+        <p className="eyebrow">Stage 02 · Product Knowledge Center</p>
         <h1>AI Commerce Marketing Platform</h1>
         <p className="summary">
-          Backend、Frontend 與 PostgreSQL 基礎環境已就緒。業務功能將依 Stage 文件逐步實作。
+          專案基礎與 Product Master Vertical Slice 已就緒，可建立、搜尋、編輯、封存與還原商品。
         </p>
+        <Link className="primary-button link-button" href="/products">進入商品主檔</Link>
         <BackendHealth />
       </section>
     </main>
