@@ -109,12 +109,22 @@
 
 - Implementation：Complete
 - Local verification：Passed
-- Commit：Pending
-- Push：Pending
-- Remote CI：Pending
-- PR review：Pending
+- Commit：Passed
+- Push：Passed
+- Remote CI：Passed
+- Human diff and architecture review：Passed
 - Merge：Pending
 - Milestone 2C：Not started
+
+#### Commits
+
+- Implementation：`d294a66f3b752dc5f0f519295ad099728f73902c`
+- Cross-platform migration checksum fix／final implementation head：`dc94387a6d2bb2943e1cdb8d80880e7d252c9cf3`
+
+#### Remote CI
+
+- Push Run `30931678353`：`quality-and-compose`、`secret-scan` Passed。
+- Pull Request Run `30931686761`：`quality-and-compose`、`secret-scan` Passed。
 
 #### 範圍
 
@@ -142,6 +152,7 @@
 - `V3__add_product_master_fields.sql` 只增加 Product Master 欄位、Constraints 與查詢 Index。
 - `product_name` 在資料庫保持 nullable，以允許既有 2A Product 無損升級；一般 Create API 強制 `productName` 必填。
 - V1、V2 由固定 SHA-256 測試保護，未被修改。
+- Checksum 僅將 CRLF 正規化為 LF；其他空白與 SQL 內容差異仍會造成測試失敗。
 - 空資料庫可執行 V1→V2→V3；既有 V2 Product 可升級到 V3。
 
 #### Concurrency 與 Idempotency
@@ -163,6 +174,7 @@
 #### Known limitations
 
 - Byte Buddy dynamic Java agent future deprecation warning，非阻斷。
+- GitHub Actions Node.js 20 compatibility deprecation annotation；目前 Runner 強制使用 Node.js 24。
 - Windows `core.autocrlf` 產生 LF／CRLF 資訊性警告；`git diff --check` 通過。
 - 尚未加入 Playwright E2E；目前由 component tests、production build 與 Compose API smoke 覆蓋。
 - Windows Docker cold build 約八分鐘。
@@ -183,8 +195,8 @@
 - [x] Frontend lint、typecheck、tests 與 production build。
 - [x] Docker Compose cold start 與 Product vertical-slice smoke test。
 - [x] Gitleaks 與 actionlint。
-- [ ] Remote CI。
-- [ ] 人工差異與架構審查。
+- [x] Remote CI。
+- [x] 人工差異與架構審查。
 - [ ] Merge。
 
 ### Milestone 2C — Knowledge, Plans, Campaigns and Assets
