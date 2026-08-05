@@ -3,13 +3,24 @@ package com.aicommerce.platform.web.error;
 import java.time.Instant;
 import java.util.List;
 
+import com.aicommerce.platform.product.application.AuditActorUnavailableException;
+import com.aicommerce.platform.product.application.ProductArchivedException;
+import com.aicommerce.platform.product.application.ProductNotFoundException;
+import com.aicommerce.platform.product.application.ProductPreconditionFailedException;
+import com.aicommerce.platform.product.application.ProductValidationException;
+import com.aicommerce.platform.product.web.InvalidIfMatchException;
+import com.aicommerce.platform.product.web.InvalidMergePatchException;
+import com.aicommerce.platform.product.web.PreconditionRequiredException;
 import com.aicommerce.platform.web.RequestIdFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -32,6 +43,85 @@ public class GlobalExceptionHandler {
                 request,
                 fieldErrors);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    @ExceptionHandler(ProductValidationException.class)
+    ResponseEntity<ApiError> handleProductValidation(
+            ProductValidationException exception,
+            HttpServletRequest request) {
+        ApiError error = error(
+                "VALIDATION_ERROR",
+                "Request validation failed",
+                request,
+                List.of(new FieldErrorDetail(exception.getField(), exception.getMessage())));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    @ExceptionHandler(InvalidMergePatchException.class)
+    ResponseEntity<ApiError> handleInvalidMergePatch(
+            InvalidMergePatchException exception,
+            HttpServletRequest request) {
+        return ResponseEntity.badRequest().body(error(
+                "INVALID_MERGE_PATCH", exception.getMessage(), request, null));
+    }
+
+    @ExceptionHandler(PreconditionRequiredException.class)
+    ResponseEntity<ApiError> handlePreconditionRequired(HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.PRECONDITION_REQUIRED).body(error(
+                "PRECONDITION_REQUIRED", "If-Match is required", request, null));
+    }
+
+    @ExceptionHandler(InvalidIfMatchException.class)
+    ResponseEntity<ApiError> handleInvalidIfMatch(HttpServletRequest request) {
+        return ResponseEntity.badRequest().body(error(
+                "INVALID_IF_MATCH", "If-Match must use the format W/\"<version>\"", request, null));
+    }
+
+    @ExceptionHandler(ProductPreconditionFailedException.class)
+    ResponseEntity<ApiError> handlePreconditionFailed(HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.PRECONDITION_FAILED).body(error(
+                "PRECONDITION_FAILED", "Product version does not match If-Match", request, null));
+    }
+
+    @ExceptionHandler(ProductNotFoundException.class)
+    ResponseEntity<ApiError> handleProductNotFound(HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error(
+                "PRODUCT_NOT_FOUND", "Product not found", request, null));
+    }
+
+    @ExceptionHandler(ProductArchivedException.class)
+    ResponseEntity<ApiError> handleProductArchived(HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error(
+                "PRODUCT_ARCHIVED", "Archived product cannot be modified", request, null));
+    }
+
+    @ExceptionHandler(AuditActorUnavailableException.class)
+    ResponseEntity<ApiError> handleAuditActorUnavailable(HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(error(
+                "AUDIT_ACTOR_UNAVAILABLE", "A trusted audit actor is unavailable", request, null));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    ResponseEntity<ApiError> handleMalformedJson(HttpServletRequest request) {
+        return ResponseEntity.badRequest().body(error(
+                "MALFORMED_JSON", "Request body is not valid JSON", request, null));
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    ResponseEntity<ApiError> handleUnsupportedMediaType(HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).body(error(
+                "UNSUPPORTED_MEDIA_TYPE", "Content-Type is not supported", request, null));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ResponseEntity<ApiError> handleTypeMismatch(
+            MethodArgumentTypeMismatchException exception,
+            HttpServletRequest request) {
+        return ResponseEntity.badRequest().body(error(
+                "VALIDATION_ERROR",
+                "Request validation failed",
+                request,
+                List.of(new FieldErrorDetail(exception.getName(), "has an invalid format"))));
     }
 
     @ExceptionHandler(Exception.class)

@@ -3,7 +3,7 @@ import "./styles.css";
 
 export const metadata: Metadata = {
   title: "AI Commerce Marketing Platform",
-  description: "Project foundation status",
+  description: "Product Knowledge Center",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

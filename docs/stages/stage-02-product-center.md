@@ -21,7 +21,7 @@
 - Local verification：Passed
 - Remote CI：Passed
 - Human diff and architecture review：Passed
-- Merge：Pending
+- Merge：Passed
 
 ### Commits
 
@@ -33,6 +33,10 @@
 
 - Push Run `30731526761`：Passed
 - PR Run `30731527681`：Passed
+
+### Merge
+
+- Squash Merge Commit：`c697a4d0e8f2ef219cb1ac7488f6c97e62f3ecec`
 
 ### 範圍
 
@@ -95,18 +99,105 @@
 - [x] Backend、Frontend、Docker Compose、Actionlint 與 Gitleaks Regression 通過。
 - [x] 人工差異與架構審查。
 - [x] Commit、Push 與 Remote CI。
-- [ ] Merge。
+- [x] Merge。
 
 ## 後續 Milestone（尚未開始）
 
 ### Milestone 2B — Product Master Vertical Slice
 
-- Product CRUD
-- Archive／Restore
-- List／Search／Filter／Sort／Pagination
-- ETag／If-Match
-- Product UI
-- Product Audit
+#### 驗收狀態
+
+- Implementation：Complete
+- Local verification：Passed
+- Commit：Passed
+- Push：Passed
+- Remote CI：Passed
+- Human diff and architecture review：Passed
+- Merge：Pending
+- Milestone 2C：Not started
+
+#### Commits
+
+- Implementation：`d294a66f3b752dc5f0f519295ad099728f73902c`
+- Cross-platform migration checksum fix／final implementation head：`dc94387a6d2bb2943e1cdb8d80880e7d252c9cf3`
+
+#### Remote CI
+
+- Push Run `30931678353`：`quality-and-compose`、`secret-scan` Passed。
+- Pull Request Run `30931686761`：`quality-and-compose`、`secret-scan` Passed。
+
+#### 範圍
+
+- V3 Product Master Migration。
+- Product CRUD、Archive／Restore。
+- List／Search／Filter／Sort／Pagination。
+- `ETag`／`If-Match` Optimistic Concurrency。
+- JSON Merge Patch 欄位存在性安全更新。
+- Product mutation 與 Audit 同一 Transaction。
+- Next.js 固定目的地 Product BFF。
+- Product List、Create、Detail、Edit、Archive、Restore UI。
+- Loading／Empty／Error／Version Conflict states。
+
+#### API
+
+- `POST /api/products`
+- `GET /api/products`
+- `GET /api/products/{productUuid}`
+- `PATCH /api/products/{productUuid}`
+- `DELETE /api/products/{productUuid}`
+- `POST /api/products/{productUuid}/restore`
+
+#### Migration
+
+- `V3__add_product_master_fields.sql` 只增加 Product Master 欄位、Constraints 與查詢 Index。
+- `product_name` 在資料庫保持 nullable，以允許既有 2A Product 無損升級；一般 Create API 強制 `productName` 必填。
+- V1、V2 由固定 SHA-256 測試保護，未被修改。
+- Checksum 僅將 CRLF 正規化為 LF；其他空白與 SQL 內容差異仍會造成測試失敗。
+- 空資料庫可執行 V1→V2→V3；既有 V2 Product 可升級到 V3。
+
+#### Concurrency 與 Idempotency
+
+- Single Product Response 使用 `W/"<version>"`。
+- PATCH、Archive、Restore 缺少 `If-Match` 回傳 428，stale version 回傳 412。
+- Archive／Restore 已達目標狀態且 ETag 為目前版本時不增加 version、不建立 Audit。
+- Archived Product 不接受一般 Patch。
+
+#### Local verification
+
+- Backend：49 tests passed；包含 Testcontainers、V1→V2→V3、V2 legacy upgrade、Hibernate validate、constraints、optimistic locking 與 audit transaction。
+- Frontend：lint、typecheck、12 tests 與 production build passed。
+- Docker Compose：cold build/start passed；PostgreSQL、Backend 與 Frontend 均為 healthy。
+- Product vertical-slice smoke：Create、Get、List、Patch、Archive、Restore、428、412、archived mutation rejection 與 idempotent archive passed。
+- Audit smoke：CREATE、UPDATE、ARCHIVE、RESTORE 各一筆；stale、blocked 與 idempotent no-op 未產生 Audit Event。
+- `docker compose config`、actionlint 與 Gitleaks history/worktree scan passed。
+
+#### Known limitations
+
+- Byte Buddy dynamic Java agent future deprecation warning，非阻斷。
+- GitHub Actions Node.js 20 compatibility deprecation annotation；目前 Runner 強制使用 Node.js 24。
+- Windows `core.autocrlf` 產生 LF／CRLF 資訊性警告；`git diff --check` 通過。
+- 尚未加入 Playwright E2E；目前由 component tests、production build 與 Compose API smoke 覆蓋。
+- Windows Docker cold build 約八分鐘。
+
+#### 2B 驗收清單
+
+- [x] Product Master 欄位與資料庫 Constraints。
+- [x] 空庫與 V2 legacy upgrade Migration 測試。
+- [x] V1、V2 checksum immutability 測試。
+- [x] Product Create、Read、Patch、Archive、Restore。
+- [x] Pagination、Status／Category／SKU／Product ID Filter、Keyword Search 與 Sort Allowlist。
+- [x] ETag／If-Match 428、412 與 Optimistic Locking。
+- [x] Mutation 與 Audit 同 Transaction，只記錄實際差異。
+- [x] Archive／Restore idempotent no-op 不建立 Audit。
+- [x] 同源 Product BFF，沒有任意 URL Proxy 或 Browser Docker hostname。
+- [x] Product UI 與 Loading／Empty／Error／Conflict states。
+- [x] Backend Testcontainers tests。
+- [x] Frontend lint、typecheck、tests 與 production build。
+- [x] Docker Compose cold start 與 Product vertical-slice smoke test。
+- [x] Gitleaks 與 actionlint。
+- [x] Remote CI。
+- [x] 人工差異與架構審查。
+- [ ] Merge。
 
 ### Milestone 2C — Knowledge, Plans, Campaigns and Assets
 

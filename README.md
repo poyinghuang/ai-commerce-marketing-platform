@@ -1,6 +1,6 @@
 # AI Commerce Marketing Platform
 
-以 AI 為核心的電商素材、廣告投放、成效分析與決策平台。本 Repository 目前完成 Stage 01 專案基礎；尚未包含商品、AI、廣告平台、Dashboard 或 Decision Engine 功能。
+以 AI 為核心的電商素材、廣告投放、成效分析與決策平台。本 Repository 已完成 Stage 01 與 Stage 02 Milestone 2A，並提供 Milestone 2B Product Master Vertical Slice；尚未包含 Product Knowledge、AI、廣告平台、Dashboard 或 Decision Engine 功能。
 
 ## Stage 01 技術基線
 
@@ -22,6 +22,20 @@ docker compose up --build
 - Frontend: <http://localhost:3000>
 - Backend health: <http://localhost:8080/actuator/health>
 - Frontend 同源 health proxy: <http://localhost:3000/api/backend-health>
+- Product UI: <http://localhost:3000/products>
+
+## Product Master API
+
+Backend 提供：
+
+- `POST /api/products`
+- `GET /api/products`
+- `GET /api/products/{productUuid}`
+- `PATCH /api/products/{productUuid}`
+- `DELETE /api/products/{productUuid}`
+- `POST /api/products/{productUuid}/restore`
+
+Create 由系統產生永久 `product_uuid` 與 `PROD-00000001` 格式 Product ID。PATCH、Archive 與 Restore 使用 `ETag`／`If-Match`；Browser 僅呼叫 Next.js 同源 Product Route Handlers，不直接呼叫 Docker hostname。
 
 停止服務：
 
