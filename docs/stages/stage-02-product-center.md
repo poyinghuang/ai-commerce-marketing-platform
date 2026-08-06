@@ -101,7 +101,7 @@
 - [x] Commit、Push 與 Remote CI。
 - [x] Merge。
 
-## 後續 Milestone（尚未開始）
+## Stage 02 Milestones
 
 ### Milestone 2B — Product Master Vertical Slice
 
@@ -113,18 +113,25 @@
 - Push：Passed
 - Remote CI：Passed
 - Human diff and architecture review：Passed
-- Merge：Pending
-- Milestone 2C：Not started
+- Merge：Passed
+- Milestone 2C：Approved for implementation；implementation not started
 
 #### Commits
 
 - Implementation：`d294a66f3b752dc5f0f519295ad099728f73902c`
 - Cross-platform migration checksum fix／final implementation head：`dc94387a6d2bb2943e1cdb8d80880e7d252c9cf3`
+- Acceptance documentation：`7756d38d76a093d3f2cbd17b280e64e4f81125bf`
 
 #### Remote CI
 
 - Push Run `30931678353`：`quality-and-compose`、`secret-scan` Passed。
 - Pull Request Run `30931686761`：`quality-and-compose`、`secret-scan` Passed。
+- Post-merge Run `31013063296`：`quality-and-compose`、`secret-scan` Passed。
+
+#### Merge
+
+- Merge Commit：`9d2f9bd023ff8de39f23af8265fecdeac6cf0aeb`
+- Completion Tag：`milestone-2b-complete`
 
 #### 範圍
 
@@ -197,7 +204,7 @@
 - [x] Gitleaks 與 actionlint。
 - [x] Remote CI。
 - [x] 人工差異與架構審查。
-- [ ] Merge。
+- [x] Merge。
 
 ### Milestone 2C — Knowledge, Plans, Campaigns and Assets
 
@@ -208,6 +215,8 @@
 - Asset Metadata
 - Aggregate API
 - Detail Tabs
+- 詳細規格與驗收條件：[Milestone 2C — Knowledge, Plans, Campaigns and Assets](stage-02c-knowledge-plans-campaigns-assets.md)
+- Implementation Branch：`codex/stage-02-knowledge-plans`
 
 ### Milestone 2D — Quality and Workflow
 
