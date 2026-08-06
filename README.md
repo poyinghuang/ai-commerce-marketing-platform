@@ -113,3 +113,14 @@ npm run build
 - Backend Actuator 只暴露 health，且不顯示 component details。
 
 Logging、Request ID 與錯誤格式請見 [Logging and Error Handling](docs/Logging-and-Error-Handling.md)。開發必須依照 [Development Rules](docs/Development-Rules.md) 與各 [Stage 文件](docs/stages/) 逐階段進行。
+
+## Stage Gate governance
+
+Repository 採用人工 Manager Gate。每個 Stage／Milestone 必須在 Remote CI 通過後接受實際 Diff、Migration、Contract、安全與測試審查；只有 `Manager Decision: APPROVE` 才允許合併。規則與報告格式請見：
+
+- [Repository Agent Instructions](AGENTS.md)
+- [Manager Policy](docs/management/manager-policy.md)
+- [Escalation Policy](docs/management/escalation-policy.md)
+- [Stage Gate Review Template](docs/management/stage-gate-template.md)
+
+自動 `manager-gate` Required Check 與 Branch Protection 尚未啟用，不得將其標記為已通過。
