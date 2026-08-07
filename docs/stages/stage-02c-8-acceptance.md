@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status：Manager approved; merge pending
+- Status：Completed
 - Branch：`codex/2c-8-acceptance`
 - Base Commit：`efe4dc58efcc3f9bdcdaada41aa15221b7e917a5`
 - Implementation：Passed — 2C-1 through 2C-7 are merged to `main`
@@ -12,8 +12,9 @@
 - Manager Decision：APPROVE
 - Approved Commit：`ebc46b2988b6a606cbe2865b18be0b587e308ccc`
 - Human Review Required：No
-- Merge：Pending
-- Completion Tag：Pending — `milestone-2c-complete`
+- Merge：Passed — PR #20, Squash Merge Commit `dc703d9e50cfa583c675b0286e35beba2c39bc57`
+- Post-merge CI：Passed — main Run `31196506563`
+- Completion Tag：Passed — `milestone-2c-complete` at `dc703d9e50cfa583c675b0286e35beba2c39bc57`
 - Milestone 2D：Not started
 
 ## Scope
@@ -108,10 +109,10 @@ None. No CRITICAL, BLOCKING, or required MAJOR finding remains.
 - [x] Push and Pull Request `quality-and-compose` pass without skipped required steps.
 - [x] Push and Pull Request `secret-scan` pass.
 - [x] Re-review implementation Head `ebc46b2988b6a606cbe2865b18be0b587e308ccc` and record `Manager Decision: APPROVE`.
-- [ ] Merge only after approval.
-- [ ] Verify post-merge `main` CI.
-- [ ] Create and push annotated completion tag `milestone-2c-complete` at the verified main commit.
-- [ ] Only then allow Milestone 2D to start.
+- [x] Merge only after approval.
+- [x] Verify post-merge `main` CI.
+- [x] Create and push annotated completion tag `milestone-2c-complete` at the verified main commit.
+- [x] Allow Milestone 2D to start from the verified, tagged main baseline.
 
 ## Manager Gate decision
 
@@ -119,4 +120,4 @@ None. No CRITICAL, BLOCKING, or required MAJOR finding remains.
 - Decision rationale：All required local and Remote CI verification passed; the PR contains only the approved acceptance documentation; no unresolved CRITICAL, BLOCKING, or required MAJOR finding exists.
 - Human approval required：No
 - Merge allowed：Yes, after this approval-record-only commit passes Push and Pull Request CI on the exact final head.
-- Required next action：Push this approval record, wait for both Remote CI runs, mark PR #20 Ready, squash merge, verify `main`, and create the completion tag.
+- Required next action：Milestone 2C is complete. Begin Milestone 2D only from the verified `main` baseline after this final delivery record merges.

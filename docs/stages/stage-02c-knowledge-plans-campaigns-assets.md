@@ -2,8 +2,8 @@
 
 ## 文件狀態
 
-- Status：Acceptance in progress
-- Branch：completed through slice branches; acceptance branch `codex/2c-8-acceptance`
+- Status：Completed
+- Branch：completed through approved slice and acceptance branches
 - Implementation：Passed — 2C-1 through 2C-7 merged
 - Migration：Passed — additive V4 merged and immutable
 - Specification Commit：`274e5fafa992434c638a4935f55af28d23542e63`
@@ -13,9 +13,11 @@
 - Manager Review：Passed
 - Manager Decision：APPROVE
 - Human Review Required：No
-- Merge：Pending Milestone 2C-8 approved acceptance delivery
+- Merge：Passed — final acceptance PR #20, Commit `dc703d9e50cfa583c675b0286e35beba2c39bc57`
+- Post-merge CI：Passed — main Run `31196506563`
+- Completion Tag：`milestone-2c-complete`
 - Implementation Commit／Push／PR：Passed for 2C-1 through 2C-7
-- Milestone 2D：Not started
+- Milestone 2D：Unlocked; not started
 
 本文件固定 Milestone 2C 的範圍、契約、測試與驗收條件。2C-1 至 2C-7 已依此規格交付；目前只進行 2C-8 最終驗收與文件收尾，在 Remote CI、Manager Review、Merge、post-merge verification 與 completion tag 完成前不得開始 Milestone 2D。
 
