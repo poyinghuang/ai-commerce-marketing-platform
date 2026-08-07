@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status：Manager approved, pending merge
+- Status：Completed
 - Branch：`codex/2c-5-assets`
 - Base Commit：`c051d26c45e3d9769bce2cdfb4cb05502f1d7d18`
 - Implementation：Complete
@@ -14,9 +14,12 @@
 - Approved Commit：`b9b17b82d217028068ce6113bf311231f0464716`
 - Approved Push CI：Run `31177169477` — `quality-and-compose` and `secret-scan` Passed
 - Approved PR CI：Run `31177191719` — `quality-and-compose` and `secret-scan` Passed
+- Approval-document Push CI：Run `31177560976` — `quality-and-compose` and `secret-scan` Passed
+- Approval-document PR CI：Run `31177563762` — `quality-and-compose` and `secret-scan` Passed
 - Pull Request：[#14](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/14)
-- Merge：Pending
-- Milestone 2C-6：Locked
+- Merge：Passed — Squash Commit `b4c16808faf70d331f8e1955c2b7649201e624c2`
+- Post-merge Main CI：Run `31177940031` — `quality-and-compose` and `secret-scan` Passed
+- Milestone 2C-6：Ready after this finalization record reaches `main`
 
 ## Objective
 
@@ -149,7 +152,7 @@ Patchable fields：`assetType`, `purpose`, `storageProvider`, `providerFileId`, 
 - [x] Product, Knowledge, Creative Plan, and Campaign regressions remain green; V1–V4 remain unchanged.
 - [x] Local and Remote CI verification pass.
 - [x] Independent Manager Decision is `APPROVE` before merge.
-- [ ] Post-merge `main` CI passes before 2C-6 begins.
+- [x] Post-merge `main` CI passes before 2C-6 begins.
 
 ## Mandatory escalation
 
@@ -167,7 +170,7 @@ Stop and escalate if implementation requires changing V1–V4, destructive data 
 - Security：Gitleaks history and working-directory scans found no leaks. V1–V4 were not modified.
 - Cross-platform test fix：the existing Backend health component assertion retains its behavior and uses a narrowly scoped five-second `waitFor` timeout for constrained container scheduling.
 - Local limitation：`actionlint` was not installed locally and no workflow changed; Remote CI remains responsible for the required actionlint evidence.
-- Implementation commits and Push／PR Remote CI：Passed; Manager Review：APPROVE; approval-document CI and Merge：Pending.
+- Implementation, Remote CI, Manager Review, approval-document CI, Merge, and post-merge Main CI：Passed.
 
 ## Manager review record
 
@@ -184,5 +187,5 @@ Stop and escalate if implementation requires changing V1–V4, destructive data 
 - Data impact：Only additive use of the approved V4 `assets` table; PostgreSQL remains the System of Record, identity is immutable, lifecycle is archive-only, and no binary or external Provider data operation occurs.
 - Known limitations：Playwright remains assigned to 2C-7. Byte Buddy dynamic-agent, Maven Surefire fork shutdown-after-success, GitHub Actions Node.js compatibility, and Windows LF／CRLF warnings remain non-blocking technical debt. Local actionlint was unavailable; both Remote CI Runs supplied the required passing actionlint evidence.
 - Decision：`APPROVE`
-- Required next action：Commit and verify this Markdown-only approval record, mark PR #14 Ready, squash merge, verify post-merge `main` CI, then finalize delivery documentation before 2C-6 begins.
+- Required next action：Merge this Markdown-only finalization record, verify `main`, then begin Milestone 2C-6 from the resulting clean base.
 - Human approval required：No
