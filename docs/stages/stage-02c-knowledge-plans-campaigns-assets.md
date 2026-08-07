@@ -6,6 +6,14 @@
 - Branch：`codex/stage-02-knowledge-plans`
 - Implementation：Not started
 - Migration：Not created
+- Specification Commit：`274e5fafa992434c638a4935f55af28d23542e63`
+- Manager-reviewed Head：`f31bc91b1bed350d15fa10d00efe944134ed48b8`
+- Local Verification：Passed
+- Remote CI：Passed — Push Run `31133080275`；PR Run `31133098231`
+- Manager Review：Passed
+- Manager Decision：APPROVE
+- Human Review Required：No
+- Merge：Pending
 - Implementation Commit／Push／PR：Not started
 - Milestone 2D：Not started
 
