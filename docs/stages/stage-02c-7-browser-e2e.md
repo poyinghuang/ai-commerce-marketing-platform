@@ -11,8 +11,12 @@
 - Human Review Required：No
 - Implementation：Complete
 - Local Verification：Passed
-- Remote CI：Not started
-- Manager Review：Not started
+- Remote CI：Passed
+- Manager Review：Passed
+- Approved Commit：`94cedeaec548ed7aa65d9ce3b64849436bc39563`
+- Pull Request：`#18`
+- Push CI：Run `31190967331` Passed
+- Pull Request CI：Run `31190970855` Passed
 - Merge：Not started
 - Milestone 2C-8：Locked
 
@@ -124,8 +128,8 @@ The separate pinned Gitleaks job remains unchanged. Workflow permissions remain 
 - [x] Tests use the real same-origin BFF, Backend, and PostgreSQL without mocked Domain APIs or a generic proxy.
 - [x] Failure artifacts are non-sensitive, bounded, ignored by Git/Docker, and retained for seven days.
 - [x] Backend, Frontend, Compose smoke, actionlint, npm audit, and Gitleaks regressions pass.
-- [ ] Push and Pull Request Remote CI pass with the E2E step actually executed.
-- [ ] Independent Manager Review records one of the three allowed decisions.
+- [x] Push and Pull Request Remote CI pass with the E2E step actually executed.
+- [x] Independent Manager Review records one of the three allowed decisions.
 - [ ] Post-merge `main` CI passes before 2C-8 begins.
 
 ## Risks and mitigations
@@ -151,4 +155,26 @@ Stop and escalate if implementation requires a migration, production credential 
 - Security and workflow：pinned Gitleaks history and working-tree scans found no leaks; actionlint `1.7.7` validated the changed workflow; failure screenshot／trace output was generated during negative test development, remained ignored by Git and Docker, contained only synthetic inputs, and is configured for seven-day CI retention.
 - Finding and fix：Browser verification found that Knowledge Archive did not retain the response ETag, so a same-view Restore sent the stale pre-archive token and received 412. `KnowledgeTab` now stores the successful lifecycle response ETag, with a component regression proving `W/"1"` is used for Restore. No Backend or concurrency contract was changed.
 - Known warnings：the pre-existing Byte Buddy dynamic-agent warning, npm allow-scripts notice for `unrs-resolver`, Windows Node engine mismatch for the local Browser runner, GitHub Actions Node.js compatibility annotation, and LF／CRLF informational warnings remain non-blocking. Exact Node verification passed inside the pinned image and remains mandatory in Remote CI.
-- Delivery state：Implementation and local verification are complete. Commit, Draft PR, Remote CI, independent Manager Review, Merge, and post-merge Main CI remain pending.
+- Delivery state：Implementation, local verification, Commit, Draft PR, Remote CI, and independent Manager Review are complete. Merge and post-merge Main CI remain pending.
+
+## Manager review record
+
+- Stage：Milestone 2C-7 — Browser E2E
+- Branch：`codex/2c-7-browser-e2e`
+- Base Commit：`f9c591911bb9d4b2352b7676aea8c335680f0c96`
+- Head Commit：`94cedeaec548ed7aa65d9ce3b64849436bc39563`
+- Pull Request：`#18`
+- Scope reviewed：Playwright dependency and configuration, four Browser journeys, CI Browser installation／execution／failure artifacts, ignore boundaries, local instructions, Knowledge lifecycle ETag fix, and regression test.
+- Files reviewed：All 13 changed files in `origin/main...HEAD`; only the approved E2E, CI, documentation, ignore, lockfile, and minimal Knowledge UI regression scope is present.
+- Migration reviewed：V1–V4 are byte-for-byte outside the Diff; no migration was added or modified.
+- API and transaction contract：No Backend Domain, API, transaction, Audit writer, lifecycle, or error contract changed. The UI now retains the successful lifecycle response ETag required by the existing concurrency contract.
+- Security boundary：Browser traffic uses fixed same-origin routes. No credential, Browser actor header, arbitrary upstream URL, public test hook, new permission, authentication, RBAC, Tenant, or production access was introduced. Artifacts contain synthetic data only, upload only on failure, and expire after seven days.
+- Data impact：Tests create only synthetic data in the ephemeral Compose PostgreSQL volume and remove it on teardown. The fixed Audit query validates UUID format and reads only `audit_logs`; no destructive SQL is used.
+- Tests executed：`git status --short`; `git diff --check`; full Backend Testcontainers suite (150/150); exact-Node Frontend lint, typecheck, Vitest (108/108), production build, npm production audit; Playwright discovery and four local Chromium scenarios; Compose config/cold build/health; actionlint 1.7.7; pinned Gitleaks history and working-tree scans.
+- Remote CI：Push Run `31190967331` and Pull Request Run `31190970855` passed. Both executed actionlint, Backend Testcontainers, Frontend verification, package-pinned Chromium install, Compose cold start, all four Browser E2E scenarios, existing API smoke, teardown, and Gitleaks. Browser results were 4/4 in 10.8s and 11.7s with no retry.
+- Findings：One BLOCKING finding was discovered locally and resolved before the approved Head: Knowledge Archive did not persist its response ETag, causing same-view Restore to send a stale token. The minimal fix and component regression passed locally and remotely. No CRITICAL, BLOCKING, or required MAJOR finding remains.
+- Known limitations：Chromium-only coverage, no visual baseline, and the existing Byte Buddy, npm allow-scripts, Actions Node.js compatibility, and Windows line-ending warnings remain non-blocking technical debt.
+- Contract changes：Additive test and CI contract only; successful Knowledge lifecycle operations now correctly carry their returned ETag into the next UI operation.
+- Decision：`APPROVE`
+- Human approval required：No
+- Required next action：Commit and push this Manager record, require the new Push and Pull Request Head CI to pass, then mark PR `#18` Ready, squash merge, and verify post-merge `main` before 2C-8.
