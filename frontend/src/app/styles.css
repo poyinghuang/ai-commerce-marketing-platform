@@ -66,6 +66,7 @@ td small { display: block; margin-top: 0.25rem; color: #75827c; }
 
 .content-card, .state-card { border: 1px solid #d5ded8; border-radius: 1rem; background: #fff; padding: clamp(1.25rem, 3vw, 2rem); box-shadow: 0 0.75rem 2.5rem rgba(30, 67, 54, 0.07); }
 .state-card { text-align: center; color: #5c6c65; }
+.aggregate-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
 .error-state { border-color: #e4b1ab; background: #fff4f2; color: #8c2f27; }
 .warning-state { border-color: #e4c88c; background: #fff9e9; color: #755817; }
 .card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }

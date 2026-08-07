@@ -9,6 +9,7 @@ import { CreativePlansTab } from "@/components/creative-plans-tab";
 import { KnowledgeTab } from "@/components/knowledge-tab";
 import { CampaignsTab } from "@/components/campaigns-tab";
 import { AssetsTab } from "@/components/assets-tab";
+import { ProductAggregateSummary } from "@/components/product-aggregate-summary";
 
 type ProductDetailTab = "product" | "knowledge" | "creative-plans" | "campaigns" | "assets";
 
@@ -132,6 +133,7 @@ export function ProductDetailView({ productUuid, initialTab = "product" }: { pro
       ) : initialTab === "knowledge" ? (
         <KnowledgeTab productUuid={productUuid} productArchived={product.lifecycleStatus === "ARCHIVED"} />
       ) : (
+        <>
         <section className="content-card">
         <div className="card-heading"><div><h2>商品資料</h2><span className={`status-badge ${product.lifecycleStatus.toLowerCase()}`}>{product.lifecycleStatus === "ACTIVE" ? "使用中" : "已封存"}</span></div><button className={product.lifecycleStatus === "ACTIVE" ? "danger-button" : "secondary-button"} disabled={saving} onClick={() => void changeLifecycle()}>{product.lifecycleStatus === "ACTIVE" ? "封存商品" : "還原商品"}</button></div>
         {product.lifecycleStatus === "ACTIVE" ? (
@@ -140,6 +142,8 @@ export function ProductDetailView({ productUuid, initialTab = "product" }: { pro
           <div className="state-card"><p>Archived Product 不接受一般修改。還原後才能編輯。</p></div>
         )}
         </section>
+        <ProductAggregateSummary productUuid={productUuid} />
+        </>
       )}
     </div>
   );

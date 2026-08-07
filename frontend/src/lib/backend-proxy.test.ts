@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { forwardAssetRequest, forwardCampaignRequest, forwardCreativePlanRequest, forwardKnowledgeRequest, forwardProductRequest } from "./backend-proxy";
+import { forwardAssetRequest, forwardCampaignRequest, forwardCreativePlanRequest, forwardKnowledgeRequest, forwardProductAggregateRequest, forwardProductRequest } from "./backend-proxy";
 
 describe("product backend proxy", () => {
   afterEach(() => {
@@ -343,5 +343,63 @@ describe("product backend proxy", () => {
     expect((fetchMock.mock.calls[0][0] as URL).search).toBe("");
     const tooLarge = new NextRequest("http://localhost/api", { method: "POST", body: "x".repeat(65537) });
     expect((await forwardAssetRequest(tooLarge, `/api/products/${product}/assets`, { method: "POST", contentType: "application/json" })).status).toBe(413);
+  });
+
+  it("forwards only the exact Aggregate path and boolean query without credentials", async () => {
+    process.env.BACKEND_INTERNAL_URL = "http://backend:8080";
+    const product = "d4476a19-30ed-48d9-a518-f9b111bd0911";
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store",
+        "X-Request-ID": "aggregate-request",
+        ETag: 'W/"must-not-be-created-by-aggregate"',
+      },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const request = new NextRequest(
+      `http://localhost/api/products/${product}/aggregate?includeArchived=true`,
+      { headers: { Cookie: "secret", Authorization: "Bearer secret", "X-Actor-ID": "evil" } },
+    );
+
+    const response = await forwardProductAggregateRequest(request, `/api/products/${product}/aggregate`);
+    const [target, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(target.toString()).toBe(`http://backend:8080/api/products/${product}/aggregate?includeArchived=true`);
+    const headers = new Headers(init.headers);
+    expect(headers.has("Cookie")).toBe(false);
+    expect(headers.has("Authorization")).toBe(false);
+    expect(headers.has("X-Actor-ID")).toBe(false);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(response.headers.get("X-Request-ID")).toBe("aggregate-request");
+    expect(response.headers.has("ETag")).toBe(false);
+  });
+
+  it.each([
+    "includeArchived=True",
+    "includeArchived=1",
+    "includeArchived=true&includeArchived=false",
+    "target=http://attacker.example",
+  ])("rejects invalid Aggregate query %s", async (query) => {
+    process.env.BACKEND_INTERNAL_URL = "http://backend:8080";
+    const product = "d4476a19-30ed-48d9-a518-f9b111bd0911";
+    const fetchMock = vi.fn(); vi.stubGlobal("fetch", fetchMock);
+    const response = await forwardProductAggregateRequest(
+      new NextRequest(`http://localhost/api/products/${product}/aggregate?${query}`),
+      `/api/products/${product}/aggregate`,
+    );
+    expect(response.status).toBe(400);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects arbitrary Aggregate paths and sanitizes upstream failure", async () => {
+    process.env.BACKEND_INTERNAL_URL = "http://backend:8080";
+    const product = "d4476a19-30ed-48d9-a518-f9b111bd0911";
+    const request = new NextRequest(`http://localhost/api/products/${product}/aggregate`);
+    expect((await forwardProductAggregateRequest(request, "http://attacker.example")).status).toBe(400);
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("internal target must not leak")));
+    const unavailable = await forwardProductAggregateRequest(request, `/api/products/${product}/aggregate`);
+    expect(unavailable.status).toBe(503);
+    expect(await unavailable.json()).toEqual({ code: "BACKEND_UNAVAILABLE", message: "Backend is unavailable" });
   });
 });
