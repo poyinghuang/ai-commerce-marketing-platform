@@ -101,7 +101,7 @@ class PersistenceFoundationIntegrationTest {
                 .map(info -> info.getVersion().getVersion())
                 .toList();
 
-        assertThat(appliedVersions).containsExactly("1", "2", "3", "4");
+        assertThat(appliedVersions).containsExactly("1", "2", "3", "4", "5");
         assertThat(flyway.info().pending()).isEmpty();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(environment.getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("validate");
@@ -110,11 +110,10 @@ class PersistenceFoundationIntegrationTest {
         assertThat(tableExists("audit_log_changes")).isTrue();
         assertThat(List.of("product_knowledge", "creative_plans", "campaign_plans", "campaign_products", "assets"))
                 .allMatch(this::tableExists);
+        assertThat(List.of("quality_scores", "quality_score_blockers", "workflow_status"))
+                .allMatch(this::tableExists);
         assertThat(List.of(
                         "product_storage_folders",
-                        "quality_scores",
-                        "quality_score_blockers",
-                        "workflow_status",
                         "sheet_import_jobs",
                         "sheet_import_rows"))
                 .noneMatch(this::tableExists);
