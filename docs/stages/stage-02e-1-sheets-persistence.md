@@ -13,8 +13,9 @@
 - Manager Decision：`APPROVE`
 - Approved Implementation Commit：`6b96f03e2f3824824ca7313caa508d8848d44953`
 - Human Review Required：No
-- Merge：Pending
-- 2E-2：Not started
+- Merge：Passed — PR #34, Squash Commit `d776111d24fdec00eff871a62f6472f18a520b91`
+- Post-merge CI：Passed — main Run `31228371345`
+- 2E-2：Allowed after this closeout is merged
 
 ## Scope delivered
 
@@ -78,4 +79,4 @@ The first isolated Playwright attempt used the default Compose project for its d
 
 ## Manager Gate
 
-Exact-head implementation review found no blocking findings. Merge remains prohibited until this approval-record documentation Commit receives successful Push and PR Remote CI. See the [Manager Review report](../management/reviews/stage-02e-1-manager-review.md).
+Exact-head implementation review found no blocking findings. PR #34 and its post-merge main CI passed, so Milestone 2E-1 is complete. See the [Manager Review report](../management/reviews/stage-02e-1-manager-review.md).
