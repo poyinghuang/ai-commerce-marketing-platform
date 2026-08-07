@@ -2,17 +2,21 @@
 
 ## Gate status
 
-- Status：Approved for implementation
+- Status：Manager approved, pending merge
 - Branch：`codex/2c-6-aggregate-integration`
 - Base Commit：`cf738e9284ab7bb4a66a19610cad528ebc6c1948`
 - Prerequisite 2C-5 Main CI：Run `31178905522` Passed
 - Implementation：Complete
 - Local Verification：Passed
-- Remote CI：Not started
-- Manager Review：Not started
-- Manager Decision：Pending
+- Remote CI：Passed
+- Manager Review：Passed
+- Manager Decision：APPROVE
 - Human Review Required：No
-- Merge：Not started
+- Approved Commit：`a7a5b971f89e7401e1c01a02d2286ad887ce0282`
+- Push CI：Run `31185455853` Passed
+- Pull Request：`#16`
+- Pull Request CI：Run `31185475601` Passed
+- Merge：Pending
 - Milestone 2C-7：Locked
 
 ## Objective
@@ -128,8 +132,8 @@ Rules：
 - [x] BFF remains fixed-origin／fixed-path, GET-only, exact-query bounded, and credential／actor safe.
 - [x] Product Detail aggregate summary covers loading, empty, populated, archived, error／retry, and include-archived states.
 - [x] V1–V4 and all existing Product／Knowledge／Creative Plan／Campaign／Asset contracts remain unchanged and green.
-- [ ] Local and Remote CI verification pass with no required step skipped. Local Passed; Remote CI Pending.
-- [ ] Independent Manager Decision is `APPROVE` before merge.
+- [x] Local and Remote CI verification pass with no required step skipped.
+- [x] Independent Manager Decision is `APPROVE` before merge.
 - [ ] Post-merge `main` CI passes before 2C-7 begins.
 
 ## Known limitations
@@ -152,4 +156,27 @@ Stop and escalate if implementation requires modifying V1–V4, adding a migrati
 - Security：pinned Gitleaks history scan (35 commits) and working-directory scan found no leaks. V1–V4, dependency manifests, Runtime, Docker, CI workflow, credentials, and permissions were not changed.
 - Local actionlint：not installed; no workflow file changed. Required actionlint evidence remains Pending Remote CI.
 - Initial verification findings：the first PostgreSQL focused run exposed an ambiguous `Instant` type only in test seed SQL and was corrected with explicit `Timestamp`; an ordering-test expectation was corrected from Java signed-`long` UUID natural order to PostgreSQL canonical UUID order. One multi-file Vitest focused run had a worker-start timeout, and one parallel full run timed out an existing Knowledge test under combined Docker／JVM load; the affected tests passed independently and the final non-parallel full Frontend suite passed 107／107.
-- Delivery state：implementation and local verification are complete. Commit, Push, Draft PR, Remote CI, independent Manager Review, and Merge remain Pending.
+- Delivery state：Implementation, local verification, Commit, Push, Draft PR, Remote CI, and independent Manager Review are complete. Merge remains Pending.
+
+## Manager review record
+
+- Stage：Milestone 2C-6 — Product Aggregate and Integration
+- Branch：`codex/2c-6-aggregate-integration`
+- Base Commit：`cf738e9284ab7bb4a66a19610cad528ebc6c1948`
+- Head Commit：`a7a5b971f89e7401e1c01a02d2286ad887ce0282`
+- Pull Request：`#16`
+- Scope reviewed：Read-only aggregate Backend service and API, bounded persistence queries, same-origin BFF, Product Detail aggregate summary, tests, smoke coverage, and Stage documentation.
+- Files reviewed：All 20 changed files in `origin/main...HEAD`; no unapproved Runtime, dependency, Docker, CI workflow, or Flyway migration changes were present.
+- Migration reviewed：V1 through V4 were unchanged; no V5 or other migration was introduced.
+- Domain and transaction boundary：One read-only `REPEATABLE_READ` application transaction; immutable application view records; five bounded repository queries; no Audit event or entity version mutation.
+- API and Frontend contract：Fixed GET aggregate endpoint, exact `includeArchived` validation, deterministic lifecycle and ordering semantics, no Aggregate ETag, `Cache-Control: no-store`, fixed-origin BFF, and read-only Product Detail summary.
+- Tests executed：`git status --short`; `git diff --check origin/main...HEAD`; full Maven test suite (150/150); Frontend lint, typecheck, tests (107/107), production build, and production audit; Docker Compose config and cold build/healthy start; Backend and BFF aggregate smoke; pinned Gitleaks history and working-tree scans.
+- Remote CI：Push Run `31185455853` and Pull Request Run `31185475601` passed `quality-and-compose` and `secret-scan`; actionlint, Backend Testcontainers, Frontend verification, Compose validation/start/smoke, and Gitleaks executed without required-step skips.
+- Findings：No CRITICAL, BLOCKING, or required MAJOR findings. No unresolved code finding remains.
+- Contract changes：One additive read-only Aggregate API and one fixed same-origin BFF route. Existing mutation, lifecycle, ETag, error, and resource contracts remain unchanged.
+- Security impact：No credential, authentication, RBAC, Tenant, permission, or production-access changes. BFF origin/path/query/header boundaries were verified.
+- Data impact：Read-only only. No migration, destructive SQL, persistence mutation, data loss, or System of Record change.
+- Known limitations：Aggregate arrays are unpaginated; Playwright remains required in 2C-7; existing Byte Buddy, test-shutdown, Actions Node.js compatibility, and Windows line-ending warnings are non-blocking.
+- Decision：`APPROVE`
+- Human approval required：No
+- Required next action：Commit and push this approval record, require both Push and Pull Request CI to pass again, then mark PR `#16` Ready, squash merge without starting 2C-7, and verify post-merge `main` CI.
