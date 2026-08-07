@@ -2,10 +2,10 @@
 
 ## 文件狀態
 
-- Status：Approved for implementation
-- Branch：`codex/stage-02-knowledge-plans`
-- Implementation：Not started
-- Migration：Not created
+- Status：Acceptance in progress
+- Branch：completed through slice branches; acceptance branch `codex/2c-8-acceptance`
+- Implementation：Passed — 2C-1 through 2C-7 merged
+- Migration：Passed — additive V4 merged and immutable
 - Specification Commit：`274e5fafa992434c638a4935f55af28d23542e63`
 - Manager-reviewed Head：`f31bc91b1bed350d15fa10d00efe944134ed48b8`
 - Local Verification：Passed
@@ -13,11 +13,11 @@
 - Manager Review：Passed
 - Manager Decision：APPROVE
 - Human Review Required：No
-- Merge：Pending
-- Implementation Commit／Push／PR：Not started
+- Merge：Pending Milestone 2C-8 acceptance delivery
+- Implementation Commit／Push／PR：Passed for 2C-1 through 2C-7
 - Milestone 2D：Not started
 
-本文件已固定 Milestone 2C 的範圍、契約、測試與驗收條件。本次只交付規格文件；收到獨立的實作開工指令前，不得建立 Migration、修改 Runtime、推送功能程式碼或開始 Milestone 2D。
+本文件固定 Milestone 2C 的範圍、契約、測試與驗收條件。2C-1 至 2C-7 已依此規格交付；目前只進行 2C-8 最終驗收與文件收尾，在 Remote CI、Manager Review、Merge、post-merge verification 與 completion tag 完成前不得開始 Milestone 2D。
 
 ## 目標
 
@@ -426,24 +426,24 @@ Playwright package、Browser runtime 與任何 container image 必須鎖定版�
 ## 驗收清單
 
 - [x] 規格與所有決策項目經人工核准。
-- [ ] V1–V3 未修改；V4 可由空庫與 2B 資料庫安全升級。
-- [ ] Hibernate validate、Migration checksum 與 repeat migration 通過。
-- [ ] 同一 Product 可建立多筆 Knowledge 與 Creative Plan。
-- [ ] 同一 Product 可參與多個 Campaign；同一 Campaign 可關聯多個 Product。
-- [ ] Asset Metadata 可關聯正確的 Product、Creative Plan 與 Campaign Product。
-- [ ] 所有 2C Resource 支援 Read、Create、field-safe Patch、Archive、Restore 與 optimistic concurrency。
-- [ ] Archive／Restore no-op 不增加 version、不建立 Audit。
-- [ ] Archived Product 的 2C 資料可讀但不可 Mutation。
-- [ ] Aggregate 以 `product_uuid` 回傳完整且可控制 archived inclusion 的視圖。
-- [ ] 既有 2B Product API Contract 與 UI regression 通過。
-- [ ] 所有成功 Mutation 具可信 actor、同 Transaction Audit 與實際欄位差異。
-- [ ] failed、stale、blocked 與 no-op operation 沒有 Audit。
-- [ ] BFF 無 SSRF、任意 path、Cookie／Authorization 洩漏或未限制 header forwarding。
-- [ ] Product Detail Tabs 與 Campaign UI 具 Loading、Empty、Error、Archived 與 Version Conflict states。
-- [ ] Backend、Frontend、Testcontainers、Compose smoke、Gitleaks、actionlint、npm audit 與 Remote CI 全部通過。
-- [ ] 四個最小 Playwright E2E scenario 全部通過。
-- [ ] 無 Google API、AI、Quality、Workflow、Meta Ads、Dashboard、Decision Engine 或 Stage 03 功能。
-- [ ] 人工差異與架構審查通過後才可合併。
+- [x] V1–V3 未修改；V4 可由空庫與 2B 資料庫安全升級。
+- [x] Hibernate validate、Migration checksum 與 repeat migration 通過。
+- [x] 同一 Product 可建立多筆 Knowledge 與 Creative Plan。
+- [x] 同一 Product 可參與多個 Campaign；同一 Campaign 可關聯多個 Product。
+- [x] Asset Metadata 可關聯正確的 Product、Creative Plan 與 Campaign Product。
+- [x] 所有 2C Resource 支援 Read、Create、field-safe Patch、Archive、Restore 與 optimistic concurrency。
+- [x] Archive／Restore no-op 不增加 version、不建立 Audit。
+- [x] Archived Product 的 2C 資料可讀但不可 Mutation。
+- [x] Aggregate 以 `product_uuid` 回傳完整且可控制 archived inclusion 的視圖。
+- [x] 既有 2B Product API Contract 與 UI regression 通過。
+- [x] 所有成功 Mutation 具可信 actor、同 Transaction Audit 與實際欄位差異。
+- [x] failed、stale、blocked 與 no-op operation 沒有 Audit。
+- [x] BFF 無 SSRF、任意 path、Cookie／Authorization 洩漏或未限制 header forwarding。
+- [x] Product Detail Tabs 與 Campaign UI 具 Loading、Empty、Error、Archived 與 Version Conflict states。
+- [x] Backend、Frontend、Testcontainers、Compose smoke、Gitleaks、actionlint、npm audit 與已合併 slice 的 Remote CI 全部通過。
+- [x] 四個最小 Playwright E2E scenario 全部通過。
+- [x] 無 Google API、AI、Quality、Workflow、Meta Ads、Dashboard、Decision Engine 或 Stage 03 功能。
+- [ ] Milestone 2C-8 的 Remote CI 與最終 Manager Review 通過後才可合併與建立 completion tag。
 
 ## 已核准決策
 

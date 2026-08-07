@@ -114,7 +114,7 @@
 - Remote CI：Passed
 - Human diff and architecture review：Passed
 - Merge：Passed
-- Milestone 2C：Approved for implementation；implementation not started
+- Milestone 2C：2C-1 through 2C-7 passed；2C-8 acceptance in progress
 
 #### Commits
 
@@ -208,6 +208,12 @@
 
 ### Milestone 2C — Knowledge, Plans, Campaigns and Assets
 
+- Status：Acceptance in progress
+- Implementation：Passed
+- Local Verification：Passed
+- Remote CI：Passed for 2C-1 through 2C-7；2C-8 pending
+- Manager Review：Passed for 2C-1 through 2C-7；final acceptance pending
+- Merge：2C-1 through 2C-7 passed；Milestone completion pending
 - Product Knowledge
 - Creative Plans
 - Campaign Plans
@@ -216,7 +222,8 @@
 - Aggregate API
 - Detail Tabs
 - 詳細規格與驗收條件：[Milestone 2C — Knowledge, Plans, Campaigns and Assets](stage-02c-knowledge-plans-campaigns-assets.md)
-- Implementation Branch：`codex/stage-02-knowledge-plans`
+- 最終驗收報告：[Milestone 2C-8 — Acceptance and Delivery](stage-02c-8-acceptance.md)
+- Acceptance Branch：`codex/2c-8-acceptance`
 
 ### Milestone 2D — Quality and Workflow
 
