@@ -6,3 +6,7 @@ spring:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/ai_commerce}
     username: ${DATABASE_USERNAME:ai_commerce}
     password: ${DATABASE_PASSWORD:ai_commerce_local}
+
+app:
+  quality:
+    startup-repair-enabled: true

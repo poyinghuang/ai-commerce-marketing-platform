@@ -249,7 +249,7 @@ class PersistenceFoundationIntegrationTest {
         Product archivedAgain = productService.archive(
                 product.getProductUuid(), archivedVersion, "request-idempotent-archive-again");
         assertThat(archivedAgain.getVersion()).isEqualTo(archivedVersion);
-        assertThat(auditCount(product.getProductUuid())).isEqualTo(initialAudits + 1);
+        assertThat(auditCount(product.getProductUuid())).isEqualTo(initialAudits + 3);
         assertThat(productQueryService.search(
                         new ProductSearchCriteria(ProductLifecycleStatus.ACTIVE, null, null, null, null),
                         PageRequest.of(0, 20)))
@@ -272,7 +272,7 @@ class PersistenceFoundationIntegrationTest {
         Product restoredAgain = productService.restore(
                 product.getProductUuid(), restoredVersion, "request-idempotent-restore-again");
         assertThat(restoredAgain.getVersion()).isEqualTo(restoredVersion);
-        assertThat(auditCount(product.getProductUuid())).isEqualTo(initialAudits + 2);
+        assertThat(auditCount(product.getProductUuid())).isEqualTo(initialAudits + 6);
     }
 
     @Test

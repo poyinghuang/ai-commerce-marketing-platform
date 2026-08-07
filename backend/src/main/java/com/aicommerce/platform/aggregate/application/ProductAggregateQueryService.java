@@ -10,6 +10,7 @@ import com.aicommerce.platform.knowledge.infrastructure.persistence.ProductKnowl
 import com.aicommerce.platform.product.application.ProductNotFoundException;
 import com.aicommerce.platform.product.domain.Product;
 import com.aicommerce.platform.product.infrastructure.persistence.ProductJpaRepository;
+import com.aicommerce.platform.quality.application.ProductQualityQueryService;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -23,15 +24,18 @@ public class ProductAggregateQueryService {
     private final CreativePlanJpaRepository creativePlans;
     private final CampaignProductJpaRepository campaignProducts;
     private final AssetJpaRepository assets;
+    private final ProductQualityQueryService quality;
 
     public ProductAggregateQueryService(ProductJpaRepository products,
             ProductKnowledgeJpaRepository knowledge, CreativePlanJpaRepository creativePlans,
-            CampaignProductJpaRepository campaignProducts, AssetJpaRepository assets) {
+            CampaignProductJpaRepository campaignProducts, AssetJpaRepository assets,
+            ProductQualityQueryService quality) {
         this.products = products;
         this.knowledge = knowledge;
         this.creativePlans = creativePlans;
         this.campaignProducts = campaignProducts;
         this.assets = assets;
+        this.quality = quality;
     }
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
@@ -53,6 +57,6 @@ public class ProductAggregateQueryService {
                 .findForAggregate(productUuid, includeArchived).stream()
                 .map(ProductAggregateView.AssetView::from).toList();
         return new ProductAggregateView(ProductAggregateView.ProductView.from(product), knowledgeViews,
-                creativePlanViews, campaignViews, assetViews);
+                creativePlanViews, campaignViews, assetViews, quality.get(productUuid));
     }
 }

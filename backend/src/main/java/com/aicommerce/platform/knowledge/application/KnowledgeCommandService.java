@@ -15,6 +15,7 @@ import com.aicommerce.platform.product.application.ProductArchivedException;
 import com.aicommerce.platform.product.application.ProductNotFoundException;
 import com.aicommerce.platform.product.domain.ProductLifecycleStatus;
 import com.aicommerce.platform.product.infrastructure.persistence.ProductJpaRepository;
+import com.aicommerce.platform.quality.application.ProductQualityRecalculationService;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,12 +28,13 @@ public class KnowledgeCommandService {
     private final AuditOperationContextFactory contextFactory;
     private final AuditWriter auditWriter;
     private final KnowledgeAuditChangeFactory changes;
+    private final ProductQualityRecalculationService quality;
     private final Clock clock;
     public KnowledgeCommandService(ProductKnowledgeJpaRepository repository, ProductJpaRepository productRepository,
             AuditOperationContextFactory contextFactory, AuditWriter auditWriter,
-            KnowledgeAuditChangeFactory changes, Clock clock) {
+            KnowledgeAuditChangeFactory changes, ProductQualityRecalculationService quality, Clock clock) {
         this.repository = repository; this.productRepository = productRepository; this.contextFactory = contextFactory;
-        this.auditWriter = auditWriter; this.changes = changes; this.clock = clock;
+        this.auditWriter = auditWriter; this.changes = changes; this.quality = quality; this.clock = clock;
     }
     @Transactional
     public ProductKnowledge create(UUID productUuid, CreateKnowledgeCommand command, String requestId) {
@@ -42,6 +44,7 @@ public class KnowledgeCommandService {
         catch (IllegalArgumentException exception) { throw validation(exception); }
         value = repository.saveAndFlush(value);
         append(value, context, AuditAction.CREATE, changes.create(KnowledgeSnapshot.from(value)));
+        quality.recalculate(productUuid, context);
         return value;
     }
     @Transactional
@@ -55,7 +58,7 @@ public class KnowledgeCommandService {
         catch (IllegalArgumentException exception) { throw validation(exception); }
         List<AuditChange> actual = changes.between(before, KnowledgeSnapshot.from(value));
         if (actual.isEmpty()) return value;
-        flush(value); append(value, context, AuditAction.UPDATE, actual); return value;
+        flush(value); append(value, context, AuditAction.UPDATE, actual); quality.recalculate(productUuid, context); return value;
     }
     @Transactional
     public ProductKnowledge archive(UUID productUuid, UUID knowledgeUuid, long expectedVersion, String requestId) {
@@ -64,7 +67,7 @@ public class KnowledgeCommandService {
         KnowledgeSnapshot before = KnowledgeSnapshot.from(value);
         if (!value.archive(Instant.now(clock))) return value;
         List<AuditChange> actual = changes.between(before, KnowledgeSnapshot.from(value)); flush(value);
-        append(value, context, AuditAction.ARCHIVE, actual); return value;
+        append(value, context, AuditAction.ARCHIVE, actual); quality.recalculate(productUuid, context); return value;
     }
     @Transactional
     public ProductKnowledge restore(UUID productUuid, UUID knowledgeUuid, long expectedVersion, String requestId) {
@@ -73,7 +76,7 @@ public class KnowledgeCommandService {
         KnowledgeSnapshot before = KnowledgeSnapshot.from(value);
         if (!value.restore()) return value;
         List<AuditChange> actual = changes.between(before, KnowledgeSnapshot.from(value)); flush(value);
-        append(value, context, AuditAction.RESTORE, actual); return value;
+        append(value, context, AuditAction.RESTORE, actual); quality.recalculate(productUuid, context); return value;
     }
     private void requireMutableProduct(UUID uuid) { requireMutable(requireProduct(uuid)); }
     private com.aicommerce.platform.product.domain.Product requireProduct(UUID uuid) { return productRepository.findForKnowledgeMutation(uuid).orElseThrow(() -> new ProductNotFoundException(uuid)); }

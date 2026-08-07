@@ -229,12 +229,13 @@
 
 ### Milestone 2D — Quality and Workflow
 
-- Status：2D-1 completed; 2D-2 not started
-- Branch：`codex/2d-1-finalize`
+- Status：2D-1 completed; 2D-2 locally complete, delivery pending
+- Branch：`codex/2d-2-recalculation-api`
 - Specification Merge：`6ba92bdc48a50f61448ee347b89939f961bdb5e4`
 - 2D-1 Merge：`c897bb6f6f3847e62fea9b6d334400349c87e3b0`; post-merge Run `31203178454` passed
 - Detailed specification：[Milestone 2D — Quality and Workflow](stage-02d-quality-workflow.md)
 - 2D-1 delivery record：[Milestone 2D-1 — Schema and Scoring Domain](stage-02d-1-schema-scoring.md)
+- 2D-2 delivery record：[Milestone 2D-2 — Recalculation, API, Audit, and Aggregate](stage-02d-2-recalculation-api.md)
 - Deterministic Quality Score
 - Blocking Reasons
 - Manual Adjustment

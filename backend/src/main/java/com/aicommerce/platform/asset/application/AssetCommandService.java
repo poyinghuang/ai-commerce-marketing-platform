@@ -16,6 +16,7 @@ import com.aicommerce.platform.product.application.*;
 import com.aicommerce.platform.product.domain.Product;
 import com.aicommerce.platform.product.domain.ProductLifecycleStatus;
 import com.aicommerce.platform.product.infrastructure.persistence.ProductJpaRepository;
+import com.aicommerce.platform.quality.application.ProductQualityRecalculationService;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -36,15 +37,17 @@ public class AssetCommandService {
     private final AuditWriter auditWriter;
     private final AssetAuditChangeFactory changes;
     private final AssetMetadataSecurity metadata;
+    private final ProductQualityRecalculationService quality;
     private final Clock clock;
 
     public AssetCommandService(AssetJpaRepository assets, ProductJpaRepository products,
             CreativePlanJpaRepository creativePlans, CampaignPlanJpaRepository campaigns,
             CampaignProductJpaRepository campaignProducts, AuditOperationContextFactory contexts,
-            AuditWriter auditWriter, AssetAuditChangeFactory changes, AssetMetadataSecurity metadata, Clock clock) {
+            AuditWriter auditWriter, AssetAuditChangeFactory changes, AssetMetadataSecurity metadata,
+            ProductQualityRecalculationService quality, Clock clock) {
         this.assets=assets; this.products=products; this.creativePlans=creativePlans; this.campaigns=campaigns;
         this.campaignProducts=campaignProducts; this.contexts=contexts; this.auditWriter=auditWriter;
-        this.changes=changes; this.metadata=metadata; this.clock=clock;
+        this.changes=changes; this.metadata=metadata; this.quality=quality; this.clock=clock;
     }
 
     @Transactional
@@ -61,6 +64,7 @@ public class AssetCommandService {
         } catch (IllegalArgumentException | NullPointerException exception) { throw validation(exception); }
         asset=assets.saveAndFlush(asset);
         append(asset,context,AuditAction.CREATE,changes.forCreate(AssetSnapshot.from(asset)));
+        quality.recalculate(productUuid, context);
         return asset;
     }
 
@@ -82,7 +86,7 @@ public class AssetCommandService {
         } catch (IllegalArgumentException | NullPointerException exception) { throw validation(exception); }
         List<AuditChange> actual=changes.between(before,AssetSnapshot.from(asset));
         if (actual.isEmpty()) return asset;
-        flush(asset); append(asset,context,AuditAction.UPDATE,actual); return asset;
+        flush(asset); append(asset,context,AuditAction.UPDATE,actual); quality.recalculate(productUuid, context); return asset;
     }
 
     @Transactional
@@ -92,7 +96,7 @@ public class AssetCommandService {
         AssetSnapshot before=AssetSnapshot.from(asset);
         if (!asset.archive(Instant.now(clock))) return asset;
         List<AuditChange> actual=changes.between(before,AssetSnapshot.from(asset));
-        flush(asset); append(asset,context,AuditAction.ARCHIVE,actual); return asset;
+        flush(asset); append(asset,context,AuditAction.ARCHIVE,actual); quality.recalculate(productUuid, context); return asset;
     }
 
     @Transactional
@@ -103,7 +107,7 @@ public class AssetCommandService {
         AssetSnapshot before=AssetSnapshot.from(asset);
         if (!asset.restore()) return asset;
         List<AuditChange> actual=changes.between(before,AssetSnapshot.from(asset));
-        flush(asset); append(asset,context,AuditAction.RESTORE,actual); return asset;
+        flush(asset); append(asset,context,AuditAction.RESTORE,actual); quality.recalculate(productUuid, context); return asset;
     }
 
     private Product requireActiveProduct(UUID id) {

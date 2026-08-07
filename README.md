@@ -37,6 +37,13 @@ Backend 提供：
 
 Create 由系統產生永久 `product_uuid` 與 `PROD-00000001` 格式 Product ID。PATCH、Archive 與 Restore 使用 `ETag`／`If-Match`；Browser 僅呼叫 Next.js 同源 Product Route Handlers，不直接呼叫 Docker hostname。
 
+Backend 的 Stage 2D Quality API 提供：
+
+- `GET /api/products/{productUuid}/quality`
+- `PATCH /api/products/{productUuid}/quality/manual-adjustment`
+
+Quality 使用確定性規則、blocking reasons 與版本型 `ETag`。非零人工調整限 `-20..20`，必須提供理由並使用可信 Audit Actor。Frontend BFF 與 Quality UI 將由 Milestone 2D-3 提供；本階段 Browser 不應直接依賴 Docker 內部 hostname。
+
 停止服務：
 
 ```shell
