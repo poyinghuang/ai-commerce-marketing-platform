@@ -4,5 +4,8 @@ public enum AuditValueType {
     STRING,
     UUID,
     ENUM,
-    TIMESTAMP
+    TIMESTAMP,
+    DECIMAL,
+    INTEGER,
+    DATE
 }

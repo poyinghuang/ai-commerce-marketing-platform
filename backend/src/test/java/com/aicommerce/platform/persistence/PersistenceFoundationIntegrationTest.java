@@ -101,19 +101,16 @@ class PersistenceFoundationIntegrationTest {
                 .map(info -> info.getVersion().getVersion())
                 .toList();
 
-        assertThat(appliedVersions).containsExactly("1", "2", "3");
+        assertThat(appliedVersions).containsExactly("1", "2", "3", "4");
         assertThat(flyway.info().pending()).isEmpty();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(environment.getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("validate");
         assertThat(tableExists("products")).isTrue();
         assertThat(tableExists("audit_logs")).isTrue();
         assertThat(tableExists("audit_log_changes")).isTrue();
+        assertThat(List.of("product_knowledge", "creative_plans", "campaign_plans", "campaign_products", "assets"))
+                .allMatch(this::tableExists);
         assertThat(List.of(
-                        "product_knowledge",
-                        "creative_plans",
-                        "campaign_plans",
-                        "campaign_products",
-                        "assets",
                         "product_storage_folders",
                         "quality_scores",
                         "quality_score_blockers",
@@ -472,21 +469,26 @@ class PersistenceFoundationIntegrationTest {
                 List.of(
                         new AuditChange("password", "old-secret", "x".repeat(5_000), AuditValueType.STRING, 0),
                         new AuditChange("description", null, longValue, AuditValueType.STRING, 1),
-                        new AuditChange("description", "before", "after", AuditValueType.STRING, 2)))));
+                        new AuditChange("description", "before", "after", AuditValueType.STRING, 2),
+                        new AuditChange("budget", "10.0000", "20.0000", AuditValueType.DECIMAL, 3),
+                        new AuditChange("priority", "1", "2", AuditValueType.INTEGER, 4),
+                        new AuditChange("startDate", "2026-08-01", "2026-08-07", AuditValueType.DATE, 5)))));
 
         List<Map<String, Object>> values = jdbcTemplate.queryForList("""
-                SELECT field_name, old_value, new_value, change_order
+                SELECT field_name, old_value, new_value, value_type, change_order
                 FROM audit_log_changes
                 WHERE audit_uuid = ?
                 ORDER BY change_order
                 """, auditUuid);
-        assertThat(values).hasSize(3);
+        assertThat(values).hasSize(6);
         assertThat(values.get(0).get("old_value")).isEqualTo("[REDACTED]");
         assertThat(values.get(0).get("new_value")).isEqualTo("[REDACTED]");
         String storedLongValue = (String) values.get(1).get("new_value");
         assertThat(storedLongValue).endsWith("[TRUNCATED]");
         assertThat(storedLongValue.codePointCount(0, storedLongValue.length())).isEqualTo(4_096);
         assertThat(values.stream().filter(row -> row.get("field_name").equals("description"))).hasSize(2);
+        assertThat(values).extracting(row -> row.get("value_type"))
+                .containsExactly("STRING", "STRING", "STRING", "DECIMAL", "INTEGER", "DATE");
     }
 
     @Test
