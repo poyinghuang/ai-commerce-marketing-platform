@@ -113,6 +113,8 @@ npm run build
 
 Browser E2E uses the real Docker Compose Frontend, Backend, and PostgreSQL stack. Start an isolated cold stack, install the package-pinned Chromium runtime, and run:
 
+The committed suite covers the Product Center graph, lifecycle/concurrency/Audit behavior, and deterministic Quality progression, blocker invariance, adjustment persistence, stale ETag recovery, and archive/restore recovery.
+
 ```powershell
 docker compose up --detach --build --wait --wait-timeout 180
 cd frontend
