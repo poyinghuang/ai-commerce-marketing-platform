@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { forwardProductRequest } from "./backend-proxy";
+import { forwardCreativePlanRequest, forwardProductRequest } from "./backend-proxy";
 
 describe("product backend proxy", () => {
   afterEach(() => {
@@ -56,5 +56,42 @@ describe("product backend proxy", () => {
     );
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({ code: "BACKEND_UNAVAILABLE", message: "Backend is unavailable" });
+  });
+
+  it("keeps creative plan paths, queries, headers, and response metadata allowlisted", async () => {
+    process.env.BACKEND_INTERNAL_URL = "http://backend:8080";
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 201, headers: { ETag: 'W/"0"', Location: "/created", "X-Request-ID": "safe" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    const product = "d4476a19-30ed-48d9-a518-f9b111bd0911";
+    const request = new NextRequest(`http://localhost/api/products/${product}/creative-plans?status=ALL&target=http://evil`, {
+      method: "POST", headers: { Cookie: "secret", Authorization: "Bearer secret", "X-Actor-ID": "evil", "X-Request-ID": "caller" }, body: "{}",
+    });
+    const response = await forwardCreativePlanRequest(request, `/api/products/${product}/creative-plans`, { method: "POST", contentType: "application/json" });
+    const [target, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(target.toString()).toBe(`http://backend:8080/api/products/${product}/creative-plans?status=ALL`);
+    const headers = new Headers(init.headers); expect(headers.get("Cookie")).toBeNull(); expect(headers.get("Authorization")).toBeNull(); expect(headers.get("X-Actor-ID")).toBeNull();
+    expect(response.status).toBe(201); expect(response.headers.get("ETag")).toBe('W/"0"'); expect(response.headers.get("Location")).toBe("/created");
+    expect(response.headers.get("X-Request-ID")).toBe("safe"); expect(await response.json()).toEqual({});
+  });
+
+  it("rejects arbitrary creative plan paths and oversized bodies", async () => {
+    process.env.BACKEND_INTERNAL_URL = "http://backend:8080";
+    const request = new NextRequest("http://localhost/api", { method: "POST", body: "x".repeat(65537) });
+    expect((await forwardCreativePlanRequest(request, "http://evil.test", { method: "POST" })).status).toBe(400);
+    const product = "d4476a19-30ed-48d9-a518-f9b111bd0911";
+    expect((await forwardCreativePlanRequest(request, `/api/products/${product}/creative-plans`, { method: "POST" })).status).toBe(413);
+  });
+
+  it("preserves backend error status and body and sanitizes timeout failures", async () => {
+    process.env.BACKEND_INTERNAL_URL = "http://backend:8080";
+    const product = "d4476a19-30ed-48d9-a518-f9b111bd0911";
+    const plan = "79be8758-1f0d-4ca5-bad6-f51aa923cdb9";
+    const fetchMock = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ code: "PRECONDITION_FAILED" }), { status: 412, headers: { "Content-Type": "application/json", ETag: 'W/"2"' } })).mockRejectedValueOnce(new DOMException("timed out", "TimeoutError"));
+    vi.stubGlobal("fetch", fetchMock);
+    const request = new NextRequest(`http://localhost/api/products/${product}/creative-plans/${plan}`, { method: "PATCH", headers: { "If-Match": 'W/"1"' }, body: "{}" });
+    const conflict = await forwardCreativePlanRequest(request, `/api/products/${product}/creative-plans/${plan}`, { method: "PATCH", contentType: "application/merge-patch+json" });
+    expect(conflict.status).toBe(412); expect(await conflict.json()).toEqual({ code: "PRECONDITION_FAILED" }); expect(conflict.headers.get("ETag")).toBe('W/"2"');
+    const unavailable = await forwardCreativePlanRequest(new NextRequest(`http://localhost/api/products/${product}/creative-plans`), `/api/products/${product}/creative-plans`, { method: "GET" });
+    expect(unavailable.status).toBe(503); expect(await unavailable.json()).toEqual({ code: "BACKEND_UNAVAILABLE", message: "Backend is unavailable" });
   });
 });

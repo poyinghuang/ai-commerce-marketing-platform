@@ -5,8 +5,9 @@ import { useEffect, useState } from "react";
 import { ProductForm } from "@/components/product-form";
 import type { ApiError, Product, ProductInput } from "@/lib/products";
 import { createMergePatch, productToInput } from "@/lib/products";
+import { CreativePlansTab } from "@/components/creative-plans-tab";
 
-export function ProductDetailView({ productUuid }: { productUuid: string }) {
+export function ProductDetailView({ productUuid, initialTab = "product" }: { productUuid: string; initialTab?: "product" | "creative-plans" }) {
   const [product, setProduct] = useState<Product | null>(null);
   const [etag, setEtag] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -110,6 +111,8 @@ export function ProductDetailView({ productUuid }: { productUuid: string }) {
       </header>
       {conflict && <div className="state-card warning-state" role="alert"><strong>資料已被其他操作更新。</strong><p>請重新載入最新版本後再決定是否套用變更。</p><button className="secondary-button" onClick={() => void load()}>重新載入</button></div>}
       {error && <div className="state-card error-state" role="alert">{error}</div>}
+      <nav className="detail-tabs" aria-label="商品詳情"><Link href={`/products/${productUuid}`}>商品資料</Link><Link href={`/products/${productUuid}?tab=creative-plans`}>Creative Plans</Link></nav>
+      {initialTab === "creative-plans" ? <CreativePlansTab productUuid={productUuid} productArchived={product.lifecycleStatus === "ARCHIVED"} /> :
       <section className="content-card">
         <div className="card-heading"><div><h2>商品資料</h2><span className={`status-badge ${product.lifecycleStatus.toLowerCase()}`}>{product.lifecycleStatus === "ACTIVE" ? "使用中" : "已封存"}</span></div><button className={product.lifecycleStatus === "ACTIVE" ? "danger-button" : "secondary-button"} disabled={saving} onClick={() => void changeLifecycle()}>{product.lifecycleStatus === "ACTIVE" ? "封存商品" : "還原商品"}</button></div>
         {product.lifecycleStatus === "ACTIVE" ? (
@@ -118,6 +121,7 @@ export function ProductDetailView({ productUuid }: { productUuid: string }) {
           <div className="state-card"><p>Archived Product 不接受一般修改。還原後才能編輯。</p></div>
         )}
       </section>
+      }
     </div>
   );
 }

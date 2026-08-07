@@ -5,8 +5,8 @@
 - Status：Approved for implementation
 - Branch：`codex/2c-3-creative-plans`
 - Base Commit：`9c2b678a7329c8a8c9519e05cc6bc4eec12d5e61`
-- Implementation：Not started
-- Local Verification：Not started
+- Implementation：Complete
+- Local Verification：Passed
 - Remote CI：Not started
 - Manager Review：Not started
 - Manager Decision：Pending
@@ -62,14 +62,27 @@ Deliver the Creative Plan Backend, same-origin BFF, and Product Detail Creative 
 - Creative Plans Tab loading/empty/error/CRUD/archive/restore/409/412/428 tests.
 - Full Backend suite; Frontend lint/typecheck/tests/build; Compose config/cold start; existing Product smoke plus Creative Plan vertical-slice smoke; Gitleaks; npm audit; actionlint.
 
+## Local verification evidence
+
+- Backend full suite：88 tests passed; 0 failures, errors, or skips. PostgreSQL Testcontainers executed V1→V4 and Hibernate validation.
+- Creative Plan persistence／audit integration：passed for ACTIVE／ARCHIVED／ALL queries, stable pagination, Product ownership, CREATE／UPDATE／ARCHIVE／RESTORE audit, and stale／blocked／failed／no-op audit exclusion.
+- Audit rollback integration：passed; a failing Audit Writer rolls back the Creative Plan mutation.
+- Controller／parser／command targeted suites：passed, including 428, malformed ETag, stale 412, archived Resource／Product 409, owner mismatch 404, field presence, pagination, status, and sort allowlist.
+- Pinned Frontend Docker verification (`node:24.18.0`, npm `11.16.0`)：lint, typecheck, 25 tests, and production build passed. Host Node.js 24.14.0／npm 11.9.0 was correctly rejected by repository engines and was not used to weaken the pin.
+- Docker Compose cold build／start：PostgreSQL, Backend, and Frontend healthy. Direct Backend and same-origin BFF Creative Plan smoke passed; lifecycle ETag advanced `W/"0"` → `W/"3"`.
+- `docker compose config --quiet`、`npm audit --omit=dev` (0 vulnerabilities)、actionlint 1.7.7 checksum-verified run、Gitleaks history and working-tree scans、`git diff --check`：passed.
+- V1–V4 Git blob identities match Base Commit `9c2b678a7329c8a8c9519e05cc6bc4eec12d5e61`; no Migration or Workflow file changed.
+
+Known non-blocking warnings：Mockito／Byte Buddy dynamic Java-agent future deprecation and npm's informational newer-major-version notice.
+
 ## Acceptance checklist
 
-- [ ] Creative Plan API and UI conform to the approved contract.
-- [ ] Product ownership, archive, concurrency, idempotency, and audit boundaries are proven.
-- [ ] No hard-delete API or repository operation is introduced.
-- [ ] BFF security boundary is preserved.
-- [ ] V1–V4 remain unchanged.
-- [ ] No AI, approval workflow, or other out-of-scope behavior is implemented.
+- [x] Creative Plan API and UI conform to the approved contract.
+- [x] Product ownership, archive, concurrency, idempotency, and audit boundaries are proven.
+- [x] No hard-delete API or repository operation is introduced.
+- [x] BFF security boundary is preserved.
+- [x] V1–V4 remain unchanged.
+- [x] No AI, approval workflow, or other out-of-scope behavior is implemented.
 - [ ] Local and Remote CI verification pass.
 - [ ] Independent Manager Decision is `APPROVE` before merge.
 - [ ] Post-merge main CI passes before Campaign or Asset depends on this slice.

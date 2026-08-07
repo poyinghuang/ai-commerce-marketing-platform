@@ -5,6 +5,9 @@ const MAX_BODY_BYTES = 64 * 1024;
 const SAFE_REQUEST_ID = /^[A-Za-z0-9._:-]{1,128}$/;
 const PRODUCT_UUID_PATH = "[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
 const SAFE_BACKEND_PATH = new RegExp(`^/api/products(?:/${PRODUCT_UUID_PATH}(?:/restore)?)?$`, "i");
+const SAFE_CREATIVE_PLAN_PATH = new RegExp(
+  `^/api/products/${PRODUCT_UUID_PATH}/creative-plans(?:/${PRODUCT_UUID_PATH}(?:/restore)?)?$`, "i",
+);
 
 type ProxyOptions = {
   method: "GET" | "POST" | "PATCH" | "DELETE";
@@ -62,6 +65,44 @@ export async function forwardProductRequest(
   } catch {
     return proxyError("BACKEND_UNAVAILABLE", "Backend is unavailable", 503);
   }
+}
+
+export async function forwardCreativePlanRequest(request: NextRequest, backendPath: string, options: ProxyOptions) {
+  if (!SAFE_CREATIVE_PLAN_PATH.test(backendPath)) {
+    return proxyError("INVALID_CREATIVE_PLAN_PATH", "Creative plan path is invalid", 400);
+  }
+  return forwardAllowlistedRequest(request, backendPath, options, new Set(["page", "size", "status", "sort"]));
+}
+
+async function forwardAllowlistedRequest(
+  request: NextRequest,
+  backendPath: string,
+  options: ProxyOptions,
+  allowedQuery: Set<string>,
+) {
+  const backendOrigin = resolveBackendOrigin();
+  if (!backendOrigin) return proxyError("BACKEND_UNAVAILABLE", "Backend is unavailable", 503);
+  const headers = new Headers();
+  if (options.contentType) headers.set("Content-Type", options.contentType);
+  for (const header of ["If-Match", "X-Request-ID"]) {
+    const value = request.headers.get(header);
+    if (value && (header !== "X-Request-ID" || SAFE_REQUEST_ID.test(value))) headers.set(header, value);
+  }
+  let body: string | undefined;
+  if (options.method === "POST" || options.method === "PATCH") {
+    body = await request.text();
+    if (new TextEncoder().encode(body).byteLength > MAX_BODY_BYTES) return proxyError("PAYLOAD_TOO_LARGE", "Request body is too large", 413);
+  }
+  try {
+    const backendUrl = new URL(backendPath, backendOrigin);
+    for (const [key, value] of request.nextUrl.searchParams.entries()) if (allowedQuery.has(key)) backendUrl.searchParams.append(key, value);
+    const response = await fetch(backendUrl, { method: options.method, headers, body, cache: "no-store", signal: AbortSignal.timeout(TIMEOUT_MS) });
+    const responseHeaders = new Headers();
+    for (const header of ["Content-Type", "ETag", "Location", "X-Request-ID"]) {
+      const value = response.headers.get(header); if (value) responseHeaders.set(header, value);
+    }
+    return new NextResponse(response.status === 204 ? null : await response.text(), { status: response.status, headers: responseHeaders });
+  } catch { return proxyError("BACKEND_UNAVAILABLE", "Backend is unavailable", 503); }
 }
 
 function resolveBackendOrigin() {

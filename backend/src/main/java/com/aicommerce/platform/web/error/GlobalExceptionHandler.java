@@ -11,6 +11,10 @@ import com.aicommerce.platform.product.application.ProductValidationException;
 import com.aicommerce.platform.product.web.InvalidIfMatchException;
 import com.aicommerce.platform.product.web.InvalidMergePatchException;
 import com.aicommerce.platform.product.web.PreconditionRequiredException;
+import com.aicommerce.platform.creativeplan.application.CreativePlanArchivedException;
+import com.aicommerce.platform.creativeplan.application.CreativePlanNotFoundException;
+import com.aicommerce.platform.creativeplan.application.CreativePlanPreconditionFailedException;
+import com.aicommerce.platform.creativeplan.application.CreativePlanValidationException;
 import com.aicommerce.platform.web.RequestIdFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -55,6 +59,27 @@ public class GlobalExceptionHandler {
                 request,
                 List.of(new FieldErrorDetail(exception.getField(), exception.getMessage())));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    @ExceptionHandler(CreativePlanValidationException.class)
+    ResponseEntity<ApiError> handleCreativePlanValidation(CreativePlanValidationException exception, HttpServletRequest request) {
+        return ResponseEntity.badRequest().body(error("VALIDATION_ERROR", "Request validation failed", request,
+                List.of(new FieldErrorDetail(exception.getField(), exception.getMessage()))));
+    }
+
+    @ExceptionHandler(CreativePlanNotFoundException.class)
+    ResponseEntity<ApiError> handleCreativePlanNotFound(HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error("CREATIVE_PLAN_NOT_FOUND", "Creative plan not found", request, null));
+    }
+
+    @ExceptionHandler(CreativePlanArchivedException.class)
+    ResponseEntity<ApiError> handleCreativePlanArchived(HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error("RESOURCE_ARCHIVED", "Archived creative plan cannot be modified", request, null));
+    }
+
+    @ExceptionHandler(CreativePlanPreconditionFailedException.class)
+    ResponseEntity<ApiError> handleCreativePlanPreconditionFailed(HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.PRECONDITION_FAILED).body(error("PRECONDITION_FAILED", "Creative plan version does not match If-Match", request, null));
     }
 
     @ExceptionHandler(InvalidMergePatchException.class)
