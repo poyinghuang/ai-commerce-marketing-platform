@@ -16,7 +16,7 @@
 
 ## Developer verification evidence
 
-- `backend\\mvnw.cmd test`：Passed — 71 tests，0 failures，0 errors，0 skipped。
+- `backend\\mvnw.cmd test`：Passed — 74 tests，0 failures，0 errors，0 skipped。
 - `backend\\mvnw.cmd -Dtest=Milestone2CSchemaIntegrationTest test`：Passed — 8 tests；補強每張 V4 table 的 lifecycle enum／archive consistency direct JDBC coverage 後重跑通過。
 - `backend\\mvnw.cmd -Dtest=PersistenceFoundationIntegrationTest test`：Passed — 17 tests；確認新增 Audit value types 經 JPA writer 寫入。
 - Flyway cold migration：Passed — 空庫依序套用 V1、V2、V3、V4；repeat migration 無 pending work。
@@ -24,6 +24,7 @@
 - Migration atomicity：Passed — 隔離 schema 中故意造成 V4 衝突後，PostgreSQL 回滾所有部分 V4 objects。
 - Hibernate `ddl-auto=validate`：Passed。
 - Direct PostgreSQL constraints／FK／unique／immutable trigger tests：Passed。
+- Archive-only repository contract：Passed — five 2C repositories expose save／saveAndFlush／findById without any hard-delete method; Spring context and lifecycle persistence remain valid。
 - Docker Compose config：Passed。
 - Isolated Docker Compose cold start：Passed — PostgreSQL、Backend、Frontend healthy；使用 project `aimcp2c1`，驗證後已移除其 containers、network 與 volume。
 - Frontend pinned-container regression：Passed — lint、typecheck、12 tests、production build。

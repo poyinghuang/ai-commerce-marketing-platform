@@ -20,11 +20,12 @@ public abstract class ArchivableEntity extends MutableEntity {
     private Instant archivedAt;
 
     public boolean archive(Instant archivedAt) {
+        Instant requiredArchivedAt = Objects.requireNonNull(archivedAt, "archivedAt is required");
         if (lifecycleStatus == LifecycleStatus.ARCHIVED) {
             return false;
         }
         this.lifecycleStatus = LifecycleStatus.ARCHIVED;
-        this.archivedAt = Objects.requireNonNull(archivedAt, "archivedAt is required");
+        this.archivedAt = requiredArchivedAt;
         return true;
     }
 

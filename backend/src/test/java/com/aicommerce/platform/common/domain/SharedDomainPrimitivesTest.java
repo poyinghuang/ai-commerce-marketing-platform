@@ -31,6 +31,20 @@ class SharedDomainPrimitivesTest {
     }
 
     @Test
+    void nullArchiveTimestampFailsBeforeAnyLifecycleMutation() {
+        TestResource resource = new TestResource();
+
+        assertThatThrownBy(() -> resource.archive(null)).isInstanceOf(NullPointerException.class);
+        assertThat(resource.getLifecycleStatus()).isEqualTo(LifecycleStatus.ACTIVE);
+        assertThat(resource.getArchivedAt()).isNull();
+
+        Instant archivedAt = Instant.parse("2026-08-07T00:00:00Z");
+        assertThat(resource.archive(archivedAt)).isTrue();
+        assertThat(resource.getLifecycleStatus()).isEqualTo(LifecycleStatus.ARCHIVED);
+        assertThat(resource.getArchivedAt()).isEqualTo(archivedAt);
+    }
+
+    @Test
     void fieldPatchDistinguishesAbsentExplicitNullAndValue() {
         assertThat(FieldPatch.<String>absent().present()).isFalse();
         assertThat(FieldPatch.<String>absent().resolve("current")).isEqualTo("current");
