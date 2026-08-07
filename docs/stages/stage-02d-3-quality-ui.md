@@ -7,9 +7,11 @@
 - Base Commit：`24c6d74044ac87a41c4b195e62c4554415774494`
 - Implementation：Complete
 - Local Verification：Passed
-- Remote CI：Pending
-- Manager Review：Pending
-- Manager Decision：Pending
+- Implementation Commit：`66cd92a48a10b16acb49d10bf183563d208a1d1d`
+- Remote CI：Passed — Push Run `31213276000`; Pull Request Run `31213280058`
+- Manager Review：Passed at implementation Head `66cd92a48a10b16acb49d10bf183563d208a1d1d`
+- Manager Decision：APPROVE
+- Review Findings：None
 - Human Review Required：No
 - Merge：Pending
 - Milestone 2D-4：Not started
@@ -73,6 +75,18 @@
 - [x] Adjustment, reason, reset, archived read-only, 409, 412, and 428 behaviors are implemented and tested.
 - [x] Desktop and mobile layouts are usable without horizontal overflow.
 - [x] Frontend and Backend regression suites, Compose build/start, and runtime smoke pass locally.
-- [ ] Push and Pull Request Remote CI pass at the committed Head.
-- [ ] Exact-head Manager Review records one of the three allowed Gate decisions.
+- [x] Push and Pull Request Remote CI pass at the committed Head.
+- [x] Exact-head Manager Review records one of the three allowed Gate decisions.
 - [ ] Merge and post-merge `main` verification complete before 2D-4 starts.
+
+## Manager review record
+
+- Decision：`APPROVE`
+- Scope reviewed：17-file additive Quality UI vertical slice; no Backend, Migration, Workflow, Runtime dependency, or security-model change.
+- Contract changes：additive fixed Quality BFF routes and Product detail Quality tab only.
+- Security impact：no new credential or actor flow; Backend origin remains server-only, with fixed path/query/header/body and response-header allowlists.
+- Data impact：none; no Migration or persistence change.
+- Tests executed locally：Frontend lint, typecheck, 119 Vitest tests, production build, 175 Backend tests, Compose config/cold start, runtime Quality smoke, Chromium desktop/mobile interaction, stale ETag and archive recovery, existing 4-test Playwright regression, npm audit, Gitleaks, and `git diff --check`.
+- Remote evidence：Push Run `31213276000` and Pull Request Run `31213280058`; both `quality-and-compose` and `secret-scan` passed, including Backend, Frontend, Compose cold start, Browser E2E, smoke, actionlint, and Gitleaks.
+- Known non-blocking warnings：GitHub Actions Node.js compatibility annotation and Byte Buddy dynamic-agent future deprecation.
+- Human approval required：No.

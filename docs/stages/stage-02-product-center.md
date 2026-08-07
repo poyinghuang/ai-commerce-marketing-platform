@@ -229,12 +229,13 @@
 
 ### Milestone 2D — Quality and Workflow
 
-- Status：2D-1 and 2D-2 completed; 2D-3 complete locally, delivery pending
+- Status：2D-1 and 2D-2 completed; 2D-3 Manager approved, merge pending
 - Branch：`codex/2d-3-quality-ui`
 - Specification Merge：`6ba92bdc48a50f61448ee347b89939f961bdb5e4`
 - 2D-1 Merge：`c897bb6f6f3847e62fea9b6d334400349c87e3b0`; post-merge Run `31203178454` passed
 - 2D-2 Implementation：`f3cdb3386584fe182ea8c3f2dabc3ffdb07ac44f`; approval-record Head `f23e0dcc1cf8a527f50155962f2bcc3d0e7de0b5`; Manager Decision `APPROVE`
 - 2D-2 Merge：PR #25, `84d7131524e734de0354dc1468bdd1e001aa6509`; post-merge main Run `31208990817` passed
+- 2D-3 Implementation：`66cd92a48a10b16acb49d10bf183563d208a1d1d`; Push Run `31213276000` and PR Run `31213280058` passed; Manager Decision `APPROVE`
 - Detailed specification：[Milestone 2D — Quality and Workflow](stage-02d-quality-workflow.md)
 - 2D-1 delivery record：[Milestone 2D-1 — Schema and Scoring Domain](stage-02d-1-schema-scoring.md)
 - 2D-2 delivery record：[Milestone 2D-2 — Recalculation, API, Audit, and Aggregate](stage-02d-2-recalculation-api.md)

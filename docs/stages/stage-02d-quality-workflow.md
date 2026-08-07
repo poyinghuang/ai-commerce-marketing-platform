@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status：2D-1 and 2D-2 completed; 2D-3 complete locally, delivery pending
+- Status：2D-1 and 2D-2 completed; 2D-3 Manager approved, merge pending
 - Branch：`codex/2d-3-quality-ui`
 - Base Commit：`6ba92bdc48a50f61448ee347b89939f961bdb5e4`
 - Specification Merge：Passed — `6ba92bdc48a50f61448ee347b89939f961bdb5e4`
@@ -10,9 +10,9 @@
 - Implementation：2D-1 and 2D-2 completed; 2D-3 complete locally; 2D-4 not started
 - Migration：V5 committed in `558262f1474618e58a4d7b8cce76d838dc46822a`
 - Local Verification：2D-1 Passed
-- Remote CI：2D-1 Passed — Push Run `31202242425`; PR Run `31202259584`; 2D-2 Passed — Push Run `31207893627`; PR Run `31207911328`
-- Manager Review：2D-1 Passed; 2D-2 Passed
-- Manager Decision：2D-1 APPROVE; 2D-2 APPROVE at `f3cdb3386584fe182ea8c3f2dabc3ffdb07ac44f`
+- Remote CI：2D-1 Passed — Push Run `31202242425`; PR Run `31202259584`; 2D-2 Passed — Push Run `31207893627`; PR Run `31207911328`; 2D-3 Passed — Push Run `31213276000`; PR Run `31213280058`
+- Manager Review：2D-1 Passed; 2D-2 Passed; 2D-3 Passed
+- Manager Decision：2D-1 APPROVE; 2D-2 APPROVE at `f3cdb3386584fe182ea8c3f2dabc3ffdb07ac44f`; 2D-3 APPROVE at `66cd92a48a10b16acb49d10bf183563d208a1d1d`
 - Approved Specification Commit：`fd1813653113cef26361c2aa815f2e303f5c6bc2`
 - Human Review Required：No
 - 2D-1 Merge：Passed — PR #23, `c897bb6f6f3847e62fea9b6d334400349c87e3b0`
