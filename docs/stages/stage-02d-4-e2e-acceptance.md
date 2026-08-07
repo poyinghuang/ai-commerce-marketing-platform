@@ -13,7 +13,8 @@
 - Manager Decision：APPROVE
 - Review Findings：None
 - Human Review Required：No
-- Merge：Pending
+- Merge：Passed — PR #30, `9f81fc2b0e06cfcd0f2d0a78fc64660295a0086c`
+- Post-merge CI：Passed — main Run `31218488133`
 - Completion Tag：Pending
 - Milestone 2E：Not started
 
@@ -65,7 +66,7 @@
 - [x] Applicable Backend, Frontend, build, Testcontainers, Compose, smoke, Playwright, audit, npm audit, Gitleaks, and diff checks pass locally.
 - [x] Remote actionlint, Backend, Frontend, Compose, smoke, Playwright, npm audit, and Gitleaks pass at the committed Head.
 - [x] Exact-head Manager Review records one of the three allowed decisions.
-- [ ] Merge and post-merge `main` CI pass.
+- [x] Merge and post-merge `main` CI pass.
 - [ ] `milestone-2d-complete` tag is created only after verified completion.
 - [ ] Milestone 2E remains unstarted until all 2D Gates pass.
 
@@ -85,3 +86,9 @@
 - Tests executed：175 Backend tests, 119 Frontend tests, lint, typecheck, production build, 7 real-Chromium Playwright tests, Compose health smoke, npm audit, Gitleaks, and diff checks locally; the same required checks passed in Push Run `31217643930` and PR Run `31217660098`.
 - Known non-blocking warnings：GitHub Actions Node.js compatibility annotation and Byte Buddy dynamic-agent future deprecation.
 - Human approval required：No.
+
+## Delivery result
+
+- Implementation and approval-record commits were squash-merged through PR #30 as `9f81fc2b0e06cfcd0f2d0a78fc64660295a0086c`.
+- Post-merge main Run `31218488133` passed `quality-and-compose` and `secret-scan`, including the committed seven-scenario Playwright suite.
+- Milestone 2D implementation and acceptance are complete; the completion tag is created only after this final delivery record merges and its main CI passes.
