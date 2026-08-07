@@ -8,13 +8,14 @@
 - Implementation：Complete
 - Local Verification：Passed
 - Implementation Commit：`f3cdb3386584fe182ea8c3f2dabc3ffdb07ac44f`
-- Remote CI：Passed — Push Run `31207893627`; PR Run `31207911328`
+- Remote CI：Passed — implementation Push Run `31207893627`; implementation PR Run `31207911328`; approval-record Push Run `31208548446`; approval-record PR Run `31208547888`
 - Manager Review：Passed
 - Manager Decision：APPROVE
 - Approved Commit：`f3cdb3386584fe182ea8c3f2dabc3ffdb07ac44f`
-- Approved CI Run：Push `31207893627`; Pull Request `31207911328`
+- Approved CI Run：Push `31208548446`; Pull Request `31208547888`
 - Human Review Required：No
-- Merge：Pending
+- Merge：Passed — PR #25, Squash Merge Commit `84d7131524e734de0354dc1468bdd1e001aa6509`
+- Post-merge CI：Passed — main Run `31208990817`
 - Milestone 2D-3：Not started
 
 ## Scope delivered
@@ -74,8 +75,8 @@
 - Findings：None.
 - Decision：APPROVE.
 - Human approval required：No.
-- Merge allowed：Yes, after this approval-record Head passes Push and Pull Request CI.
-- Next Stage allowed：Only after PR #25 merge and post-merge `main` verification.
+- Merge allowed：Completed.
+- Next Stage allowed：Yes — 2D-3 may start from verified `main` Commit `84d7131524e734de0354dc1468bdd1e001aa6509` after this delivery record merges.
 
 ## Commands and evidence
 
@@ -88,6 +89,8 @@
 - pinned Playwright Chromium regression — 4 tests passed.
 - pinned Node.js production audit, Gitleaks 8.28.0, and actionlint 1.7.7 passed.
 - Remote Push Run `31207893627` and PR Run `31207911328`: `quality-and-compose` and `secret-scan` passed; Backend, Frontend, Compose, Browser E2E, smoke, and Gitleaks steps actually executed.
+- Approval-record Push Run `31208548446` and PR Run `31208547888` passed at Head `f23e0dcc1cf8a527f50155962f2bcc3d0e7de0b5`.
+- Post-merge main Run `31208990817` passed at Merge Commit `84d7131524e734de0354dc1468bdd1e001aa6509`.
 
 ## Known limitations
 
