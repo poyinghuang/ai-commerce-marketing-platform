@@ -5,14 +5,35 @@
 - Status：Approved for implementation
 - Branch：`codex/2c-1-schema-domain`
 - Base Commit：`5cb6131594eddc029d48880a0174bed573e33837`
-- Implementation：Not started
-- Local Verification：Not started
+- Implementation：Complete
+- Local Verification：Passed
 - Remote CI：Not started
 - Manager Review：Not started
 - Manager Decision：Pending
 - Human Review Required：No — the additive V4 model and audit constraint expansion were approved in the parent Milestone 2C specification
 - Merge：Not started
 - Dependent Stage：2C-2 and 2C-3 remain locked until merge and post-merge verification
+
+## Developer verification evidence
+
+- `backend\\mvnw.cmd test`：Passed — 71 tests，0 failures，0 errors，0 skipped。
+- `backend\\mvnw.cmd -Dtest=Milestone2CSchemaIntegrationTest test`：Passed — 8 tests；補強每張 V4 table 的 lifecycle enum／archive consistency direct JDBC coverage 後重跑通過。
+- `backend\\mvnw.cmd -Dtest=PersistenceFoundationIntegrationTest test`：Passed — 17 tests；確認新增 Audit value types 經 JPA writer 寫入。
+- Flyway cold migration：Passed — 空庫依序套用 V1、V2、V3、V4；repeat migration 無 pending work。
+- Populated 2B upgrade：Passed — ACTIVE／ARCHIVED Product、Audit row 與既有 version 保持不變。
+- Migration atomicity：Passed — 隔離 schema 中故意造成 V4 衝突後，PostgreSQL 回滾所有部分 V4 objects。
+- Hibernate `ddl-auto=validate`：Passed。
+- Direct PostgreSQL constraints／FK／unique／immutable trigger tests：Passed。
+- Docker Compose config：Passed。
+- Isolated Docker Compose cold start：Passed — PostgreSQL、Backend、Frontend healthy；使用 project `aimcp2c1`，驗證後已移除其 containers、network 與 volume。
+- Frontend pinned-container regression：Passed — lint、typecheck、12 tests、production build。
+- Health and Product 2B smoke：Passed — Backend health `UP`、same-origin health `UP`、Product create／get 與 `ETag: W/\"0\"`。
+- `npm audit --omit=dev`：Passed — 0 vulnerabilities。
+- Gitleaks history and working-tree scans：Passed — no leaks found。
+- actionlint 1.7.7：Passed。
+- `git diff --check`：Passed。
+
+Known non-blocking warnings：Mockito／Byte Buddy dynamic Java agent future deprecation remains present. The host Node.js 24.14.0／npm 11.9.0 does not match the repository pin, so Frontend verification used the pinned Node.js 24.18.0／npm 11.16.0 Docker build instead of weakening the engine requirement.
 
 ## Objective
 
@@ -103,15 +124,15 @@ The authoritative field definitions, constraints, indexes, ownership rules, audi
 
 ## Acceptance checklist
 
-- [ ] V1–V3 files are unchanged and their canonical checksums pass.
-- [ ] V4 creates exactly the five approved tables and audit value-type expansion.
-- [ ] No 2C table or field outside the approved parent specification is introduced.
-- [ ] Empty and populated 2B databases upgrade safely; repeat migration has no pending work.
-- [ ] Hibernate schema validation succeeds.
-- [ ] Every database check, FK, unique rule, lifecycle rule, and immutable identity trigger has direct PostgreSQL coverage.
-- [ ] Existing Product identity and Audit append-only protections regress successfully.
-- [ ] Entities, enums, repositories, lifecycle, patch presence, and ETag primitives have automated tests.
-- [ ] No Controller, public API, BFF, Frontend, external Provider, Quality, Workflow, or later-stage behavior is implemented.
+- [x] V1–V3 files are unchanged and their canonical checksums pass.
+- [x] V4 creates exactly the five approved tables and audit value-type expansion.
+- [x] No 2C table or field outside the approved parent specification is introduced.
+- [x] Empty and populated 2B databases upgrade safely; repeat migration has no pending work.
+- [x] Hibernate schema validation succeeds.
+- [x] Every database check, FK, unique rule, lifecycle rule, and immutable identity trigger has direct PostgreSQL coverage.
+- [x] Existing Product identity and Audit append-only protections regress successfully.
+- [x] Entities, enums, repositories, lifecycle, patch presence, and ETag primitives have automated tests.
+- [x] No Controller, public API, BFF, Frontend, external Provider, Quality, Workflow, or later-stage behavior is implemented.
 - [ ] Backend, Frontend, Compose, smoke, Gitleaks, dependency audit, and actionlint pass locally and remotely.
 - [ ] Draft PR contains the implementation report and exact migration／test evidence.
 - [ ] Independent Manager Review returns `APPROVE` before merge.

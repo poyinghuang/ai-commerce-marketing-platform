@@ -1,6 +1,7 @@
 package com.aicommerce.platform.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -12,6 +13,7 @@ import java.util.UUID;
 
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
+import org.flywaydb.core.api.FlywayException;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
@@ -24,38 +26,68 @@ class MigrationCompatibilityTest {
 
     private static final String V1_SHA256 = "ee4614654b5d47d1bebe40e451754413962d86b447d25354e1dc6cb70b03e2b9";
     private static final String V2_SHA256 = "8f944bfdb655ca90cffa37215e5e7bc8134fb13e021e261acf399e080b78d243";
+    private static final String V3_SHA256 = "d1a5bc74fb4f2c57b711049fc6bb80e74dac1b7d5b4ff1905b95dec6ac204a93";
 
     @Container
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17.6-alpine3.22");
 
     @Test
-    void emptyDatabaseRunsV1ThroughV3AndRepeatMigrationHasNoPendingWork() {
+    void emptyDatabaseRunsV1ThroughV4AndRepeatMigrationHasNoPendingWork() {
         Flyway flyway = flyway("empty_case", null);
 
-        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(3);
+        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(4);
         assertThat(List.of(flyway.info().applied()).stream()
                 .filter(info -> info.getVersion() != null)
                 .map(info -> info.getVersion().getVersion()))
-                .containsExactly("1", "2", "3");
+                .containsExactly("1", "2", "3", "4");
         assertThat(flyway.info().pending()).isEmpty();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
     }
 
     @Test
-    void existingMilestone2AProductSurvivesUpgradeToV3WithoutInventedMasterData() {
+    void populatedMilestone2BDataSurvivesUpgradeToV4() {
         String schema = "upgrade_case";
-        Flyway v2 = flyway(schema, MigrationVersion.fromVersion("2"));
-        assertThat(v2.migrate().migrationsExecuted).isEqualTo(2);
+        Flyway v3 = flyway(schema, MigrationVersion.fromVersion("3"));
+        assertThat(v3.migrate().migrationsExecuted).isEqualTo(3);
         JdbcTemplate jdbc = jdbcTemplate();
-        UUID productUuid = UUID.randomUUID();
+        UUID activeProductUuid = UUID.randomUUID();
+        UUID archivedProductUuid = UUID.randomUUID();
         jdbc.update(
                 """
                 INSERT INTO upgrade_case.products
-                    (product_uuid, product_id, sku, lifecycle_status, created_at, updated_at, version)
-                VALUES (?, 'PROD-00000042', 'LEGACY-SKU', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 7)
+                    (product_uuid, product_id, sku, product_name, lifecycle_status, created_at, updated_at, version)
+                VALUES (?, 'PROD-00000042', 'LEGACY-SKU', 'Legacy Product', 'ACTIVE',
+                        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 7)
                 """,
-                new Object[] {productUuid},
+                new Object[] {activeProductUuid},
                 new int[] {Types.OTHER});
+        jdbc.update(
+                """
+                INSERT INTO upgrade_case.products
+                    (product_uuid, product_id, product_name, lifecycle_status, archived_at,
+                     created_at, updated_at, version)
+                VALUES (?, 'PROD-00000043', 'Archived Product', 'ARCHIVED', CURRENT_TIMESTAMP,
+                        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 3)
+                """,
+                new Object[] {archivedProductUuid},
+                new int[] {Types.OTHER});
+        UUID auditUuid = UUID.randomUUID();
+        jdbc.update(
+                """
+                INSERT INTO upgrade_case.audit_logs
+                    (audit_uuid, operation_uuid, request_id, actor_type, actor_id, source,
+                     action, entity_type, entity_uuid, product_uuid, occurred_at)
+                VALUES (?, ?, 'upgrade-request', 'SYSTEM', 'migration-test', 'SYSTEM',
+                        'UPDATE', 'PRODUCT', ?, ?, CURRENT_TIMESTAMP)
+                """,
+                auditUuid, UUID.randomUUID(), activeProductUuid, activeProductUuid);
+        jdbc.update(
+                """
+                INSERT INTO upgrade_case.audit_log_changes
+                    (audit_change_uuid, audit_uuid, field_name, old_value, new_value, value_type, change_order)
+                VALUES (?, ?, 'sku', 'OLD', 'LEGACY-SKU', 'STRING', 0)
+                """,
+                UUID.randomUUID(), auditUuid);
 
         Flyway latest = flyway(schema, null);
         assertThat(latest.migrate().migrationsExecuted).isEqualTo(1);
@@ -66,20 +98,61 @@ class MigrationCompatibilityTest {
                 FROM upgrade_case.products
                 WHERE product_uuid = ?
                 """,
-                productUuid);
-        assertThat(row.get("product_uuid")).isEqualTo(productUuid);
+                activeProductUuid);
+        assertThat(row.get("product_uuid")).isEqualTo(activeProductUuid);
         assertThat(row.get("product_id")).isEqualTo("PROD-00000042");
         assertThat(row.get("sku")).isEqualTo("LEGACY-SKU");
-        assertThat(row.get("product_name")).isNull();
+        assertThat(row.get("product_name")).isEqualTo("Legacy Product");
         assertThat(row.get("lifecycle_status")).isEqualTo("ACTIVE");
         assertThat(((Number) row.get("version")).longValue()).isEqualTo(7L);
+        assertThat(jdbc.queryForObject(
+                "SELECT version FROM upgrade_case.products WHERE product_uuid = ?",
+                Long.class, archivedProductUuid)).isEqualTo(3L);
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM upgrade_case.audit_logs WHERE audit_uuid = ?",
+                Integer.class, auditUuid)).isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                "SELECT value_type FROM upgrade_case.audit_log_changes WHERE audit_uuid = ?",
+                String.class, auditUuid)).isEqualTo("STRING");
         assertThat(latest.info().pending()).isEmpty();
     }
 
     @Test
-    void mergedV1AndV2CanonicalContentRemainsStable() throws Exception {
+    void mergedV1ThroughV3CanonicalContentRemainsStable() throws Exception {
         assertThat(sha256("db/migration/V1__create_product_foundation.sql")).isEqualTo(V1_SHA256);
         assertThat(sha256("db/migration/V2__create_audit_foundation.sql")).isEqualTo(V2_SHA256);
+        assertThat(sha256("db/migration/V3__add_product_master_fields.sql")).isEqualTo(V3_SHA256);
+    }
+
+    @Test
+    void failedV4MigrationRollsBackAllPartialObjects() {
+        String schema = "atomic_case";
+        Flyway v3 = flyway(schema, MigrationVersion.fromVersion("3"));
+        assertThat(v3.migrate().migrationsExecuted).isEqualTo(3);
+        JdbcTemplate jdbc = jdbcTemplate();
+        jdbc.execute("CREATE TABLE atomic_case.assets (sentinel INTEGER PRIMARY KEY)");
+
+        assertThatThrownBy(() -> flyway(schema, null).migrate())
+                .isInstanceOf(FlywayException.class);
+
+        for (String table : List.of("product_knowledge", "creative_plans", "campaign_plans", "campaign_products")) {
+            assertThat(jdbc.queryForObject(
+                    """
+                    SELECT COUNT(*) FROM information_schema.tables
+                    WHERE table_schema = ? AND table_name = ?
+                    """,
+                    Integer.class, schema, table)).isZero();
+        }
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = ? AND table_name = 'assets'",
+                Integer.class, schema)).isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                """
+                SELECT COUNT(*) FROM information_schema.check_constraints
+                WHERE constraint_schema = ? AND constraint_name = 'ck_audit_log_changes_value_type'
+                  AND check_clause LIKE '%DECIMAL%'
+                """,
+                Integer.class, schema)).isZero();
     }
 
     private Flyway flyway(String schema, MigrationVersion target) {
