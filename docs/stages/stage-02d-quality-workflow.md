@@ -2,12 +2,12 @@
 
 ## Gate status
 
-- Status：2D-1, 2D-2, and 2D-3 completed; 2D-4 not started
-- Branch：`codex/2d-3-finalize`
+- Status：2D-1, 2D-2, and 2D-3 completed; 2D-4 complete locally, delivery pending
+- Branch：`codex/2d-4-e2e-acceptance`
 - Base Commit：`6ba92bdc48a50f61448ee347b89939f961bdb5e4`
 - Specification Merge：Passed — `6ba92bdc48a50f61448ee347b89939f961bdb5e4`
 - Specification Post-merge CI：Passed — Run `31198925437`
-- Implementation：2D-1 and 2D-2 completed; 2D-3 complete locally; 2D-4 not started
+- Implementation：2D-1, 2D-2, and 2D-3 completed; 2D-4 complete locally
 - Migration：V5 committed in `558262f1474618e58a4d7b8cce76d838dc46822a`
 - Local Verification：2D-1 Passed
 - Remote CI：2D-1 Passed — Push Run `31202242425`; PR Run `31202259584`; 2D-2 Passed — Push Run `31207893627`; PR Run `31207911328`; 2D-3 Passed — Push Run `31213276000`; PR Run `31213280058`
@@ -25,6 +25,8 @@
 - 2D-3 Corrective Merge：Passed — PR #28, `131274be0fff0230ce9cdd7ef1ca53d1d09cbcb7`
 - 2D-3 Final Post-merge CI：Passed — main Run `31215080850`
 - 2D-3 delivery record：[Milestone 2D-3 — Quality UI](stage-02d-3-quality-ui.md)
+- 2D-4 delivery record：[Milestone 2D-4 — E2E and Acceptance](stage-02d-4-e2e-acceptance.md)
+- 2D-4 Implementation：`59865f18365781673853f618c6c2154f8d9d7ad2`; Push Run `31217643930` and PR Run `31217660098` passed; Manager Decision `APPROVE`
 - Milestone 2E：Not started
 
 ## Objective
@@ -212,7 +214,7 @@ Quality is included additively in the Product Aggregate as `quality`; existing P
 - [ ] Relevant mutations recalculate in the same transaction; rollback, stale, blocked, and no-op behavior leave no partial projection or Audit.
 - [ ] Existing Products receive deterministic projections without changing Product／2C data.
 - [ ] API, Aggregate, BFF, and UI contracts pass unit and integration tests.
-- [ ] Playwright covers score progression, blocker preventing READY, adjustment clamp／reason, stale adjustment conflict, archive／restore, and persisted reload.
+- [x] Playwright covers score progression, blocker preventing READY, adjustment clamp／reason, stale adjustment conflict, archive／restore, and persisted reload.
 - [ ] Backend, Frontend, Testcontainers, Compose, smoke, Playwright, npm audit, Gitleaks, and actionlint pass locally and remotely.
 - [ ] No AI score calculation, manual blocker override, Google connector, external workflow engine, RBAC, Ads, Dashboard, Decision Engine, or Stage 03 scope is introduced.
 - [ ] Each slice receives exact-head Manager `APPROVE`, merge, and post-merge main verification before its dependent slice starts.
