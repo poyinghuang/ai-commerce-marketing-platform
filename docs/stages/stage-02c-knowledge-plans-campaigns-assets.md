@@ -7,13 +7,13 @@
 - Implementation：Passed — 2C-1 through 2C-7 merged
 - Migration：Passed — additive V4 merged and immutable
 - Specification Commit：`274e5fafa992434c638a4935f55af28d23542e63`
-- Manager-reviewed Head：`f31bc91b1bed350d15fa10d00efe944134ed48b8`
+- Manager-reviewed Head：`ebc46b2988b6a606cbe2865b18be0b587e308ccc`
 - Local Verification：Passed
-- Remote CI：Passed — Push Run `31133080275`；PR Run `31133098231`
+- Remote CI：Passed — final acceptance Push Run `31195470219`；PR Run `31195478641`
 - Manager Review：Passed
 - Manager Decision：APPROVE
 - Human Review Required：No
-- Merge：Pending Milestone 2C-8 acceptance delivery
+- Merge：Pending Milestone 2C-8 approved acceptance delivery
 - Implementation Commit／Push／PR：Passed for 2C-1 through 2C-7
 - Milestone 2D：Not started
 
@@ -443,7 +443,7 @@ Playwright package、Browser runtime 與任何 container image 必須鎖定版�
 - [x] Backend、Frontend、Testcontainers、Compose smoke、Gitleaks、actionlint、npm audit 與已合併 slice 的 Remote CI 全部通過。
 - [x] 四個最小 Playwright E2E scenario 全部通過。
 - [x] 無 Google API、AI、Quality、Workflow、Meta Ads、Dashboard、Decision Engine 或 Stage 03 功能。
-- [ ] Milestone 2C-8 的 Remote CI 與最終 Manager Review 通過後才可合併與建立 completion tag。
+- [x] Milestone 2C-8 的 Remote CI 與最終 Manager Review 通過；等待合併、post-merge CI 與 completion tag。
 
 ## 已核准決策
 

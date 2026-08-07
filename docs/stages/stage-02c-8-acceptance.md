@@ -2,14 +2,15 @@
 
 ## Gate status
 
-- Status：Acceptance verification complete; Remote CI pending
+- Status：Manager approved; merge pending
 - Branch：`codex/2c-8-acceptance`
 - Base Commit：`efe4dc58efcc3f9bdcdaada41aa15221b7e917a5`
 - Implementation：Passed — 2C-1 through 2C-7 are merged to `main`
 - Local Verification：Passed
-- Remote CI：Pending
-- Manager Review：Pending final acceptance-PR CI
-- Manager Decision：Pending
+- Remote CI：Passed — Push Run `31195470219`; PR Run `31195478641`
+- Manager Review：Passed
+- Manager Decision：APPROVE
+- Approved Commit：`ebc46b2988b6a606cbe2865b18be0b587e308ccc`
 - Human Review Required：No
 - Merge：Pending
 - Completion Tag：Pending — `milestone-2c-complete`
@@ -103,10 +104,10 @@ None. No CRITICAL, BLOCKING, or required MAJOR finding remains.
 
 ## Pending delivery gates
 
-- [ ] Push acceptance documentation and create a Draft PR.
-- [ ] Push and Pull Request `quality-and-compose` pass without skipped required steps.
-- [ ] Push and Pull Request `secret-scan` pass.
-- [ ] Re-review the exact PR head and record `Manager Decision: APPROVE`.
+- [x] Push acceptance documentation and create Draft PR #20.
+- [x] Push and Pull Request `quality-and-compose` pass without skipped required steps.
+- [x] Push and Pull Request `secret-scan` pass.
+- [x] Re-review implementation Head `ebc46b2988b6a606cbe2865b18be0b587e308ccc` and record `Manager Decision: APPROVE`.
 - [ ] Merge only after approval.
 - [ ] Verify post-merge `main` CI.
 - [ ] Create and push annotated completion tag `milestone-2c-complete` at the verified main commit.
@@ -114,6 +115,8 @@ None. No CRITICAL, BLOCKING, or required MAJOR finding remains.
 
 ## Manager Gate decision
 
-- Decision：Pending Remote CI
+- Decision：APPROVE
+- Decision rationale：All required local and Remote CI verification passed; the PR contains only the approved acceptance documentation; no unresolved CRITICAL, BLOCKING, or required MAJOR finding exists.
 - Human approval required：No
-- Merge allowed：No, until the exact acceptance PR head passes Remote CI and receives final Manager approval.
+- Merge allowed：Yes, after this approval-record-only commit passes Push and Pull Request CI on the exact final head.
+- Required next action：Push this approval record, wait for both Remote CI runs, mark PR #20 Ready, squash merge, verify `main`, and create the completion tag.
