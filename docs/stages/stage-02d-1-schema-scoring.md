@@ -14,7 +14,8 @@
 - Manager Decision：APPROVE
 - Approved Implementation Commit：`558262f1474618e58a4d7b8cce76d838dc46822a`
 - Human Review Required：No
-- Merge：Pending
+- Merge：Passed — PR #23, Squash Merge Commit `c897bb6f6f3847e62fea9b6d334400349c87e3b0`
+- Post-merge CI：Passed — main Run `31203178454`
 - Milestone 2D-2：Not started
 
 ## Scope delivered
@@ -72,8 +73,8 @@
 - Findings：None.
 - Decision：APPROVE.
 - Human approval required：No.
-- Merge allowed：Yes, after the approval-record-only Head passes both Push and Pull Request CI.
-- Next Stage allowed：Only after PR #23 merge and post-merge `main` verification.
+- Merge allowed：Completed.
+- Next Stage allowed：Yes — 2D-2 may start only after this final delivery record merges.
 
 ## Commands and evidence
 
