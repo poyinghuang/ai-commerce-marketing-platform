@@ -114,7 +114,7 @@
 - Remote CI：Passed
 - Human diff and architecture review：Passed
 - Merge：Passed
-- Milestone 2C：2C-1 through 2C-7 passed；2C-8 acceptance in progress
+- Milestone 2C：Completed
 
 #### Commits
 
@@ -208,12 +208,14 @@
 
 ### Milestone 2C — Knowledge, Plans, Campaigns and Assets
 
-- Status：Acceptance in progress
+- Status：Completed
 - Implementation：Passed
 - Local Verification：Passed
 - Remote CI：Passed — final acceptance Push Run `31195470219`；PR Run `31195478641`
 - Manager Review：Passed；Manager Decision `APPROVE` for acceptance Head `ebc46b2988b6a606cbe2865b18be0b587e308ccc`
-- Merge：2C-1 through 2C-7 passed；Milestone completion pending
+- Merge：Passed — final acceptance PR #20, Commit `dc703d9e50cfa583c675b0286e35beba2c39bc57`
+- Post-merge CI：Passed — main Run `31196506563`
+- Completion Tag：`milestone-2c-complete`
 - Product Knowledge
 - Creative Plans
 - Campaign Plans
