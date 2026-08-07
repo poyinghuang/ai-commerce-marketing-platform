@@ -2,16 +2,20 @@
 
 ## Gate status
 
-- Status：Approved for implementation
+- Status：Manager approved, pending merge
 - Branch：`codex/2c-4-campaigns`
 - Base Commit：`74f6a751f86cc5ec37f93fde6a3d08c415f31083`
-- Implementation：Not started
-- Local Verification：Not started
-- Remote CI：Not started
-- Manager Review：Not started
-- Manager Decision：Pending
+- Implementation：Passed
+- Local Verification：Passed
+- Remote CI：Passed
+- Manager Review：Passed
+- Manager Decision：APPROVE
 - Human Review Required：No
-- Merge：Not started
+- Approved Commit：`69bf261738fa06595a6bc0f79646c757b605943f`
+- Approved Push CI：Run `31159617017` — `quality-and-compose` and `secret-scan` Passed
+- Approved PR CI：Run `31159637596` — `quality-and-compose` and `secret-scan` Passed
+- Pull Request：[#12](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/12)
+- Merge：Pending
 - Milestone 2C-5：Locked
 
 ## Objective
@@ -126,17 +130,34 @@ Validation and identity:
 
 ## Acceptance checklist
 
-- [ ] Campaign Plan API and UI conform to the approved fields, validation, concurrency, and lifecycle contract.
-- [ ] Campaign Product API and UI prove many-to-many Product association management.
-- [ ] Duplicate and concurrent association attempts return deterministic relationship conflicts without duplicate rows.
-- [ ] Campaign/Product archive boundaries, non-cascade behavior, and association read-only states are proven.
-- [ ] Campaign and association Audit records are transactional, trusted, typed, and actual-change only.
-- [ ] Campaign BFF and Product lookup preserve SSRF, header, credential, actor, timeout, and body-size boundaries.
-- [ ] Product, Knowledge, and Creative Plan regressions remain green; V1–V4 remain unchanged.
-- [ ] No Asset, Aggregate, Google, AI, Quality, Workflow, Meta Ads, Dashboard, Decision Engine, or Stage 03 scope is introduced.
-- [ ] Local and Remote CI verification pass.
-- [ ] Independent Manager Decision is `APPROVE` before merge.
+- [x] Campaign Plan API and UI conform to the approved fields, validation, concurrency, and lifecycle contract.
+- [x] Campaign Product API and UI prove many-to-many Product association management.
+- [x] Duplicate and concurrent association attempts return deterministic relationship conflicts without duplicate rows.
+- [x] Campaign/Product archive boundaries, non-cascade behavior, and association read-only states are proven.
+- [x] Campaign and association Audit records are transactional, trusted, typed, and actual-change only.
+- [x] Campaign BFF and Product lookup preserve SSRF, header, credential, actor, timeout, and body-size boundaries.
+- [x] Product, Knowledge, and Creative Plan regressions remain green; V1–V4 remain unchanged.
+- [x] No Asset, Aggregate, Google, AI, Quality, Workflow, Meta Ads, Dashboard, Decision Engine, or Stage 03 scope is introduced.
+- [x] Local and Remote CI verification pass.
+- [x] Independent Manager Decision is `APPROVE` before merge.
 - [ ] Post-merge main CI passes before 2C-5 begins.
+
+## Manager review record
+
+- Review date：2026-08-07
+- Reviewer：Codex Project Manager and Stage Gate Owner
+- Base／Head reviewed：`74f6a751f86cc5ec37f93fde6a3d08c415f31083` → `69bf261738fa06595a6bc0f79646c757b605943f`
+- Files reviewed：Campaign domain, persistence, command/query transactions, REST contracts, error mapping, audit changes, PostgreSQL integration tests, fixed-path BFF, Campaign UI, Product Campaigns Tab, and Frontend tests.
+- Migration reviewed：V1–V4 unchanged; no V5 or destructive schema operation.
+- Local commands：`git diff --check origin/main...HEAD`; `.\mvnw.cmd test` (121 passed); `npm run lint`; `npm run typecheck`; `npm test` (13 files／82 passed); `npm run build`; `npm audit --omit=dev`; `docker compose config --quiet`.
+- Remote verification：Push Run `31159617017` and PR Run `31159637596`; actionlint, Backend Testcontainers, Frontend verification, Compose validation／healthy start／smoke, and Gitleaks all executed and Passed.
+- Findings：Initial `REQUEST_CHANGES` covered missing HTTP, validation, BFF, and UI acceptance tests. Commit `69bf261738fa06595a6bc0f79646c757b605943f` added the required evidence. No open `CRITICAL`, `BLOCKING`, or required `MAJOR` findings remain.
+- Security impact：No new trust boundary, credential, generic proxy, authentication, RBAC, or GitHub permission change. Campaign BFF remains fixed-origin and fixed-path with query/header/body limits.
+- Data impact：Additive use of the approved V4 schema only; archive-only lifecycle, transactional audit, and non-cascading associations preserved.
+- Known limitations：Playwright remains assigned to 2C-7. Byte Buddy dynamic-agent and GitHub Actions Node.js compatibility warnings remain non-blocking technical debt.
+- Decision：`APPROVE`
+- Required next action：Commit and push this Markdown-only approval record, require the final Push and PR CI runs to pass, then mark PR #12 Ready and merge without starting 2C-5 until post-merge `main` CI passes.
+- Human approval required：No
 
 ## Mandatory escalation
 
