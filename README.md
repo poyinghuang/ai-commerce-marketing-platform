@@ -44,6 +44,8 @@ Backend 的 Stage 2D Quality API 提供：
 
 Quality 使用確定性規則、blocking reasons 與版本型 `ETag`。非零人工調整限 `-20..20`，必須提供理由並使用可信 Audit Actor。Product detail 的 `?tab=quality` 提供 component breakdown、readiness、blocking reasons 與人工調整介面；Browser 只透過固定 same-origin Quality Route Handlers 存取 Backend，不直接依賴 Docker 內部 hostname。
 
+Stage 2E Google Connector 的核准規格位於 `docs/stages/stage-02e-google-connectors.md`。PostgreSQL 仍是唯一 System of Record；Google Sheets 僅作為明確觸發的 Preview／Import Connector，Google Drive 僅透過 `StorageProvider` 建立與保存資料夾 metadata。
+
 停止服務：
 
 ```shell

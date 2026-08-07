@@ -2,8 +2,10 @@
 
 ## Gate status
 
-- Status：2D-1 through 2D-4 completed; final delivery record and tag pending
-- Branch：`codex/2d-finalize`
+- Status：Completed
+- Branch：Merged
+- Completion Tag：`milestone-2d-complete` at `29c7011e7d4a7efb32509d615b01337759ab60a0`
+- Final Post-merge CI：Passed — main Run `31219217551`
 - Base Commit：`6ba92bdc48a50f61448ee347b89939f961bdb5e4`
 - Specification Merge：Passed — `6ba92bdc48a50f61448ee347b89939f961bdb5e4`
 - Specification Post-merge CI：Passed — Run `31198925437`

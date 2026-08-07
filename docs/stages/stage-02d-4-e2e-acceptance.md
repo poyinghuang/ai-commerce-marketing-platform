@@ -15,7 +15,7 @@
 - Human Review Required：No
 - Merge：Passed — PR #30, `9f81fc2b0e06cfcd0f2d0a78fc64660295a0086c`
 - Post-merge CI：Passed — main Run `31218488133`
-- Completion Tag：Pending
+- Completion Tag：`milestone-2d-complete` at `29c7011e7d4a7efb32509d615b01337759ab60a0`
 - Milestone 2E：Not started
 
 ## Scope delivered
@@ -67,7 +67,7 @@
 - [x] Remote actionlint, Backend, Frontend, Compose, smoke, Playwright, npm audit, and Gitleaks pass at the committed Head.
 - [x] Exact-head Manager Review records one of the three allowed decisions.
 - [x] Merge and post-merge `main` CI pass.
-- [ ] `milestone-2d-complete` tag is created only after verified completion.
+- [x] `milestone-2d-complete` tag is created only after verified completion.
 - [ ] Milestone 2E remains unstarted until all 2D Gates pass.
 
 ## Known limitations
