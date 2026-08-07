@@ -9,6 +9,7 @@ import java.util.UUID;
 import com.aicommerce.platform.knowledge.application.*;
 import com.aicommerce.platform.knowledge.domain.KnowledgeType;
 import com.aicommerce.platform.knowledge.domain.ProductKnowledge;
+import com.aicommerce.platform.product.application.ProductArchivedException;
 import com.aicommerce.platform.web.RequestIdFilter;
 import com.aicommerce.platform.web.error.GlobalExceptionHandler;
 import org.junit.jupiter.api.Test;
@@ -34,5 +35,42 @@ class KnowledgeControllerTest {
     @Test void patchRequiresEtagAndRejectsUnknownField() throws Exception { mvc.perform(patch("/api/products/{p}/knowledge/{k}",PRODUCT,KNOWLEDGE).contentType("application/merge-patch+json").content("{}" )).andExpect(status().isPreconditionRequired()); mvc.perform(patch("/api/products/{p}/knowledge/{k}",PRODUCT,KNOWLEDGE).header(HttpHeaders.IF_MATCH,"W/\"0\"").contentType("application/merge-patch+json").content("{\"productUuid\":null}" )).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_MERGE_PATCH")); }
     @Test void patchArchiveAndRestorePreserveConcurrencyContract() throws Exception { when(commands.patch(eq(PRODUCT),eq(KNOWLEDGE),eq(0L),any(),anyString())).thenReturn(value()); when(commands.archive(eq(PRODUCT),eq(KNOWLEDGE),eq(0L),anyString())).thenReturn(value()); when(commands.restore(eq(PRODUCT),eq(KNOWLEDGE),eq(0L),anyString())).thenReturn(value()); mvc.perform(patch("/api/products/{p}/knowledge/{k}",PRODUCT,KNOWLEDGE).header(HttpHeaders.IF_MATCH,"W/\"0\"").contentType("application/merge-patch+json").content("{\"title\":\"Updated\"}" )).andExpect(status().isOk()); mvc.perform(delete("/api/products/{p}/knowledge/{k}",PRODUCT,KNOWLEDGE).header(HttpHeaders.IF_MATCH,"W/\"0\"")).andExpect(status().isNoContent()); mvc.perform(post("/api/products/{p}/knowledge/{k}/restore",PRODUCT,KNOWLEDGE).header(HttpHeaders.IF_MATCH,"W/\"0\"")).andExpect(status().isOk()); }
     @Test void validatesPaginationSortAndMalformedEtag() throws Exception { mvc.perform(get("/api/products/{p}/knowledge?size=101",PRODUCT)).andExpect(status().isBadRequest()); mvc.perform(get("/api/products/{p}/knowledge?sort=productUuid,asc",PRODUCT)).andExpect(status().isBadRequest()); mvc.perform(delete("/api/products/{p}/knowledge/{k}",PRODUCT,KNOWLEDGE).header(HttpHeaders.IF_MATCH,"0")).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_IF_MATCH")); }
+    @Test void mapsStaleMutationToPreconditionFailed() throws Exception {
+        when(commands.patch(eq(PRODUCT),eq(KNOWLEDGE),eq(0L),any(),anyString()))
+                .thenThrow(new KnowledgePreconditionFailedException());
+
+        mvc.perform(patch("/api/products/{p}/knowledge/{k}",PRODUCT,KNOWLEDGE)
+                        .header(HttpHeaders.IF_MATCH,"W/\"0\"")
+                        .contentType("application/merge-patch+json")
+                        .content("{\"title\":\"Stale\"}"))
+                .andExpect(status().isPreconditionFailed())
+                .andExpect(jsonPath("$.code").value("PRECONDITION_FAILED"))
+                .andExpect(jsonPath("$.requestId").isNotEmpty());
+    }
+    @Test void mapsArchivedKnowledgeAndProductToConflict() throws Exception {
+        when(commands.patch(eq(PRODUCT),eq(KNOWLEDGE),eq(0L),any(),anyString()))
+                .thenThrow(new KnowledgeArchivedException());
+        mvc.perform(patch("/api/products/{p}/knowledge/{k}",PRODUCT,KNOWLEDGE)
+                        .header(HttpHeaders.IF_MATCH,"W/\"0\"")
+                        .contentType("application/merge-patch+json")
+                        .content("{\"title\":\"Blocked\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("KNOWLEDGE_ARCHIVED"));
+
+        when(commands.create(eq(PRODUCT),any(),anyString())).thenThrow(new ProductArchivedException());
+        mvc.perform(post("/api/products/{p}/knowledge",PRODUCT)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"knowledgeType\":\"FEATURE\",\"title\":\"Title\",\"content\":\"Content\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("PRODUCT_ARCHIVED"));
+    }
+    @Test void mapsOwnershipMismatchToKnowledgeNotFound() throws Exception {
+        when(queries.get(PRODUCT,KNOWLEDGE)).thenThrow(new KnowledgeNotFoundException());
+
+        mvc.perform(get("/api/products/{p}/knowledge/{k}",PRODUCT,KNOWLEDGE))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("KNOWLEDGE_NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("Knowledge not found"));
+    }
     private ProductKnowledge value(){return ProductKnowledge.create(KNOWLEDGE,PRODUCT,KnowledgeType.FEATURE,"Title","Content",null);}
 }

@@ -79,9 +79,9 @@ Stop and escalate if implementation requires changing V1–V4, breaking the Prod
 
 ## Developer verification record
 
-- Backend targeted Web MVC/parser/audit tests: Passed — 9 tests, 0 failures, 0 errors, 0 skipped.
-- Backend full suite with PostgreSQL Testcontainers: Passed — 86 tests, 0 failures, 0 errors, 0 skipped. This includes Flyway/Hibernate regressions, Knowledge persistence/lifecycle/audit coverage, and audit-failure transaction rollback.
-- Frontend pinned Node.js 24.18.0 / npm 11.16.0 container verification: Passed — lint, typecheck, 18 tests, and production build. The host Node.js 24.14.0 / npm 11.9.0 was correctly rejected by `engine-strict` and was not used to weaken the repository pin.
+- Backend targeted Web MVC/parser/audit tests: Passed — 16 tests, 0 failures, 0 errors, 0 skipped. The coverage includes explicit audit action/actor/request-ID/changed-field assertions, stable multi-record pagination, and controller error mapping.
+- Backend full suite with PostgreSQL Testcontainers: Passed — 90 tests, 0 failures, 0 errors, 0 skipped. This includes Flyway/Hibernate regressions, Knowledge persistence/lifecycle/audit coverage, and audit-failure transaction rollback.
+- Frontend pinned Node.js 24.18.0 / npm 11.16.0 container verification: Passed — lint, typecheck, 26 tests, and production build. The coverage includes Knowledge Tab edit/restore/states/pagination/sort behavior plus BFF payload-limit, unavailable-upstream, status/body, and response-header forwarding boundaries. The host Node.js 24.14.0 / npm 11.9.0 was correctly rejected by `engine-strict` and was not used to weaken the repository pin.
 - `npm audit --omit=dev`: Passed — 0 vulnerabilities.
 - Docker Compose config, image build, cold start, and service health: Passed — PostgreSQL, Backend, and Frontend reported healthy.
 - HTTP smoke through the running Compose network and same-origin Frontend BFF: Passed — Backend health `UP`, same-origin health `UP`, Product create `201`, Knowledge create `201` with Location/ETag, list `200`, single read `200` with ETag, patch `200`, stale patch `412`, archive `204`, archived patch `409`, restore `200`, and archived-Product mutation `409`.
