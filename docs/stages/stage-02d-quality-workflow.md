@@ -2,8 +2,8 @@
 
 ## Gate status
 
-- Status：2D-1 and 2D-2 completed; 2D-3 Manager approved, merge pending
-- Branch：`codex/2d-3-quality-ui`
+- Status：2D-1, 2D-2, and 2D-3 completed; 2D-4 not started
+- Branch：`codex/2d-3-finalize`
 - Base Commit：`6ba92bdc48a50f61448ee347b89939f961bdb5e4`
 - Specification Merge：Passed — `6ba92bdc48a50f61448ee347b89939f961bdb5e4`
 - Specification Post-merge CI：Passed — Run `31198925437`
@@ -21,6 +21,9 @@
 - 2D-2 Merge：Passed — PR #25, `84d7131524e734de0354dc1468bdd1e001aa6509`
 - 2D-2 Post-merge CI：Passed — main Run `31208990817`
 - 2D-2 delivery record：[Milestone 2D-2 — Recalculation, API, Audit, and Aggregate](stage-02d-2-recalculation-api.md)
+- 2D-3 Merge：Passed — PR #27, `4f4aace65a737305f15bf3c9b34633dfc66366ba`
+- 2D-3 Corrective Merge：Passed — PR #28, `131274be0fff0230ce9cdd7ef1ca53d1d09cbcb7`
+- 2D-3 Final Post-merge CI：Passed — main Run `31215080850`
 - 2D-3 delivery record：[Milestone 2D-3 — Quality UI](stage-02d-3-quality-ui.md)
 - Milestone 2E：Not started
 
