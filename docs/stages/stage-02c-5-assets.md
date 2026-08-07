@@ -16,6 +16,8 @@
 - Approved PR CI：Run `31177191719` — `quality-and-compose` and `secret-scan` Passed
 - Approval-document Push CI：Run `31177560976` — `quality-and-compose` and `secret-scan` Passed
 - Approval-document PR CI：Run `31177563762` — `quality-and-compose` and `secret-scan` Passed
+- Final documentation Push CI：Run `31178281222` — `quality-and-compose` and `secret-scan` Passed
+- Final documentation PR CI：Run `31178299650` — `quality-and-compose` and `secret-scan` Passed
 - Pull Request：[#14](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/14)
 - Merge：Passed — Squash Commit `b4c16808faf70d331f8e1955c2b7649201e624c2`
 - Post-merge Main CI：Run `31177940031` — `quality-and-compose` and `secret-scan` Passed
