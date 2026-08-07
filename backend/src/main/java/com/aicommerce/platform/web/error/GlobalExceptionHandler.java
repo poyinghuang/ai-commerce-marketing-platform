@@ -11,6 +11,10 @@ import com.aicommerce.platform.product.application.ProductValidationException;
 import com.aicommerce.platform.product.web.InvalidIfMatchException;
 import com.aicommerce.platform.product.web.InvalidMergePatchException;
 import com.aicommerce.platform.product.web.PreconditionRequiredException;
+import com.aicommerce.platform.knowledge.application.KnowledgeArchivedException;
+import com.aicommerce.platform.knowledge.application.KnowledgeNotFoundException;
+import com.aicommerce.platform.knowledge.application.KnowledgePreconditionFailedException;
+import com.aicommerce.platform.knowledge.application.KnowledgeValidationException;
 import com.aicommerce.platform.web.RequestIdFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -56,6 +60,21 @@ public class GlobalExceptionHandler {
                 List.of(new FieldErrorDetail(exception.getField(), exception.getMessage())));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
+
+    @ExceptionHandler(KnowledgeValidationException.class)
+    ResponseEntity<ApiError> handleKnowledgeValidation(KnowledgeValidationException exception, HttpServletRequest request) {
+        return ResponseEntity.badRequest().body(error("VALIDATION_ERROR", "Request validation failed", request,
+                List.of(new FieldErrorDetail(exception.getField(), exception.getMessage()))));
+    }
+
+    @ExceptionHandler(KnowledgeNotFoundException.class)
+    ResponseEntity<ApiError> handleKnowledgeNotFound(HttpServletRequest request) { return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error("KNOWLEDGE_NOT_FOUND", "Knowledge not found", request, null)); }
+
+    @ExceptionHandler(KnowledgeArchivedException.class)
+    ResponseEntity<ApiError> handleKnowledgeArchived(HttpServletRequest request) { return ResponseEntity.status(HttpStatus.CONFLICT).body(error("KNOWLEDGE_ARCHIVED", "Archived knowledge cannot be modified", request, null)); }
+
+    @ExceptionHandler(KnowledgePreconditionFailedException.class)
+    ResponseEntity<ApiError> handleKnowledgePreconditionFailed(HttpServletRequest request) { return ResponseEntity.status(HttpStatus.PRECONDITION_FAILED).body(error("PRECONDITION_FAILED", "Knowledge version does not match If-Match", request, null)); }
 
     @ExceptionHandler(InvalidMergePatchException.class)
     ResponseEntity<ApiError> handleInvalidMergePatch(

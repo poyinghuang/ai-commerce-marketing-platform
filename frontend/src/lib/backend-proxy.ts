@@ -4,7 +4,10 @@ const TIMEOUT_MS = 10_000;
 const MAX_BODY_BYTES = 64 * 1024;
 const SAFE_REQUEST_ID = /^[A-Za-z0-9._:-]{1,128}$/;
 const PRODUCT_UUID_PATH = "[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
-const SAFE_BACKEND_PATH = new RegExp(`^/api/products(?:/${PRODUCT_UUID_PATH}(?:/restore)?)?$`, "i");
+const SAFE_BACKEND_PATH = new RegExp(
+  `^/api/products(?:/${PRODUCT_UUID_PATH}(?:/restore|/knowledge(?:/${PRODUCT_UUID_PATH}(?:/restore)?)?)?)?$`,
+  "i",
+);
 
 type ProxyOptions = {
   method: "GET" | "POST" | "PATCH" | "DELETE";
@@ -42,7 +45,7 @@ export async function forwardProductRequest(
 
   try {
     const backendUrl = new URL(backendPath, backendOrigin);
-    for (const [key, value] of allowlistedProductQuery(request.nextUrl.searchParams)) {
+    for (const [key, value] of allowlistedProductQuery(request.nextUrl.searchParams, backendPath)) {
       backendUrl.searchParams.append(key, value);
     }
     const response = await fetch(backendUrl, {
@@ -79,8 +82,12 @@ function resolveBackendOrigin() {
   }
 }
 
-function allowlistedProductQuery(searchParams: URLSearchParams) {
-  const allowed = new Set(["page", "size", "status", "category", "keyword", "sku", "productId", "sort"]);
+function allowlistedProductQuery(searchParams: URLSearchParams, backendPath: string) {
+  const allowed = backendPath.endsWith("/knowledge")
+    ? new Set(["page", "size", "status", "sort"])
+    : backendPath === "/api/products"
+      ? new Set(["page", "size", "status", "category", "keyword", "sku", "productId", "sort"])
+      : new Set<string>();
   return Array.from(searchParams.entries()).filter(([key]) => allowed.has(key));
 }
 
