@@ -2,16 +2,20 @@
 
 ## Gate status
 
-- Status：Approved for implementation
+- Status：Manager approved, pending merge
 - Branch：`codex/2c-5-assets`
 - Base Commit：`c051d26c45e3d9769bce2cdfb4cb05502f1d7d18`
 - Implementation：Complete
 - Local Verification：Passed
-- Remote CI：Not started
-- Manager Review：Not started
-- Manager Decision：Pending
+- Remote CI：Passed
+- Manager Review：Passed
+- Manager Decision：APPROVE
 - Human Review Required：No
-- Merge：Not started
+- Approved Commit：`b9b17b82d217028068ce6113bf311231f0464716`
+- Approved Push CI：Run `31177169477` — `quality-and-compose` and `secret-scan` Passed
+- Approved PR CI：Run `31177191719` — `quality-and-compose` and `secret-scan` Passed
+- Pull Request：[#14](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/14)
+- Merge：Pending
 - Milestone 2C-6：Locked
 
 ## Objective
@@ -136,15 +140,15 @@ Patchable fields：`assetType`, `purpose`, `storageProvider`, `providerFileId`, 
 
 ## Acceptance checklist
 
-- [ ] Asset API and Product Assets Tab conform to the approved metadata, validation, lifecycle, and concurrency contract.
-- [ ] Product, Creative Plan, Campaign, and Campaign Product ownership／active-state boundaries are proven in PostgreSQL.
-- [ ] Provider metadata recursively rejects sensitive keys, respects 16 KiB, remains absent from logs／Audit, and stores only a non-reversible Audit fingerprint.
-- [ ] Asset Audit is trusted, typed, actual-change-only, and transactionally rolls back with Domain mutation.
-- [ ] Asset identity is immutable; archive never hard-deletes or cascades.
-- [ ] Asset BFF preserves SSRF, query, header, credential, timeout, and body-size boundaries.
-- [ ] Product, Knowledge, Creative Plan, and Campaign regressions remain green; V1–V4 remain unchanged.
-- [ ] Local and Remote CI verification pass.
-- [ ] Independent Manager Decision is `APPROVE` before merge.
+- [x] Asset API and Product Assets Tab conform to the approved metadata, validation, lifecycle, and concurrency contract.
+- [x] Product, Creative Plan, Campaign, and Campaign Product ownership／active-state boundaries are proven in PostgreSQL.
+- [x] Provider metadata recursively rejects sensitive keys, respects 16 KiB, remains absent from logs／Audit, and stores only a non-reversible Audit fingerprint.
+- [x] Asset Audit is trusted, typed, actual-change-only, and transactionally rolls back with Domain mutation.
+- [x] Asset identity is immutable; archive never hard-deletes or cascades.
+- [x] Asset BFF preserves SSRF, query, header, credential, timeout, and body-size boundaries.
+- [x] Product, Knowledge, Creative Plan, and Campaign regressions remain green; V1–V4 remain unchanged.
+- [x] Local and Remote CI verification pass.
+- [x] Independent Manager Decision is `APPROVE` before merge.
 - [ ] Post-merge `main` CI passes before 2C-6 begins.
 
 ## Mandatory escalation
@@ -163,4 +167,22 @@ Stop and escalate if implementation requires changing V1–V4, destructive data 
 - Security：Gitleaks history and working-directory scans found no leaks. V1–V4 were not modified.
 - Cross-platform test fix：the existing Backend health component assertion retains its behavior and uses a narrowly scoped five-second `waitFor` timeout for constrained container scheduling.
 - Local limitation：`actionlint` was not installed locally and no workflow changed; Remote CI remains responsible for the required actionlint evidence.
-- Commit／Push／PR／Remote CI／Manager Review／Merge：Pending.
+- Implementation commits and Push／PR Remote CI：Passed; Manager Review：APPROVE; approval-document CI and Merge：Pending.
+
+## Manager review record
+
+- Review date：2026-08-07
+- Reviewer：Codex Project Manager and Stage Gate Owner
+- Base／Head reviewed：`c051d26c45e3d9769bce2cdfb4cb05502f1d7d18` → `b9b17b82d217028068ce6113bf311231f0464716`
+- Scope／files reviewed：Asset domain, persistence, command/query transactions, REST and merge-patch contracts, error mapping, metadata security, Audit changes, PostgreSQL ownership／lock／rollback evidence, fixed-path BFF, Product Assets Tab, and Backend／Frontend tests.
+- Migration reviewed：V1–V4 unchanged; no V5, destructive schema operation, dependency, Runtime, Docker, CI workflow, credential, or permission change.
+- Local verification：`git status --short`; `git diff --check origin/main...HEAD`; `git log --oneline --decorate -10`; `.\mvnw.cmd test` (141 passed); `npm run lint`; `npm run typecheck`; `npm test` (14 files／96 passed); `npm run build`; `npm audit --omit=dev` (0 vulnerabilities); `docker compose config --quiet`; `docker compose up --build -d --wait`; Backend and same-origin BFF Asset create／list／archive／restore smoke; pinned Gitleaks history and working-tree scans.
+- Remote verification：Push Run `31177169477` and PR Run `31177191719`; actionlint, Backend Testcontainers, Frontend verification, Compose validation／healthy start／smoke, and Gitleaks all executed and Passed with no required step skipped.
+- Findings：Initial `REQUEST_CHANGES` covered lifecycle optimistic-concurrency bypass, stale recovery state, active-reference race protection, and missing required acceptance tests. Commit `b9b17b82d217028068ce6113bf311231f0464716` resolved all findings. No open `CRITICAL`, `BLOCKING`, or required `MAJOR` finding remains.
+- Contract impact：Additive Asset Metadata API／UI only; independent ETag／If-Match, archive-only lifecycle, fixed paths, and existing Product／Knowledge／Creative Plan／Campaign contracts remain compatible.
+- Security impact：Provider metadata rejects recursively sensitive keys, Audit stores only SHA-256 fingerprints, and the BFF exposes no user-selected origin／path, credentials, actor, or arbitrary headers.
+- Data impact：Only additive use of the approved V4 `assets` table; PostgreSQL remains the System of Record, identity is immutable, lifecycle is archive-only, and no binary or external Provider data operation occurs.
+- Known limitations：Playwright remains assigned to 2C-7. Byte Buddy dynamic-agent, Maven Surefire fork shutdown-after-success, GitHub Actions Node.js compatibility, and Windows LF／CRLF warnings remain non-blocking technical debt. Local actionlint was unavailable; both Remote CI Runs supplied the required passing actionlint evidence.
+- Decision：`APPROVE`
+- Required next action：Commit and verify this Markdown-only approval record, mark PR #14 Ready, squash merge, verify post-merge `main` CI, then finalize delivery documentation before 2C-6 begins.
+- Human approval required：No
