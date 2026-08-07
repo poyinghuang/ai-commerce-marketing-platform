@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { forwardAssetRequest, forwardCampaignRequest, forwardCreativePlanRequest, forwardKnowledgeRequest, forwardProductAggregateRequest, forwardProductRequest } from "./backend-proxy";
+import { forwardAssetRequest, forwardCampaignRequest, forwardCreativePlanRequest, forwardKnowledgeRequest, forwardProductAggregateRequest, forwardProductQualityRequest, forwardProductRequest } from "./backend-proxy";
 
 describe("product backend proxy", () => {
   afterEach(() => {
@@ -401,5 +401,58 @@ describe("product backend proxy", () => {
     const unavailable = await forwardProductAggregateRequest(request, `/api/products/${product}/aggregate`);
     expect(unavailable.status).toBe(503);
     expect(await unavailable.json()).toEqual({ code: "BACKEND_UNAVAILABLE", message: "Backend is unavailable" });
+  });
+
+  it("keeps Quality targets, headers, and response metadata fixed and credential-free", async () => {
+    process.env.BACKEND_INTERNAL_URL = "http://backend:8080";
+    const product = "d4476a19-30ed-48d9-a518-f9b111bd0911";
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ finalScore: 82 }), {
+      status: 200,
+      headers: { "Content-Type": "application/json", ETag: 'W/"3"', "X-Request-ID": "quality-safe", "X-Internal": "hidden" },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const request = new NextRequest(`http://localhost/api/products/${product}/quality/manual-adjustment?target=http://evil`, {
+      method: "PATCH",
+      headers: { "If-Match": 'W/"2"', "X-Request-ID": "caller", Cookie: "secret", Authorization: "Bearer secret", "X-Actor-ID": "evil" },
+      body: JSON.stringify({ manualAdjustment: 5, reason: "Reviewed" }),
+    });
+
+    const response = await forwardProductQualityRequest(
+      request,
+      `/api/products/${product}/quality/manual-adjustment`,
+      { method: "PATCH", contentType: "application/merge-patch+json" },
+    );
+
+    const [target, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(target.toString()).toBe(`http://backend:8080/api/products/${product}/quality/manual-adjustment`);
+    const headers = new Headers(init.headers);
+    expect(headers.get("If-Match")).toBe('W/"2"');
+    expect(headers.get("X-Request-ID")).toBe("caller");
+    expect(headers.has("Cookie")).toBe(false);
+    expect(headers.has("Authorization")).toBe(false);
+    expect(headers.has("X-Actor-ID")).toBe(false);
+    expect(response.headers.get("ETag")).toBe('W/"3"');
+    expect(response.headers.get("X-Request-ID")).toBe("quality-safe");
+    expect(response.headers.has("X-Internal")).toBe(false);
+  });
+
+  it("rejects arbitrary Quality paths and oversized adjustment bodies", async () => {
+    process.env.BACKEND_INTERNAL_URL = "http://backend:8080";
+    const product = "d4476a19-30ed-48d9-a518-f9b111bd0911";
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const invalid = await forwardProductQualityRequest(
+      new NextRequest("http://localhost/api"),
+      `http://attacker.example/api/products/${product}/quality`,
+      { method: "GET" },
+    );
+    expect(invalid.status).toBe(400);
+    const oversized = await forwardProductQualityRequest(
+      new NextRequest("http://localhost/api", { method: "PATCH", body: "x".repeat(65537) }),
+      `/api/products/${product}/quality/manual-adjustment`,
+      { method: "PATCH", contentType: "application/merge-patch+json" },
+    );
+    expect(oversized.status).toBe(413);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

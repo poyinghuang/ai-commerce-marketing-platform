@@ -3,6 +3,7 @@ import type { Knowledge } from "@/lib/knowledge";
 import type { CreativePlan } from "@/lib/creative-plans";
 import type { Campaign, CampaignProduct } from "@/lib/campaigns";
 import type { Asset } from "@/lib/assets";
+import type { ProductQuality } from "@/lib/quality";
 
 export type AggregateCampaign = Campaign & { association: CampaignProduct };
 
@@ -12,4 +13,5 @@ export type ProductAggregate = {
   creativePlans: CreativePlan[];
   campaigns: AggregateCampaign[];
   assets: Asset[];
+  quality: ProductQuality;
 };

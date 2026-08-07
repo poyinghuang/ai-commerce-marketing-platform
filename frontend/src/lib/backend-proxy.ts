@@ -15,6 +15,9 @@ const SAFE_ASSET_PATH = new RegExp(
   `^/api/products/${PRODUCT_UUID_PATH}/assets(?:/${PRODUCT_UUID_PATH}(?:/restore)?)?$`, "i",
 );
 const SAFE_AGGREGATE_PATH = new RegExp(`^/api/products/${PRODUCT_UUID_PATH}/aggregate$`, "i");
+const SAFE_QUALITY_PATH = new RegExp(
+  `^/api/products/${PRODUCT_UUID_PATH}/quality(?:/manual-adjustment)?$`, "i",
+);
 const SAFE_CAMPAIGN_PATH = new RegExp(
   `^/api/campaigns(?:/${PRODUCT_UUID_PATH}(?:/restore|/products(?:/${PRODUCT_UUID_PATH}(?:/restore)?)?)?)?$`, "i",
 );
@@ -87,6 +90,17 @@ export async function forwardProductAggregateRequest(request: NextRequest, backe
     { method: "GET", responseHeaders: ["Content-Type", "X-Request-ID", "Cache-Control"] },
     new Set(["includeArchived"]),
   );
+}
+
+export async function forwardProductQualityRequest(
+  request: NextRequest,
+  backendPath: string,
+  options: ProxyOptions,
+) {
+  if (!SAFE_QUALITY_PATH.test(backendPath)) {
+    return proxyError("INVALID_QUALITY_PATH", "Quality path is invalid", 400);
+  }
+  return forwardAllowlistedRequest(request, backendPath, options, new Set<string>());
 }
 
 export async function forwardCampaignRequest(request: NextRequest, backendPath: string, options: ProxyOptions) {
