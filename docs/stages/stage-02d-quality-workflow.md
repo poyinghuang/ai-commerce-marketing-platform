@@ -26,6 +26,7 @@
 - 2D-3 Final Post-merge CI：Passed — main Run `31215080850`
 - 2D-3 delivery record：[Milestone 2D-3 — Quality UI](stage-02d-3-quality-ui.md)
 - 2D-4 delivery record：[Milestone 2D-4 — E2E and Acceptance](stage-02d-4-e2e-acceptance.md)
+- 2D-4 Implementation：`59865f18365781673853f618c6c2154f8d9d7ad2`; Push Run `31217643930` and PR Run `31217660098` passed; Manager Decision `APPROVE`
 - Milestone 2E：Not started
 
 ## Objective
