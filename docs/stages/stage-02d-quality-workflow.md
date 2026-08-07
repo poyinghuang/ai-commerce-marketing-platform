@@ -2,20 +2,20 @@
 
 ## Gate status
 
-- Status：Approved specification merged; 2D-1 locally complete
+- Status：Approved specification merged; 2D-1 Manager approved, merge pending
 - Branch：`codex/2d-1-schema-scoring`
 - Base Commit：`6ba92bdc48a50f61448ee347b89939f961bdb5e4`
 - Specification Merge：Passed — `6ba92bdc48a50f61448ee347b89939f961bdb5e4`
 - Specification Post-merge CI：Passed — Run `31198925437`
 - Implementation：2D-1 complete; 2D-2 through 2D-4 not started
-- Migration：V5 created locally; not committed
+- Migration：V5 committed in `558262f1474618e58a4d7b8cce76d838dc46822a`
 - Local Verification：2D-1 Passed
-- Remote CI：2D-1 Pending
-- Manager Review：Passed
-- Manager Decision：APPROVE
+- Remote CI：2D-1 Passed — Push Run `31202242425`; PR Run `31202259584`
+- Manager Review：2D-1 Passed
+- Manager Decision：2D-1 APPROVE
 - Approved Specification Commit：`fd1813653113cef26361c2aa815f2e303f5c6bc2`
 - Human Review Required：No
-- Merge：Specification Passed; 2D-1 Pending
+- Merge：Specification Passed; 2D-1 Pending after approval-record CI
 - Milestone 2E：Not started
 
 ## Objective

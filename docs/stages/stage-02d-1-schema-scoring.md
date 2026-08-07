@@ -7,10 +7,12 @@
 - Base Commit：`6ba92bdc48a50f61448ee347b89939f961bdb5e4`
 - Implementation：Complete
 - Local Verification：Passed
-- Commit／Push／Pull Request：Pending
-- Remote CI：Pending
-- Manager Review：Pending
-- Manager Decision：Pending
+- Implementation Commit：`558262f1474618e58a4d7b8cce76d838dc46822a`
+- Push／Pull Request：Passed — Draft PR #23
+- Remote CI：Passed — Push Run `31202242425`; PR Run `31202259584`
+- Manager Review：Passed
+- Manager Decision：APPROVE
+- Approved Implementation Commit：`558262f1474618e58a4d7b8cce76d838dc46822a`
 - Human Review Required：No
 - Merge：Pending
 - Milestone 2D-2：Not started
@@ -56,9 +58,39 @@
 - Existing Product, Knowledge, Creative Plan, Campaign, Campaign Product, and Asset rows are not changed.
 - Projection recalculation and startup repair remain 2D-2 scope.
 
+## Manager review
+
+- Review date：2026-08-08（Asia/Taipei）
+- Repository：`poyinghuang/ai-commerce-marketing-platform`
+- Pull Request：#23
+- Files reviewed：23 approved 2D-1 Runtime, V5, test, and documentation files; no unexpected file.
+- Migration reviewed：V5 is additive; V1–V4 Git blobs and canonical checksums are unchanged. Cold, populated V4 upgrade, repeat migration, direct JDBC constraints, immutable triggers, and Hibernate validation passed.
+- Domain boundary：The slice contains deterministic scoring and projection persistence only. Recalculation transactions, Audit, API, BFF, and UI remain out of scope.
+- Contract changes：No public API, Frontend, BFF, authentication, RBAC, external service, or production contract change.
+- Security impact：No new secret, credential, request input, network call, or elevated permission. Gitleaks passed locally and remotely.
+- Data impact：Existing System-of-Record rows are unchanged. V5 backfills reproducible projection rows only and supports forward recovery.
+- Findings：None.
+- Decision：APPROVE.
+- Human approval required：No.
+- Merge allowed：Yes, after the approval-record-only Head passes both Push and Pull Request CI.
+- Next Stage allowed：Only after PR #23 merge and post-merge `main` verification.
+
+## Commands and evidence
+
+- `git status --short`, `git diff --check`, `git log --oneline --decorate -10`
+- `backend\\mvnw.cmd test`
+- `docker compose config --quiet`
+- `docker compose down --volumes --remove-orphans`
+- `docker compose up --build --detach --wait`
+- guarded `npm run test:e2e`
+- pinned Node.js 24.18.0 `npm audit --omit=dev`
+- pinned Gitleaks 8.28.0 history and worktree scans
+- checksum-verified actionlint 1.7.7
+- Remote Push Run `31202242425` and PR Run `31202259584`: `quality-and-compose` and `secret-scan` passed with required steps executed.
+
 ## Known limitations
 
-- Remote CI and exact-head Manager Review remain pending until commit and push.
 - The first local Playwright invocation intentionally failed closed because `PLAYWRIGHT_AUDIT_DB_ASSERTION` was absent; the full suite passed after running with the same guarded environment as CI.
 - Byte Buddy dynamic Java-agent future-deprecation warning remains non-blocking.
+- GitHub Actions reports the upstream Node.js 20 compatibility annotation for pinned `actions/checkout`; the Runner forced Node.js 24 and all Jobs passed.
 - No 2D public API or UI exists in this slice by design.
