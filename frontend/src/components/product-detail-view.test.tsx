@@ -79,7 +79,7 @@ describe("ProductDetailView", () => {
 
     expect(await screen.findByText(/Archived Product 不接受一般修改/)).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Product Center 整合摘要" })).toBeInTheDocument();
-    expect(screen.getAllByText("尚無資料")).toHaveLength(4);
+    expect(await screen.findAllByText("尚無資料")).toHaveLength(4);
   });
 });
 
