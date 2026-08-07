@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status：Manager approved；pending merge
+- Status：Completed
 - Branch：`codex/2c-1-schema-domain`
 - Base Commit：`5cb6131594eddc029d48880a0174bed573e33837`
 - Implementation：Complete
@@ -12,8 +12,9 @@
 - Manager Decision：APPROVE
 - Approved Implementation Head：`6756d10b92c8509ad702f4b51ae015f1ef275c6a`
 - Human Review Required：No — the additive V4 model and audit constraint expansion were approved in the parent Milestone 2C specification
-- Merge：Pending
-- Dependent Stage：2C-2 and 2C-3 remain locked until merge and post-merge verification
+- Merge：Passed — Merge Commit `9c2b678a7329c8a8c9519e05cc6bc4eec12d5e61`
+- Post-merge CI：Passed — main Run `31142272449`
+- Dependent Stage：2C-2 and 2C-3 unlocked from main Commit `9c2b678a7329c8a8c9519e05cc6bc4eec12d5e61`
 
 ## Developer verification evidence
 
@@ -146,7 +147,7 @@ The authoritative field definitions, constraints, indexes, ownership rules, audi
 - [x] Backend, Frontend, Compose, smoke, Gitleaks, dependency audit, and actionlint pass locally and remotely.
 - [x] Draft PR contains the implementation report and exact migration／test evidence.
 - [x] Independent Manager Review returns `APPROVE` before merge.
-- [ ] Post-merge main CI passes before 2C-2 or 2C-3 starts.
+- [x] Post-merge main CI passes before 2C-2 or 2C-3 starts.
 
 ## Mandatory escalation conditions
 
