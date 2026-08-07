@@ -229,8 +229,10 @@
 
 ### Milestone 2D — Quality and Workflow
 
-- Status：2D-1 through 2D-4 completed; final delivery record and tag pending
-- Branch：`codex/2d-finalize`
+- Status：Completed
+- Branch：Merged
+- Completion Tag：`milestone-2d-complete` at `29c7011e7d4a7efb32509d615b01337759ab60a0`
+- Final Post-merge CI：Passed — main Run `31219217551`
 - Specification Merge：`6ba92bdc48a50f61448ee347b89939f961bdb5e4`
 - 2D-1 Merge：`c897bb6f6f3847e62fea9b6d334400349c87e3b0`; post-merge Run `31203178454` passed
 - 2D-2 Implementation：`f3cdb3386584fe182ea8c3f2dabc3ffdb07ac44f`; approval-record Head `f23e0dcc1cf8a527f50155962f2bcc3d0e7de0b5`; Manager Decision `APPROVE`
@@ -253,6 +255,9 @@
 
 ### Milestone 2E — Google Connectors and Final Integration
 
+- Status：Specification complete; implementation not started
+- Branch：`codex/2e-specification`
+- Detailed specification：[Milestone 2E — Google Connectors and Final Stage 02 Integration](stage-02e-google-connectors.md)
 - Google Sheets Preview／Execute／Upsert
 - Google Drive `StorageProvider`
 - Connector UI
