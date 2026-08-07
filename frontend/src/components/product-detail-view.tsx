@@ -7,8 +7,9 @@ import type { ApiError, Product, ProductInput } from "@/lib/products";
 import { createMergePatch, productToInput } from "@/lib/products";
 import { CreativePlansTab } from "@/components/creative-plans-tab";
 import { KnowledgeTab } from "@/components/knowledge-tab";
+import { CampaignsTab } from "@/components/campaigns-tab";
 
-type ProductDetailTab = "product" | "knowledge" | "creative-plans";
+type ProductDetailTab = "product" | "knowledge" | "creative-plans" | "campaigns";
 
 export function ProductDetailView({ productUuid, initialTab = "product" }: { productUuid: string; initialTab?: ProductDetailTab }) {
   const [product, setProduct] = useState<Product | null>(null);
@@ -118,8 +119,11 @@ export function ProductDetailView({ productUuid, initialTab = "product" }: { pro
         <Link href={`/products/${productUuid}`}>商品資料</Link>
         <Link href={`/products/${productUuid}?tab=knowledge`}>Product Knowledge</Link>
         <Link href={`/products/${productUuid}?tab=creative-plans`}>Creative Plans</Link>
+        <Link href={`/products/${productUuid}?tab=campaigns`}>Campaigns</Link>
       </nav>
-      {initialTab === "creative-plans" ? (
+      {initialTab === "campaigns" ? (
+        <CampaignsTab productUuid={productUuid} productArchived={product.lifecycleStatus === "ARCHIVED"} />
+      ) : initialTab === "creative-plans" ? (
         <CreativePlansTab productUuid={productUuid} productArchived={product.lifecycleStatus === "ARCHIVED"} />
       ) : initialTab === "knowledge" ? (
         <KnowledgeTab productUuid={productUuid} productArchived={product.lifecycleStatus === "ARCHIVED"} />

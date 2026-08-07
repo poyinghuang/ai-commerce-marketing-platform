@@ -89,6 +89,9 @@ td small { display: block; margin-top: 0.25rem; color: #75827c; }
 .knowledge-list { display: grid; gap: 1rem; }
 .knowledge-card { display: flex; justify-content: space-between; gap: 1rem; padding: 1.25rem; border: 1px solid #dce5df; border-radius: .85rem; background: #fbfcfa; }
 .knowledge-card h3 { margin: .75rem 0 .35rem; }.knowledge-card p { white-space: pre-wrap; line-height: 1.55; }.knowledge-card small { color: #64736c; }
+.campaign-filter { grid-template-columns: minmax(14rem, 2fr) repeat(2, minmax(9rem, 1fr)) auto; }
+.campaign-products { display: grid; gap: 1rem; }
+.lookup-row { display: grid; grid-template-columns: 1fr auto; gap: .75rem; }
 .knowledge-actions { display: flex; gap: .6rem; align-items: flex-start; }.knowledge-form { margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid #dce5df; }
 
 .health { display: flex; align-items: center; gap: 0.75rem; margin-top: 2rem; color: #5c6c65; }
