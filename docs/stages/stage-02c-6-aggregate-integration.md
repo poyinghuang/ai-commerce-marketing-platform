@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status：Manager approved, pending merge
+- Status：Completed
 - Branch：`codex/2c-6-aggregate-integration`
 - Base Commit：`cf738e9284ab7bb4a66a19610cad528ebc6c1948`
 - Prerequisite 2C-5 Main CI：Run `31178905522` Passed
@@ -16,8 +16,16 @@
 - Push CI：Run `31185455853` Passed
 - Pull Request：`#16`
 - Pull Request CI：Run `31185475601` Passed
-- Merge：Pending
-- Milestone 2C-7：Locked
+- Approval Record Commit：`0d58ca8b396d5a34180512a75915b24ab30388c2`
+- Approval Record Push CI：Run `31186010170` Passed
+- Approval Record Pull Request CI：Run `31186014158` Passed
+- Merge：Passed — Squash Commit `4786e48108ea6bc9520272438543afee172f42af`
+- Post-merge Main CI：Run `31186407937` Passed
+- Finalization Pull Request：`#17`
+- Finalization Commit：`b50d12aad5f6a546a5b7ed58a561c67b943d76fa`
+- Finalization Push CI：Run `31186808919` Passed
+- Finalization Pull Request CI：Run `31186817142` Passed
+- Milestone 2C-7：Unlocked, not started
 
 ## Objective
 
@@ -134,7 +142,7 @@ Rules：
 - [x] V1–V4 and all existing Product／Knowledge／Creative Plan／Campaign／Asset contracts remain unchanged and green.
 - [x] Local and Remote CI verification pass with no required step skipped.
 - [x] Independent Manager Decision is `APPROVE` before merge.
-- [ ] Post-merge `main` CI passes before 2C-7 begins.
+- [x] Post-merge `main` CI passes before 2C-7 begins.
 
 ## Known limitations
 
@@ -156,7 +164,7 @@ Stop and escalate if implementation requires modifying V1–V4, adding a migrati
 - Security：pinned Gitleaks history scan (35 commits) and working-directory scan found no leaks. V1–V4, dependency manifests, Runtime, Docker, CI workflow, credentials, and permissions were not changed.
 - Local actionlint：not installed; no workflow file changed. Required actionlint evidence remains Pending Remote CI.
 - Initial verification findings：the first PostgreSQL focused run exposed an ambiguous `Instant` type only in test seed SQL and was corrected with explicit `Timestamp`; an ordering-test expectation was corrected from Java signed-`long` UUID natural order to PostgreSQL canonical UUID order. One multi-file Vitest focused run had a worker-start timeout, and one parallel full run timed out an existing Knowledge test under combined Docker／JVM load; the affected tests passed independently and the final non-parallel full Frontend suite passed 107／107.
-- Delivery state：Implementation, local verification, Commit, Push, Draft PR, Remote CI, and independent Manager Review are complete. Merge remains Pending.
+- Delivery state：Completed. Implementation, local verification, Remote CI, independent Manager Review, squash merge, and post-merge `main` verification all passed.
 
 ## Manager review record
 
@@ -179,4 +187,6 @@ Stop and escalate if implementation requires modifying V1–V4, adding a migrati
 - Known limitations：Aggregate arrays are unpaginated; Playwright remains required in 2C-7; existing Byte Buddy, test-shutdown, Actions Node.js compatibility, and Windows line-ending warnings are non-blocking.
 - Decision：`APPROVE`
 - Human approval required：No
-- Required next action：Commit and push this approval record, require both Push and Pull Request CI to pass again, then mark PR `#16` Ready, squash merge without starting 2C-7, and verify post-merge `main` CI.
+- Delivery result：Approval Record Commit `0d58ca8b396d5a34180512a75915b24ab30388c2` passed Push Run `31186010170` and Pull Request Run `31186014158`; PR `#16` was marked Ready and squash merged as `4786e48108ea6bc9520272438543afee172f42af`; post-merge Main Run `31186407937` passed all required jobs.
+- Finalization verification：Documentation-only PR `#17` Commit `b50d12aad5f6a546a5b7ed58a561c67b943d76fa` passed Push Run `31186808919` and Pull Request Run `31186817142`; each run executed `quality-and-compose` and `secret-scan` successfully.
+- Required next action：Complete this documentation-only finalization PR and its post-merge verification, then begin the independently gated 2C-7 Browser E2E specification from the latest `main`.
