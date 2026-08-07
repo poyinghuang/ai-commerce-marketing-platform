@@ -2,6 +2,7 @@ package com.aicommerce.platform.asset.infrastructure.persistence;
 
 import java.util.UUID;
 import java.util.Optional;
+import java.util.List;
 
 import com.aicommerce.platform.asset.domain.Asset;
 import com.aicommerce.platform.asset.domain.AssetType;
@@ -34,4 +35,13 @@ public interface AssetJpaRepository extends ArchivableResourceRepository<Asset, 
             @Param("status") LifecycleStatus status, @Param("assetType") AssetType assetType,
             @Param("creativePlanUuid") UUID creativePlanUuid, @Param("campaignUuid") UUID campaignUuid,
             @Param("storageProvider") String storageProvider, Pageable pageable);
+
+    @Query("""
+            select a from Asset a
+            where a.productUuid = :productUuid
+              and (:includeArchived = true or a.lifecycleStatus = com.aicommerce.platform.common.domain.LifecycleStatus.ACTIVE)
+            order by a.updatedAt desc, a.assetUuid asc
+            """)
+    List<Asset> findForAggregate(@Param("productUuid") UUID productUuid,
+            @Param("includeArchived") boolean includeArchived);
 }

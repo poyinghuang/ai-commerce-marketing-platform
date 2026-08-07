@@ -6,8 +6,8 @@
 - Branch：`codex/2c-6-aggregate-integration`
 - Base Commit：`cf738e9284ab7bb4a66a19610cad528ebc6c1948`
 - Prerequisite 2C-5 Main CI：Run `31178905522` Passed
-- Implementation：Not started
-- Local Verification：Not started
+- Implementation：Complete
+- Local Verification：Passed
 - Remote CI：Not started
 - Manager Review：Not started
 - Manager Decision：Pending
@@ -119,16 +119,16 @@ Rules：
 
 ## Acceptance checklist
 
-- [ ] Aggregate response exactly matches the approved Product／Knowledge／Creative Plan／Campaign association／Asset shapes.
-- [ ] Default and include-archived lifecycle semantics are proven for every child type.
-- [ ] Archived Product remains readable and missing Product uses the existing error contract.
-- [ ] Each member retains independent lifecycle and version data; Aggregate has no mutation ETag.
-- [ ] Deterministic ordering and a constant maximum of five SQL statements are proven in PostgreSQL.
-- [ ] Aggregate executes in one read-only repeatable-read transaction and creates no Audit or version changes.
-- [ ] BFF remains fixed-origin／fixed-path, GET-only, exact-query bounded, and credential／actor safe.
-- [ ] Product Detail aggregate summary covers loading, empty, populated, archived, error／retry, and include-archived states.
-- [ ] V1–V4 and all existing Product／Knowledge／Creative Plan／Campaign／Asset contracts remain unchanged and green.
-- [ ] Local and Remote CI verification pass with no required step skipped.
+- [x] Aggregate response exactly matches the approved Product／Knowledge／Creative Plan／Campaign association／Asset shapes.
+- [x] Default and include-archived lifecycle semantics are proven for every child type.
+- [x] Archived Product remains readable and missing Product uses the existing error contract.
+- [x] Each member retains independent lifecycle and version data; Aggregate has no mutation ETag.
+- [x] Deterministic ordering and a constant maximum of five SQL statements are proven in PostgreSQL.
+- [x] Aggregate executes in one read-only repeatable-read transaction and creates no Audit or version changes.
+- [x] BFF remains fixed-origin／fixed-path, GET-only, exact-query bounded, and credential／actor safe.
+- [x] Product Detail aggregate summary covers loading, empty, populated, archived, error／retry, and include-archived states.
+- [x] V1–V4 and all existing Product／Knowledge／Creative Plan／Campaign／Asset contracts remain unchanged and green.
+- [ ] Local and Remote CI verification pass with no required step skipped. Local Passed; Remote CI Pending.
 - [ ] Independent Manager Decision is `APPROVE` before merge.
 - [ ] Post-merge `main` CI passes before 2C-7 begins.
 
@@ -142,3 +142,14 @@ Rules：
 ## Mandatory escalation
 
 Stop and escalate if implementation requires modifying V1–V4, adding a migration, silently truncating Aggregate data, changing an existing response or mutation contract, introducing a cache／materialized view／external index, weakening transaction consistency or BFF boundaries, adding credentials／authentication／RBAC／Tenant, or extending scope beyond read-only Aggregate and integration verification.
+
+## Developer delivery record
+
+- Backend：150 tests across 36 test classes passed with zero failure, error, or skip. The focused PostgreSQL suite proves deterministic lifecycle ordering, nested Campaign association metadata, immutable application views, archived Product readability, no Audit／version side effects, and exactly five prepared SQL statements before and after increasing every collection's cardinality.
+- Transaction boundary：`ProductAggregateQueryService#get` is read-only with `REPEATABLE_READ`; repository queries apply lifecycle filters and ordering in PostgreSQL, and Campaign／association uses one bounded join query.
+- Frontend：lint, typecheck, 16 test files／107 tests, production build, and production dependency audit passed. Aggregate BFF tests additionally prove fixed path／origin, GET-only export, exact boolean query, credential／actor isolation, sanitized upstream failure, approved response headers, and suppression of any upstream Aggregate ETag.
+- Docker Compose：config validation and cold pinned-image build passed; PostgreSQL, Backend, and Frontend became healthy. Backend and same-origin BFF smoke returned Product, Knowledge, Creative Plan, Campaign association, and Asset; default excluded an archived child, `includeArchived=true` included it, both responses were `no-store` without ETag, and attacker-controlled `target` query was rejected with 400.
+- Security：pinned Gitleaks history scan (35 commits) and working-directory scan found no leaks. V1–V4, dependency manifests, Runtime, Docker, CI workflow, credentials, and permissions were not changed.
+- Local actionlint：not installed; no workflow file changed. Required actionlint evidence remains Pending Remote CI.
+- Initial verification findings：the first PostgreSQL focused run exposed an ambiguous `Instant` type only in test seed SQL and was corrected with explicit `Timestamp`; an ordering-test expectation was corrected from Java signed-`long` UUID natural order to PostgreSQL canonical UUID order. One multi-file Vitest focused run had a worker-start timeout, and one parallel full run timed out an existing Knowledge test under combined Docker／JVM load; the affected tests passed independently and the final non-parallel full Frontend suite passed 107／107.
+- Delivery state：implementation and local verification are complete. Commit, Push, Draft PR, Remote CI, independent Manager Review, and Merge remain Pending.

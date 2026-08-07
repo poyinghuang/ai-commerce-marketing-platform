@@ -32,4 +32,18 @@ public interface CampaignProductJpaRepository
           + " cp.productUuid=:productUuid")
   Optional<CampaignProduct> findForMutation(
       @Param("campaignUuid") UUID campaignUuid, @Param("productUuid") UUID productUuid);
+
+  @Query(
+      """
+      select c, cp from CampaignProduct cp
+      join CampaignPlan c on c.campaignUuid = cp.campaignUuid
+      where cp.productUuid = :productUuid
+        and (:includeArchived = true or (
+          cp.lifecycleStatus = com.aicommerce.platform.common.domain.LifecycleStatus.ACTIVE
+          and c.lifecycleStatus = com.aicommerce.platform.common.domain.LifecycleStatus.ACTIVE))
+      order by c.updatedAt desc, c.campaignUuid asc
+      """)
+  List<Object[]> findCampaignsForAggregate(
+      @Param("productUuid") UUID productUuid,
+      @Param("includeArchived") boolean includeArchived);
 }
