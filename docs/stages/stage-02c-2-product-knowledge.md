@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status：Manager approved, pending merge
+- Status：Completed
 - Branch：`codex/2c-2-product-knowledge`
 - Base Commit：`9c2b678a7329c8a8c9519e05cc6bc4eec12d5e61`
 - Implementation：Complete
@@ -11,7 +11,7 @@
 - Manager Review：Passed
 - Manager Decision：APPROVE
 - Human Review Required：No
-- Merge：Not started
+- Merge：Passed
 - Milestone 2C-4：Locked
 
 ## Objective
@@ -71,7 +71,7 @@ Deliver the Product Knowledge Backend, same-origin BFF, and Product Detail Knowl
 - [x] No out-of-scope resource or later-stage behavior is implemented.
 - [x] Local and Remote CI verification pass.
 - [x] Independent Manager Decision is `APPROVE` before merge.
-- [ ] Post-merge main CI passes before downstream integration depends on this slice.
+- [x] Post-merge main CI passes before downstream integration depends on this slice.
 
 ## Mandatory escalation
 
@@ -94,7 +94,10 @@ Stop and escalate if implementation requires changing V1–V4, breaking the Prod
 - Manager Review: Passed after the required acceptance-coverage corrections in `8f3d4c3`.
 - Manager Decision: `APPROVE`; no blocking or critical findings remain and no human escalation is required.
 - Manager-reviewed implementation Head: `f5e27be0b6f2c173b0c5e93b2a2a519d11f92bd5`.
-- Merge: Pending. Post-merge `main` verification remains required before 2C-4 may start.
+- Merge: Passed using Squash merge. Main commit: `b17a22549c9bd34eef3e71418ad8c27e6b4756e2`.
+- Post-merge verification: Passed. Main Push Run `31147480898` completed `quality-and-compose` and `secret-scan` successfully.
+- Final Manager documentation Head before merge: `d29b038003be7e5ce7d65491209ad6564c00eadc`.
+- Downstream gate: 2C-2 is complete; 2C-4 remains locked until 2C-3 is also completed and verified on `main`.
 
 ## Manager verification record
 
