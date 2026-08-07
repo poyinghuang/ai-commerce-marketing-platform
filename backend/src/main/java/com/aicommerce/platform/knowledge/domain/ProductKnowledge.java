@@ -43,9 +43,9 @@ public class ProductKnowledge extends ArchivableEntity {
         this.knowledgeUuid = Objects.requireNonNull(knowledgeUuid, "knowledgeUuid is required");
         this.productUuid = Objects.requireNonNull(productUuid, "productUuid is required");
         this.knowledgeType = Objects.requireNonNull(knowledgeType, "knowledgeType is required");
-        this.title = requireText(title, "title");
-        this.content = requireText(content, "content");
-        this.source = source;
+        this.title = requireText(title, "title", 256);
+        this.content = requireText(content, "content", 20000);
+        this.source = normalizeSource(source);
     }
 
     public static ProductKnowledge create(UUID knowledgeUuid, UUID productUuid, KnowledgeType knowledgeType,
@@ -53,11 +53,27 @@ public class ProductKnowledge extends ArchivableEntity {
         return new ProductKnowledge(knowledgeUuid, productUuid, knowledgeType, title, content, source);
     }
 
-    private static String requireText(String value, String fieldName) {
+    public void update(KnowledgeType knowledgeType, String title, String content, String source) {
+        this.knowledgeType = Objects.requireNonNull(knowledgeType, "knowledgeType is required");
+        this.title = requireText(title, "title", 256);
+        this.content = requireText(content, "content", 20000);
+        this.source = normalizeSource(source);
+    }
+
+    private static String requireText(String value, String fieldName, int maxLength) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " is required");
         }
-        return value.trim();
+        String normalized = value.trim();
+        if (normalized.length() > maxLength) throw new IllegalArgumentException(fieldName + " exceeds " + maxLength + " characters");
+        return normalized;
+    }
+
+    private static String normalizeSource(String value) {
+        if (value == null || value.isBlank()) return null;
+        String normalized = value.trim();
+        if (normalized.length() > 2048) throw new IllegalArgumentException("source exceeds 2048 characters");
+        return normalized;
     }
 
     public UUID getKnowledgeUuid() { return knowledgeUuid; }

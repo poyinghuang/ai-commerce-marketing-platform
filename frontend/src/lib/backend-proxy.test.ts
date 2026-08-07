@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { forwardCreativePlanRequest, forwardProductRequest } from "./backend-proxy";
+import { forwardCreativePlanRequest, forwardKnowledgeRequest, forwardProductRequest } from "./backend-proxy";
 
 describe("product backend proxy", () => {
   afterEach(() => {
@@ -88,10 +88,102 @@ describe("product backend proxy", () => {
     const plan = "79be8758-1f0d-4ca5-bad6-f51aa923cdb9";
     const fetchMock = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ code: "PRECONDITION_FAILED" }), { status: 412, headers: { "Content-Type": "application/json", ETag: 'W/"2"' } })).mockRejectedValueOnce(new DOMException("timed out", "TimeoutError"));
     vi.stubGlobal("fetch", fetchMock);
-    const request = new NextRequest(`http://localhost/api/products/${product}/creative-plans/${plan}`, { method: "PATCH", headers: { "If-Match": 'W/"1"' }, body: "{}" });
+    const request = new NextRequest(`http://localhost/api/products/${product}/creative-plans/${plan}?status=ALL`, { method: "PATCH", headers: { "If-Match": 'W/"1"' }, body: "{}" });
     const conflict = await forwardCreativePlanRequest(request, `/api/products/${product}/creative-plans/${plan}`, { method: "PATCH", contentType: "application/merge-patch+json" });
+    expect((fetchMock.mock.calls[0][0] as URL).search).toBe("");
     expect(conflict.status).toBe(412); expect(await conflict.json()).toEqual({ code: "PRECONDITION_FAILED" }); expect(conflict.headers.get("ETag")).toBe('W/"2"');
     const unavailable = await forwardCreativePlanRequest(new NextRequest(`http://localhost/api/products/${product}/creative-plans`), `/api/products/${product}/creative-plans`, { method: "GET" });
     expect(unavailable.status).toBe(503); expect(await unavailable.json()).toEqual({ code: "BACKEND_UNAVAILABLE", message: "Backend is unavailable" });
+  });
+
+  it("allows only structured knowledge paths and never forwards credentials", async () => {
+    process.env.BACKEND_INTERNAL_URL = "http://backend:8080";
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ content: [] }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const productUuid = "d4476a19-30ed-48d9-a518-f9b111bd0911";
+    const knowledgeUuid = "5cf53b23-eabe-4b51-b565-62dbe4333721";
+    const request = new NextRequest(`http://localhost:3000/api/products/${productUuid}/knowledge?status=ALL&target=http://evil`, {
+      headers: { Cookie: "secret=1", Authorization: "Bearer secret", "X-Actor-ID": "evil" },
+    });
+    await forwardKnowledgeRequest(request, `/api/products/${productUuid}/knowledge/${knowledgeUuid}`, { method: "GET" });
+    const [target, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(target.toString()).toBe(`http://backend:8080/api/products/${productUuid}/knowledge/${knowledgeUuid}`);
+    const headers = new Headers(init.headers);
+    expect(headers.has("Cookie")).toBe(false);
+    expect(headers.has("Authorization")).toBe(false);
+    expect(headers.has("X-Actor-ID")).toBe(false);
+    const invalid = await forwardKnowledgeRequest(request, `/api/products/${productUuid}/knowledge/${knowledgeUuid}/restore/extra`, { method: "POST" });
+    expect(invalid.status).toBe(400);
+  });
+
+  it("rejects oversized Knowledge payloads before contacting the Backend", async () => {
+    process.env.BACKEND_INTERNAL_URL = "http://backend:8080";
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const productUuid = "d4476a19-30ed-48d9-a518-f9b111bd0911";
+    const request = new NextRequest(`http://localhost:3000/api/products/${productUuid}/knowledge`, {
+      method: "POST",
+      body: JSON.stringify({ content: "x".repeat(65 * 1024) }),
+    });
+
+    const response = await forwardKnowledgeRequest(
+      request,
+      `/api/products/${productUuid}/knowledge`,
+      { method: "POST", contentType: "application/json" },
+    );
+
+    expect(response.status).toBe(413);
+    expect(await response.json()).toEqual({ code: "PAYLOAD_TOO_LARGE", message: "Request body is too large" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("maps Backend timeout or network failure to a sanitized unavailable error", async () => {
+    process.env.BACKEND_INTERNAL_URL = "http://backend:8080";
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new DOMException("timed out", "TimeoutError")));
+    const productUuid = "d4476a19-30ed-48d9-a518-f9b111bd0911";
+
+    const response = await forwardKnowledgeRequest(
+      new NextRequest(`http://localhost:3000/api/products/${productUuid}/knowledge`),
+      `/api/products/${productUuid}/knowledge`,
+      { method: "GET" },
+    );
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ code: "BACKEND_UNAVAILABLE", message: "Backend is unavailable" });
+  });
+
+  it("preserves Backend status, body and approved Knowledge response headers", async () => {
+    process.env.BACKEND_INTERNAL_URL = "http://backend:8080";
+    const productUuid = "d4476a19-30ed-48d9-a518-f9b111bd0911";
+    const knowledgeUuid = "5cf53b23-eabe-4b51-b565-62dbe4333721";
+    const backendBody = { knowledgeUuid, title: "Created" };
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(backendBody), {
+      status: 201,
+      headers: {
+        "Content-Type": "application/json",
+        ETag: 'W/"0"',
+        Location: `/api/products/${productUuid}/knowledge/${knowledgeUuid}`,
+        "X-Request-ID": "knowledge-create-request",
+        "X-Internal-Header": "must-not-leak",
+      },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const request = new NextRequest(`http://localhost:3000/api/products/${productUuid}/knowledge`, {
+      method: "POST",
+      body: JSON.stringify({ knowledgeType: "FEATURE", title: "Created", content: "Content" }),
+    });
+
+    const response = await forwardKnowledgeRequest(
+      request,
+      `/api/products/${productUuid}/knowledge`,
+      { method: "POST", contentType: "application/json" },
+    );
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toEqual(backendBody);
+    expect(response.headers.get("ETag")).toBe('W/"0"');
+    expect(response.headers.get("Location")).toBe(`/api/products/${productUuid}/knowledge/${knowledgeUuid}`);
+    expect(response.headers.get("X-Request-ID")).toBe("knowledge-create-request");
+    expect(response.headers.has("X-Internal-Header")).toBe(false);
   });
 });

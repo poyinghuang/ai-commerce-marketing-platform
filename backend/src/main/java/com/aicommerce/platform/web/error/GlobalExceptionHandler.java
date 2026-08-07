@@ -15,6 +15,10 @@ import com.aicommerce.platform.creativeplan.application.CreativePlanArchivedExce
 import com.aicommerce.platform.creativeplan.application.CreativePlanNotFoundException;
 import com.aicommerce.platform.creativeplan.application.CreativePlanPreconditionFailedException;
 import com.aicommerce.platform.creativeplan.application.CreativePlanValidationException;
+import com.aicommerce.platform.knowledge.application.KnowledgeArchivedException;
+import com.aicommerce.platform.knowledge.application.KnowledgeNotFoundException;
+import com.aicommerce.platform.knowledge.application.KnowledgePreconditionFailedException;
+import com.aicommerce.platform.knowledge.application.KnowledgeValidationException;
 import com.aicommerce.platform.web.RequestIdFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -67,6 +71,12 @@ public class GlobalExceptionHandler {
                 List.of(new FieldErrorDetail(exception.getField(), exception.getMessage()))));
     }
 
+    @ExceptionHandler(KnowledgeValidationException.class)
+    ResponseEntity<ApiError> handleKnowledgeValidation(KnowledgeValidationException exception, HttpServletRequest request) {
+        return ResponseEntity.badRequest().body(error("VALIDATION_ERROR", "Request validation failed", request,
+                List.of(new FieldErrorDetail(exception.getField(), exception.getMessage()))));
+    }
+
     @ExceptionHandler(CreativePlanNotFoundException.class)
     ResponseEntity<ApiError> handleCreativePlanNotFound(HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error("CREATIVE_PLAN_NOT_FOUND", "Creative plan not found", request, null));
@@ -81,6 +91,15 @@ public class GlobalExceptionHandler {
     ResponseEntity<ApiError> handleCreativePlanPreconditionFailed(HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.PRECONDITION_FAILED).body(error("PRECONDITION_FAILED", "Creative plan version does not match If-Match", request, null));
     }
+
+    @ExceptionHandler(KnowledgeNotFoundException.class)
+    ResponseEntity<ApiError> handleKnowledgeNotFound(HttpServletRequest request) { return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error("KNOWLEDGE_NOT_FOUND", "Knowledge not found", request, null)); }
+
+    @ExceptionHandler(KnowledgeArchivedException.class)
+    ResponseEntity<ApiError> handleKnowledgeArchived(HttpServletRequest request) { return ResponseEntity.status(HttpStatus.CONFLICT).body(error("KNOWLEDGE_ARCHIVED", "Archived knowledge cannot be modified", request, null)); }
+
+    @ExceptionHandler(KnowledgePreconditionFailedException.class)
+    ResponseEntity<ApiError> handleKnowledgePreconditionFailed(HttpServletRequest request) { return ResponseEntity.status(HttpStatus.PRECONDITION_FAILED).body(error("PRECONDITION_FAILED", "Knowledge version does not match If-Match", request, null)); }
 
     @ExceptionHandler(InvalidMergePatchException.class)
     ResponseEntity<ApiError> handleInvalidMergePatch(

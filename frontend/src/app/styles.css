@@ -85,6 +85,11 @@ td small { display: block; margin-top: 0.25rem; color: #75827c; }
 .creative-form { display:grid; gap:1rem; border-top:1px solid #e0e8e3; margin-top:1.5rem; padding-top:1.5rem; }
 .creative-form label { display:grid; gap:.4rem; font-weight:700; color:#40534b; }
 .creative-form textarea { min-height:6rem; resize:vertical; }
+.knowledge-filters { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }.knowledge-filter { display: flex; align-items: center; gap: .75rem; max-width: 18rem; font-weight: 750; }
+.knowledge-list { display: grid; gap: 1rem; }
+.knowledge-card { display: flex; justify-content: space-between; gap: 1rem; padding: 1.25rem; border: 1px solid #dce5df; border-radius: .85rem; background: #fbfcfa; }
+.knowledge-card h3 { margin: .75rem 0 .35rem; }.knowledge-card p { white-space: pre-wrap; line-height: 1.55; }.knowledge-card small { color: #64736c; }
+.knowledge-actions { display: flex; gap: .6rem; align-items: flex-start; }.knowledge-form { margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid #dce5df; }
 
 .health { display: flex; align-items: center; gap: 0.75rem; margin-top: 2rem; color: #5c6c65; }
 .health-dot { width: 0.75rem; height: 0.75rem; border-radius: 50%; background: #e1a736; }

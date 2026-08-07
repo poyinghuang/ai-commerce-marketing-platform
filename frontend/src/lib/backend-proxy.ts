@@ -4,7 +4,10 @@ const TIMEOUT_MS = 10_000;
 const MAX_BODY_BYTES = 64 * 1024;
 const SAFE_REQUEST_ID = /^[A-Za-z0-9._:-]{1,128}$/;
 const PRODUCT_UUID_PATH = "[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
-const SAFE_BACKEND_PATH = new RegExp(`^/api/products(?:/${PRODUCT_UUID_PATH}(?:/restore)?)?$`, "i");
+const SAFE_PRODUCT_PATH = new RegExp(`^/api/products(?:/${PRODUCT_UUID_PATH}(?:/restore)?)?$`, "i");
+const SAFE_KNOWLEDGE_PATH = new RegExp(
+  `^/api/products/${PRODUCT_UUID_PATH}/knowledge(?:/${PRODUCT_UUID_PATH}(?:/restore)?)?$`, "i",
+);
 const SAFE_CREATIVE_PLAN_PATH = new RegExp(
   `^/api/products/${PRODUCT_UUID_PATH}/creative-plans(?:/${PRODUCT_UUID_PATH}(?:/restore)?)?$`, "i",
 );
@@ -19,59 +22,33 @@ export async function forwardProductRequest(
   backendPath: string,
   options: ProxyOptions,
 ) {
-  if (!SAFE_BACKEND_PATH.test(backendPath)) {
+  if (!SAFE_PRODUCT_PATH.test(backendPath)) {
     return proxyError("INVALID_PRODUCT_PATH", "Product path is invalid", 400);
   }
+  const allowedQuery = backendPath === "/api/products"
+    ? new Set(["page", "size", "status", "category", "keyword", "sku", "productId", "sort"])
+    : new Set<string>();
+  return forwardAllowlistedRequest(request, backendPath, options, allowedQuery);
+}
 
-  const backendOrigin = resolveBackendOrigin();
-  if (!backendOrigin) {
-    return proxyError("BACKEND_UNAVAILABLE", "Backend is unavailable", 503);
+export async function forwardKnowledgeRequest(request: NextRequest, backendPath: string, options: ProxyOptions) {
+  if (!SAFE_KNOWLEDGE_PATH.test(backendPath)) {
+    return proxyError("INVALID_KNOWLEDGE_PATH", "Knowledge path is invalid", 400);
   }
-
-  const headers = new Headers();
-  if (options.contentType) headers.set("Content-Type", options.contentType);
-  const ifMatch = request.headers.get("If-Match");
-  if (ifMatch) headers.set("If-Match", ifMatch);
-  const requestId = request.headers.get("X-Request-ID");
-  if (requestId && SAFE_REQUEST_ID.test(requestId)) headers.set("X-Request-ID", requestId);
-
-  let body: string | undefined;
-  if (options.method === "POST" || options.method === "PATCH") {
-    body = await request.text();
-    if (new TextEncoder().encode(body).byteLength > MAX_BODY_BYTES) {
-      return proxyError("PAYLOAD_TOO_LARGE", "Request body is too large", 413);
-    }
-  }
-
-  try {
-    const backendUrl = new URL(backendPath, backendOrigin);
-    for (const [key, value] of allowlistedProductQuery(request.nextUrl.searchParams)) {
-      backendUrl.searchParams.append(key, value);
-    }
-    const response = await fetch(backendUrl, {
-      method: options.method,
-      headers,
-      body,
-      cache: "no-store",
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-    const responseHeaders = new Headers();
-    for (const header of ["Content-Type", "ETag", "Location", "X-Request-ID"]) {
-      const value = response.headers.get(header);
-      if (value) responseHeaders.set(header, value);
-    }
-    const responseBody = response.status === 204 ? null : await response.text();
-    return new NextResponse(responseBody, { status: response.status, headers: responseHeaders });
-  } catch {
-    return proxyError("BACKEND_UNAVAILABLE", "Backend is unavailable", 503);
-  }
+  const allowedQuery = backendPath.endsWith("/knowledge")
+    ? new Set(["page", "size", "status", "sort"])
+    : new Set<string>();
+  return forwardAllowlistedRequest(request, backendPath, options, allowedQuery);
 }
 
 export async function forwardCreativePlanRequest(request: NextRequest, backendPath: string, options: ProxyOptions) {
   if (!SAFE_CREATIVE_PLAN_PATH.test(backendPath)) {
     return proxyError("INVALID_CREATIVE_PLAN_PATH", "Creative plan path is invalid", 400);
   }
-  return forwardAllowlistedRequest(request, backendPath, options, new Set(["page", "size", "status", "sort"]));
+  const allowedQuery = backendPath.endsWith("/creative-plans")
+    ? new Set(["page", "size", "status", "sort"])
+    : new Set<string>();
+  return forwardAllowlistedRequest(request, backendPath, options, allowedQuery);
 }
 
 async function forwardAllowlistedRequest(
@@ -118,11 +95,6 @@ function resolveBackendOrigin() {
   } catch {
     return null;
   }
-}
-
-function allowlistedProductQuery(searchParams: URLSearchParams) {
-  const allowed = new Set(["page", "size", "status", "category", "keyword", "sku", "productId", "sort"]);
-  return Array.from(searchParams.entries()).filter(([key]) => allowed.has(key));
 }
 
 function proxyError(code: string, message: string, status: number) {
