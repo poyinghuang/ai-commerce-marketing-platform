@@ -46,10 +46,10 @@ class Milestone2CSchemaIntegrationTest {
     @Autowired AssetJpaRepository assetRepository;
 
     @Test
-    void v4CreatesExactlyTheApprovedTablesAndRepositoriesLoadUnderHibernateValidation() {
+    void v4TablesRemainAvailableAndRepositoriesLoadUnderLatestHibernateValidation() {
         assertThat(List.of(flyway.info().applied()).stream()
                 .map(info -> info.getVersion().getVersion()))
-                .containsExactly("1", "2", "3", "4");
+                .containsExactly("1", "2", "3", "4", "5");
         assertThat(flyway.info().pending()).isEmpty();
         assertThat(List.of("product_knowledge", "creative_plans", "campaign_plans", "campaign_products", "assets"))
                 .allMatch(this::tableExists);
