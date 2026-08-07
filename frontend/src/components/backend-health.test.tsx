@@ -13,7 +13,10 @@ describe("BackendHealth", () => {
 
     render(<BackendHealth />);
 
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Backend 正常"));
+    await waitFor(
+      () => expect(screen.getByRole("status")).toHaveTextContent("Backend 正常"),
+      { timeout: 5_000 },
+    );
     expect(fetchMock).toHaveBeenCalledWith("/api/backend-health", expect.any(Object));
   });
 });

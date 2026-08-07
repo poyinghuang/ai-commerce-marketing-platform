@@ -11,6 +11,9 @@ const SAFE_KNOWLEDGE_PATH = new RegExp(
 const SAFE_CREATIVE_PLAN_PATH = new RegExp(
   `^/api/products/${PRODUCT_UUID_PATH}/creative-plans(?:/${PRODUCT_UUID_PATH}(?:/restore)?)?$`, "i",
 );
+const SAFE_ASSET_PATH = new RegExp(
+  `^/api/products/${PRODUCT_UUID_PATH}/assets(?:/${PRODUCT_UUID_PATH}(?:/restore)?)?$`, "i",
+);
 const SAFE_CAMPAIGN_PATH = new RegExp(
   `^/api/campaigns(?:/${PRODUCT_UUID_PATH}(?:/restore|/products(?:/${PRODUCT_UUID_PATH}(?:/restore)?)?)?)?$`, "i",
 );
@@ -50,6 +53,16 @@ export async function forwardCreativePlanRequest(request: NextRequest, backendPa
   }
   const allowedQuery = backendPath.endsWith("/creative-plans")
     ? new Set(["page", "size", "status", "sort"])
+    : new Set<string>();
+  return forwardAllowlistedRequest(request, backendPath, options, allowedQuery);
+}
+
+export async function forwardAssetRequest(request: NextRequest, backendPath: string, options: ProxyOptions) {
+  if (!SAFE_ASSET_PATH.test(backendPath)) {
+    return proxyError("INVALID_ASSET_PATH", "Asset path is invalid", 400);
+  }
+  const allowedQuery = backendPath.endsWith("/assets")
+    ? new Set(["page", "size", "status", "assetType", "creativePlanUuid", "campaignUuid", "storageProvider", "sort"])
     : new Set<string>();
   return forwardAllowlistedRequest(request, backendPath, options, allowedQuery);
 }

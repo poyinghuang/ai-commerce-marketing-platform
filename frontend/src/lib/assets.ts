@@ -1,0 +1,12 @@
+export type AssetType="IMAGE"|"VIDEO"|"DOCUMENT"|"OTHER";
+export type Asset={assetUuid:string;productUuid:string;creativePlanUuid:string|null;campaignUuid:string|null;assetType:AssetType;purpose:string|null;storageProvider:string|null;providerFileId:string|null;fileUrl:string|null;mediaType:string|null;originalFilename:string|null;sizeBytes:number|null;checksumSha256:string|null;providerMetadata:Record<string,unknown>|null;lifecycleStatus:"ACTIVE"|"ARCHIVED";archivedAt:string|null;createdAt:string;updatedAt:string;version:number};
+export type AssetPage={content:Asset[];page:number;size:number;totalElements:number;totalPages:number;sort:string};
+export type AssetInput={creativePlanUuid:string;campaignUuid:string;assetType:AssetType;purpose:string;storageProvider:string;providerFileId:string;fileUrl:string;mediaType:string;originalFilename:string;sizeBytes:string;checksumSha256:string;providerMetadata:string};
+export const emptyAsset:AssetInput={creativePlanUuid:"",campaignUuid:"",assetType:"IMAGE",purpose:"",storageProvider:"",providerFileId:"",fileUrl:"",mediaType:"",originalFilename:"",sizeBytes:"",checksumSha256:"",providerMetadata:""};
+export function toAssetInput(a:Asset):AssetInput{return{creativePlanUuid:a.creativePlanUuid??"",campaignUuid:a.campaignUuid??"",assetType:a.assetType,purpose:a.purpose??"",storageProvider:a.storageProvider??"",providerFileId:a.providerFileId??"",fileUrl:a.fileUrl??"",mediaType:a.mediaType??"",originalFilename:a.originalFilename??"",sizeBytes:a.sizeBytes?.toString()??"",checksumSha256:a.checksumSha256??"",providerMetadata:a.providerMetadata?JSON.stringify(a.providerMetadata,null,2):""};}
+export function assetPayload(input:AssetInput,creating:boolean){
+ const optional=(v:string)=>v.trim()===""?null:v.trim();
+ const result:Record<string,unknown>={assetType:input.assetType,purpose:optional(input.purpose),storageProvider:optional(input.storageProvider),providerFileId:optional(input.providerFileId),fileUrl:optional(input.fileUrl),mediaType:optional(input.mediaType),originalFilename:optional(input.originalFilename),sizeBytes:input.sizeBytes.trim()===""?null:Number(input.sizeBytes),checksumSha256:optional(input.checksumSha256),providerMetadata:input.providerMetadata.trim()===""?null:JSON.parse(input.providerMetadata)};
+ if(creating){result.creativePlanUuid=optional(input.creativePlanUuid);result.campaignUuid=optional(input.campaignUuid);}
+ return result;
+}

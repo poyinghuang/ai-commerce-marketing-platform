@@ -15,4 +15,8 @@ public interface ProductJpaRepository extends JpaRepository<Product, UUID>, JpaS
     @Lock(LockModeType.PESSIMISTIC_READ)
     @Query("select p from Product p where p.productUuid = :productUuid")
     Optional<Product> findForKnowledgeMutation(@Param("productUuid") UUID productUuid);
+
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    @Query("select p from Product p where p.productUuid = :productUuid")
+    Optional<Product> findForAssetMutation(@Param("productUuid") UUID productUuid);
 }

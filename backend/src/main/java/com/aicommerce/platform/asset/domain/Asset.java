@@ -1,5 +1,8 @@
 package com.aicommerce.platform.asset.domain;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -65,6 +68,53 @@ public class Asset extends ArchivableEntity {
     public static Asset create(UUID assetUuid, UUID productUuid, UUID creativePlanUuid, UUID campaignUuid,
             AssetType assetType) {
         return new Asset(assetUuid, productUuid, creativePlanUuid, campaignUuid, assetType);
+    }
+
+    public void update(AssetType assetType, String purpose, String storageProvider,
+            String providerFileId, String fileUrl, String mediaType, String originalFilename,
+            Long sizeBytes, String checksumSha256, Map<String, Object> providerMetadata) {
+        if (getLifecycleStatus() == com.aicommerce.platform.common.domain.LifecycleStatus.ARCHIVED) {
+            throw new IllegalStateException("Archived asset cannot be modified");
+        }
+        this.assetType = Objects.requireNonNull(assetType, "assetType is required");
+        this.purpose = optional(purpose, "purpose", 256);
+        this.storageProvider = optional(storageProvider, "storageProvider", 64);
+        this.providerFileId = optional(providerFileId, "providerFileId", 512);
+        this.fileUrl = url(fileUrl);
+        this.mediaType = optional(mediaType, "mediaType", 255);
+        this.originalFilename = optional(originalFilename, "originalFilename", 512);
+        if (sizeBytes != null && sizeBytes < 0) {
+            throw new IllegalArgumentException("sizeBytes must be non-negative");
+        }
+        this.sizeBytes = sizeBytes;
+        String checksum = optional(checksumSha256, "checksumSha256", 64);
+        if (checksum != null && !checksum.matches("[0-9a-f]{64}")) {
+            throw new IllegalArgumentException("checksumSha256 must be 64 lower-case hexadecimal characters");
+        }
+        this.checksumSha256 = checksum;
+        this.providerMetadata = providerMetadata == null ? null : new LinkedHashMap<>(providerMetadata);
+    }
+
+    private static String url(String value) {
+        String normalized = optional(value, "fileUrl", 2048);
+        if (normalized == null) return null;
+        try {
+            URI uri = new URI(normalized);
+            if (!uri.isAbsolute() || !("http".equalsIgnoreCase(uri.getScheme())
+                    || "https".equalsIgnoreCase(uri.getScheme()))) {
+                throw new IllegalArgumentException("fileUrl must be an absolute HTTP(S) URL");
+            }
+            return normalized;
+        } catch (URISyntaxException exception) {
+            throw new IllegalArgumentException("fileUrl must be a valid URL", exception);
+        }
+    }
+
+    private static String optional(String value, String field, int max) {
+        if (value == null || value.isBlank()) return null;
+        String normalized = value.trim();
+        if (normalized.length() > max) throw new IllegalArgumentException(field + " exceeds " + max + " characters");
+        return normalized;
     }
 
     public UUID getAssetUuid() { return assetUuid; }

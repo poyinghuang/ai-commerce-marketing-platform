@@ -1,5 +1,6 @@
 package com.aicommerce.platform.web.error;
 
+import com.aicommerce.platform.asset.application.*;
 import com.aicommerce.platform.campaign.application.*;
 import com.aicommerce.platform.creativeplan.application.CreativePlanArchivedException;
 import com.aicommerce.platform.creativeplan.application.CreativePlanNotFoundException;
@@ -37,6 +38,32 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 public class GlobalExceptionHandler {
 
   private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+  @ExceptionHandler(AssetValidationException.class)
+  ResponseEntity<ApiError> handleAssetValidation(AssetValidationException e, HttpServletRequest request) {
+    return ResponseEntity.badRequest().body(error("VALIDATION_ERROR", "Request validation failed", request,
+        List.of(new FieldErrorDetail(e.getField(), e.getMessage()))));
+  }
+
+  @ExceptionHandler(AssetNotFoundException.class)
+  ResponseEntity<ApiError> handleAssetNotFound(HttpServletRequest request) {
+    return ResponseEntity.status(404).body(error("ASSET_NOT_FOUND", "Asset not found", request, null));
+  }
+
+  @ExceptionHandler(AssetArchivedException.class)
+  ResponseEntity<ApiError> handleAssetArchived(HttpServletRequest request) {
+    return ResponseEntity.status(409).body(error("RESOURCE_ARCHIVED", "Archived asset cannot be modified", request, null));
+  }
+
+  @ExceptionHandler(AssetPreconditionFailedException.class)
+  ResponseEntity<ApiError> handleAssetPrecondition(HttpServletRequest request) {
+    return ResponseEntity.status(412).body(error("PRECONDITION_FAILED", "Asset version does not match If-Match", request, null));
+  }
+
+  @ExceptionHandler(AssetRelationshipConflictException.class)
+  ResponseEntity<ApiError> handleAssetRelationshipConflict(HttpServletRequest request) {
+    return ResponseEntity.status(409).body(error("RELATIONSHIP_CONFLICT", "Asset relationship is not active or valid", request, null));
+  }
 
   @ExceptionHandler(CampaignValidationException.class)
   ResponseEntity<ApiError> handleCampaignValidation(
