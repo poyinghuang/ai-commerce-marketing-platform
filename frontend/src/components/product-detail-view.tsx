@@ -8,8 +8,9 @@ import { createMergePatch, productToInput } from "@/lib/products";
 import { CreativePlansTab } from "@/components/creative-plans-tab";
 import { KnowledgeTab } from "@/components/knowledge-tab";
 import { CampaignsTab } from "@/components/campaigns-tab";
+import { AssetsTab } from "@/components/assets-tab";
 
-type ProductDetailTab = "product" | "knowledge" | "creative-plans" | "campaigns";
+type ProductDetailTab = "product" | "knowledge" | "creative-plans" | "campaigns" | "assets";
 
 export function ProductDetailView({ productUuid, initialTab = "product" }: { productUuid: string; initialTab?: ProductDetailTab }) {
   const [product, setProduct] = useState<Product | null>(null);
@@ -120,8 +121,11 @@ export function ProductDetailView({ productUuid, initialTab = "product" }: { pro
         <Link href={`/products/${productUuid}?tab=knowledge`}>Product Knowledge</Link>
         <Link href={`/products/${productUuid}?tab=creative-plans`}>Creative Plans</Link>
         <Link href={`/products/${productUuid}?tab=campaigns`}>Campaigns</Link>
+        <Link href={`/products/${productUuid}?tab=assets`}>Assets</Link>
       </nav>
-      {initialTab === "campaigns" ? (
+      {initialTab === "assets" ? (
+        <AssetsTab productUuid={productUuid} productArchived={product.lifecycleStatus === "ARCHIVED"} />
+      ) : initialTab === "campaigns" ? (
         <CampaignsTab productUuid={productUuid} productArchived={product.lifecycleStatus === "ARCHIVED"} />
       ) : initialTab === "creative-plans" ? (
         <CreativePlansTab productUuid={productUuid} productArchived={product.lifecycleStatus === "ARCHIVED"} />

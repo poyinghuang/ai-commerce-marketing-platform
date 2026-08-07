@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { forwardCampaignRequest, forwardCreativePlanRequest, forwardKnowledgeRequest, forwardProductRequest } from "./backend-proxy";
+import { forwardAssetRequest, forwardCampaignRequest, forwardCreativePlanRequest, forwardKnowledgeRequest, forwardProductRequest } from "./backend-proxy";
 
 describe("product backend proxy", () => {
   afterEach(() => {
@@ -317,5 +317,31 @@ describe("product backend proxy", () => {
     expect(response.headers.get("Location")).toBe(`/api/campaigns/${campaignUuid}`);
     expect(response.headers.get("X-Request-ID")).toBe("backend-request");
     expect(response.headers.has("X-Internal")).toBe(false);
+  });
+
+  it("keeps Asset paths, collection queries, credentials and response headers isolated", async () => {
+    process.env.BACKEND_INTERNAL_URL = "http://backend:8080";
+    const product = "d4476a19-30ed-48d9-a518-f9b111bd0911";
+    const asset = "79be8758-1f0d-4ca5-bad6-f51aa923cdb9";
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200, headers: { ETag: 'W/"1"', "X-Request-ID": "safe", "X-Internal": "hidden" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    const request = new NextRequest(`http://localhost/api/products/${product}/assets?assetType=IMAGE&target=http://evil`, { headers: { Cookie: "secret", Authorization: "Bearer secret", "X-Actor-ID": "evil", "If-Match": 'W/"0"' } });
+    const response = await forwardAssetRequest(request, `/api/products/${product}/assets`, { method: "GET" });
+    const [target, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(target.toString()).toBe(`http://backend:8080/api/products/${product}/assets?assetType=IMAGE`);
+    const headers = new Headers(init.headers); expect(headers.has("Cookie")).toBe(false); expect(headers.has("Authorization")).toBe(false); expect(headers.has("X-Actor-ID")).toBe(false);
+    expect(response.headers.get("ETag")).toBe('W/"1"'); expect(response.headers.get("X-Request-ID")).toBe("safe"); expect(response.headers.has("X-Internal")).toBe(false);
+    expect((await forwardAssetRequest(request, `http://evil/${asset}`, { method: "GET" })).status).toBe(400);
+  });
+
+  it("strips Asset collection queries from detail paths and enforces payload size", async () => {
+    process.env.BACKEND_INTERNAL_URL = "http://backend:8080";
+    const product = "d4476a19-30ed-48d9-a518-f9b111bd0911";
+    const asset = "79be8758-1f0d-4ca5-bad6-f51aa923cdb9";
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}")); vi.stubGlobal("fetch", fetchMock);
+    await forwardAssetRequest(new NextRequest(`http://localhost/api?status=ALL`), `/api/products/${product}/assets/${asset}`, { method: "GET" });
+    expect((fetchMock.mock.calls[0][0] as URL).search).toBe("");
+    const tooLarge = new NextRequest("http://localhost/api", { method: "POST", body: "x".repeat(65537) });
+    expect((await forwardAssetRequest(tooLarge, `/api/products/${product}/assets`, { method: "POST", contentType: "application/json" })).status).toBe(413);
   });
 });
