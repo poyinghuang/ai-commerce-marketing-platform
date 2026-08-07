@@ -5,8 +5,8 @@
 - Status：Approved for implementation
 - Branch：`codex/2c-2-product-knowledge`
 - Base Commit：`9c2b678a7329c8a8c9519e05cc6bc4eec12d5e61`
-- Implementation：Not started
-- Local Verification：Not started
+- Implementation：Complete
+- Local Verification：Passed
 - Remote CI：Not started
 - Manager Review：Not started
 - Manager Decision：Pending
@@ -63,12 +63,12 @@ Deliver the Product Knowledge Backend, same-origin BFF, and Product Detail Knowl
 
 ## Acceptance checklist
 
-- [ ] Knowledge API and UI conform to the approved contract.
-- [ ] Product ownership, archive, concurrency, idempotency, and audit boundaries are proven.
-- [ ] No hard-delete API or repository operation is introduced.
-- [ ] BFF security boundary is preserved.
-- [ ] V1–V4 remain unchanged.
-- [ ] No out-of-scope resource or later-stage behavior is implemented.
+- [x] Knowledge API and UI are implemented against the approved contract; verification remains in progress.
+- [x] Product ownership, archive, concurrency, idempotency, and transactional audit boundaries are implemented with automated coverage.
+- [x] No hard-delete API or repository operation is introduced.
+- [x] BFF uses endpoint-specific routes, a server-owned origin, path/query allowlists, and credential-header isolation.
+- [x] V1–V4 remain unchanged.
+- [x] No out-of-scope resource or later-stage behavior is implemented.
 - [ ] Local and Remote CI verification pass.
 - [ ] Independent Manager Decision is `APPROVE` before merge.
 - [ ] Post-merge main CI passes before downstream integration depends on this slice.
@@ -76,3 +76,19 @@ Deliver the Product Knowledge Backend, same-origin BFF, and Product Detail Knowl
 ## Mandatory escalation
 
 Stop and escalate if implementation requires changing V1–V4, breaking the Product contract, weakening the BFF or audit actor boundary, adding authentication／RBAC／production credentials, destructive data changes, or extending scope beyond Product Knowledge.
+
+## Developer verification record
+
+- Backend targeted Web MVC/parser/audit tests: Passed — 9 tests, 0 failures, 0 errors, 0 skipped.
+- Backend full suite with PostgreSQL Testcontainers: Passed — 86 tests, 0 failures, 0 errors, 0 skipped. This includes Flyway/Hibernate regressions, Knowledge persistence/lifecycle/audit coverage, and audit-failure transaction rollback.
+- Frontend pinned Node.js 24.18.0 / npm 11.16.0 container verification: Passed — lint, typecheck, 18 tests, and production build. The host Node.js 24.14.0 / npm 11.9.0 was correctly rejected by `engine-strict` and was not used to weaken the repository pin.
+- `npm audit --omit=dev`: Passed — 0 vulnerabilities.
+- Docker Compose config, image build, cold start, and service health: Passed — PostgreSQL, Backend, and Frontend reported healthy.
+- HTTP smoke through the running Compose network and same-origin Frontend BFF: Passed — Backend health `UP`, same-origin health `UP`, Product create `201`, Knowledge create `201` with Location/ETag, list `200`, single read `200` with ETag, patch `200`, stale patch `412`, archive `204`, archived patch `409`, restore `200`, and archived-Product mutation `409`.
+- Compose cleanup: Passed — `docker compose -p aimcp2c2 down --volumes` removed all containers, network, and volume; `docker compose -p aimcp2c2 ps --all --quiet` was empty.
+- Gitleaks 8.28.0: Passed — 17-commit repository history scan and current 2C-2 working-directory scan found no leaks. The worktree `.git` indirection cannot be resolved inside the scan container, so history was intentionally scanned from the primary repository while uncommitted 2C-2 content was scanned with `gitleaks dir`.
+- actionlint 1.7.7: Passed using the checksum-verified Windows amd64 release asset.
+- `git diff --check`: Passed. V1–V4 have no working-tree differences.
+- Known non-blocking warning: Mockito / Byte Buddy dynamic Java-agent future deprecation.
+- Remote CI, Manager Review, Manager Decision, and Merge: Not started.
+- Implementation commit: The commit containing this verification record; SHA is reported in the Developer delivery report.

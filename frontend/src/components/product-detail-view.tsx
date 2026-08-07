@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { ProductForm } from "@/components/product-form";
 import type { ApiError, Product, ProductInput } from "@/lib/products";
 import { createMergePatch, productToInput } from "@/lib/products";
+import { KnowledgeTab } from "@/components/knowledge-tab";
 
 export function ProductDetailView({ productUuid }: { productUuid: string }) {
   const [product, setProduct] = useState<Product | null>(null);
@@ -118,6 +119,7 @@ export function ProductDetailView({ productUuid }: { productUuid: string }) {
           <div className="state-card"><p>Archived Product 不接受一般修改。還原後才能編輯。</p></div>
         )}
       </section>
+      <KnowledgeTab productUuid={productUuid} productArchived={product.lifecycleStatus === "ARCHIVED"} />
     </div>
   );
 }
