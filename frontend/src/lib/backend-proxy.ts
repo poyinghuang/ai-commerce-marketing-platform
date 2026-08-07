@@ -11,6 +11,9 @@ const SAFE_KNOWLEDGE_PATH = new RegExp(
 const SAFE_CREATIVE_PLAN_PATH = new RegExp(
   `^/api/products/${PRODUCT_UUID_PATH}/creative-plans(?:/${PRODUCT_UUID_PATH}(?:/restore)?)?$`, "i",
 );
+const SAFE_CAMPAIGN_PATH = new RegExp(
+  `^/api/campaigns(?:/${PRODUCT_UUID_PATH}(?:/restore|/products(?:/${PRODUCT_UUID_PATH}(?:/restore)?)?)?)?$`, "i",
+);
 
 type ProxyOptions = {
   method: "GET" | "POST" | "PATCH" | "DELETE";
@@ -48,6 +51,20 @@ export async function forwardCreativePlanRequest(request: NextRequest, backendPa
   const allowedQuery = backendPath.endsWith("/creative-plans")
     ? new Set(["page", "size", "status", "sort"])
     : new Set<string>();
+  return forwardAllowlistedRequest(request, backendPath, options, allowedQuery);
+}
+
+export async function forwardCampaignRequest(request: NextRequest, backendPath: string, options: ProxyOptions) {
+  if (!SAFE_CAMPAIGN_PATH.test(backendPath)) {
+    return proxyError("INVALID_CAMPAIGN_PATH", "Campaign path is invalid", 400);
+  }
+  const isCampaignCollection = backendPath === "/api/campaigns";
+  const isAssociationCollection = /\/products$/i.test(backendPath);
+  const allowedQuery = isCampaignCollection
+    ? new Set(["page", "size", "status", "keyword", "productUuid", "associationStatus", "sort"])
+    : isAssociationCollection
+      ? new Set(["page", "size", "status", "sort"])
+      : new Set<string>();
   return forwardAllowlistedRequest(request, backendPath, options, allowedQuery);
 }
 
