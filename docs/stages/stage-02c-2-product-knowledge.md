@@ -2,14 +2,14 @@
 
 ## Gate status
 
-- Status：Approved for implementation
+- Status：Manager approved, pending merge
 - Branch：`codex/2c-2-product-knowledge`
 - Base Commit：`9c2b678a7329c8a8c9519e05cc6bc4eec12d5e61`
 - Implementation：Complete
 - Local Verification：Passed
-- Remote CI：Not started
-- Manager Review：Not started
-- Manager Decision：Pending
+- Remote CI：Passed
+- Manager Review：Passed
+- Manager Decision：APPROVE
 - Human Review Required：No
 - Merge：Not started
 - Milestone 2C-4：Locked
@@ -69,8 +69,8 @@ Deliver the Product Knowledge Backend, same-origin BFF, and Product Detail Knowl
 - [x] BFF uses endpoint-specific routes, a server-owned origin, path/query allowlists, and credential-header isolation.
 - [x] V1–V4 remain unchanged.
 - [x] No out-of-scope resource or later-stage behavior is implemented.
-- [ ] Local and Remote CI verification pass.
-- [ ] Independent Manager Decision is `APPROVE` before merge.
+- [x] Local and Remote CI verification pass.
+- [x] Independent Manager Decision is `APPROVE` before merge.
 - [ ] Post-merge main CI passes before downstream integration depends on this slice.
 
 ## Mandatory escalation
@@ -90,5 +90,16 @@ Stop and escalate if implementation requires changing V1–V4, breaking the Prod
 - actionlint 1.7.7: Passed using the checksum-verified Windows amd64 release asset.
 - `git diff --check`: Passed. V1–V4 have no working-tree differences.
 - Known non-blocking warning: Mockito / Byte Buddy dynamic Java-agent future deprecation.
-- Remote CI, Manager Review, Manager Decision, and Merge: Not started.
-- Implementation commit: The commit containing this verification record; SHA is reported in the Developer delivery report.
+- Remote CI: Passed. Push Run `31147012431` and Pull Request Run `31147026416` both completed `quality-and-compose` and `secret-scan` successfully.
+- Manager Review: Passed after the required acceptance-coverage corrections in `8f3d4c3`.
+- Manager Decision: `APPROVE`; no blocking or critical findings remain and no human escalation is required.
+- Manager-reviewed implementation Head: `f5e27be0b6f2c173b0c5e93b2a2a519d11f92bd5`.
+- Merge: Pending. Post-merge `main` verification remains required before 2C-4 may start.
+
+## Manager verification record
+
+- Scope and history: `git status --short`; `git log --oneline --decorate -5`; `git diff --stat 9c2b678..HEAD`; `git diff --name-status 9c2b678..HEAD`.
+- Integrity: `git diff --check 9c2b678..HEAD`; direct V1–V4 migration diff; no migration changes found.
+- Test evidence: inspected the fresh Surefire XML reports (`18` reports, `90` tests, `0` failures, `0` errors, `0` skipped), the Knowledge PostgreSQL/audit/rollback tests, Web MVC error-contract tests, BFF boundary tests, and Knowledge Tab state/lifecycle/concurrency tests.
+- Contract review: verified the six fixed Product Knowledge endpoints, resource ETag/If-Match behavior, merge-patch allowlist, archive-only lifecycle, Product ownership boundary, transactional audit, stable pagination, and same-origin BFF restrictions.
+- Security and data impact: no Secret, credential, authentication/RBAC, production-access, destructive-data, System-of-Record, or V1–V4 migration impact.
