@@ -30,6 +30,8 @@ class AssetPersistenceIntegrationTest {
   CreateAssetCommand create=new CreateAssetCommand(null,null,AssetType.IMAGE,"Hero","s3","file-1","https://cdn.example/a.jpg","image/jpeg","a.jpg",10L,null,Map.of("region","eu","nested",List.of(Map.of("safe","value"))));
   Asset first=commands.create(p.getProductUuid(),create,"asset-create"); Asset second=commands.create(p.getProductUuid(),create,"asset-create-2"); UUID firstId=first.getAssetUuid();
   assertAudit(firstId,"CREATE","asset-create");
+  assertThat(jdbc.queryForMap("SELECT MAX(CASE WHEN c.field_name='asset_type' THEN c.value_type END) asset_type, MAX(CASE WHEN c.field_name='size_bytes' THEN c.value_type END) size_type, MAX(CASE WHEN c.field_name='provider_metadata' THEN c.value_type END) metadata_type FROM audit_log_changes c JOIN audit_logs l ON l.audit_uuid=c.audit_uuid WHERE l.entity_uuid=? AND l.action='CREATE'",firstId))
+    .containsEntry("asset_type","ENUM").containsEntry("size_type","INTEGER").containsEntry("metadata_type","STRING");
   Map<String,Object> providerAudit=jdbc.queryForMap("SELECT c.new_value FROM audit_log_changes c JOIN audit_logs l ON l.audit_uuid=c.audit_uuid WHERE l.entity_uuid=? AND c.field_name='provider_metadata'",firstId);
   assertThat(providerAudit.get("new_value").toString()).matches("\\[SHA256:[0-9a-f]{64}]").doesNotContain("region").doesNotContain("eu");
   var absent=FieldPatch.<String>absent(); var absentUuid=FieldPatch.<Map<String,Object>>absent();
@@ -73,7 +75,27 @@ class AssetPersistenceIntegrationTest {
   jdbc.update("UPDATE creative_plans SET lifecycle_status='ACTIVE',archived_at=null WHERE creative_plan_uuid=?",plan);
   jdbc.update("UPDATE campaign_products SET lifecycle_status='ARCHIVED',archived_at=now() WHERE campaign_product_uuid=?",association);
   assertThatThrownBy(()->commands.restore(owner.getProductUuid(),assetId,version,"association-archived")).isInstanceOf(AssetRelationshipConflictException.class);
-  assertThat(count(assetId)).isEqualTo(2);
+ assertThat(count(assetId)).isEqualTo(2);
+ }
+ @Test void archivedProductAndCampaignBlockMutationsWithoutAudit(){
+  Product product=productCommands.create(new CreateProductCommand(null,"Boundary Product",null,null,null,null,null,null,null,null,null),"product");
+  Asset plain=commands.create(product.getProductUuid(),new CreateAssetCommand(null,null,AssetType.OTHER,null,null,null,null,null,null,null,null,null),"asset");
+  long auditBefore=count(plain.getAssetUuid());
+  productCommands.archive(product.getProductUuid(),product.getVersion(),"archive-product");
+  assertThatThrownBy(()->commands.patch(product.getProductUuid(),plain.getAssetUuid(),plain.getVersion(),new PatchAssetCommand(FieldPatch.absent(),FieldPatch.present("blocked"),FieldPatch.absent(),FieldPatch.absent(),FieldPatch.absent(),FieldPatch.absent(),FieldPatch.absent(),FieldPatch.absent(),FieldPatch.absent(),FieldPatch.absent()),"blocked"))
+    .isInstanceOf(ProductArchivedException.class);
+  assertThatThrownBy(()->commands.archive(product.getProductUuid(),plain.getAssetUuid(),plain.getVersion(),"blocked-archive"))
+    .isInstanceOf(ProductArchivedException.class);
+  assertThat(count(plain.getAssetUuid())).isEqualTo(auditBefore);
+
+  Product owner=productCommands.create(new CreateProductCommand(null,"Campaign Boundary",null,null,null,null,null,null,null,null,null),"owner");
+  UUID campaign=UUID.randomUUID(),association=UUID.randomUUID();
+  jdbc.update("INSERT INTO campaign_plans(campaign_uuid,campaign_name,lifecycle_status,archived_at) VALUES (?,?,'ARCHIVED',now())",campaign,"Archived Campaign");
+  jdbc.update("INSERT INTO campaign_products(campaign_product_uuid,campaign_uuid,product_uuid) VALUES (?,?,?)",association,campaign,owner.getProductUuid());
+  long allBefore=jdbc.queryForObject("SELECT COUNT(*) FROM audit_logs WHERE entity_type='ASSET'",Long.class);
+  assertThatThrownBy(()->commands.create(owner.getProductUuid(),new CreateAssetCommand(null,campaign,AssetType.IMAGE,null,null,null,null,null,null,null,null,null),"campaign-blocked"))
+    .isInstanceOf(AssetRelationshipConflictException.class);
+  assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM audit_logs WHERE entity_type='ASSET'",Long.class)).isEqualTo(allBefore);
  }
  private long count(UUID id){return jdbc.queryForObject("SELECT COUNT(*) FROM audit_logs WHERE entity_type='ASSET' AND entity_uuid=?",Long.class,id);}
  private void assertAudit(UUID id,String action,String requestId){

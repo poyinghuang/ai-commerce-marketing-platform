@@ -14,7 +14,9 @@ class AssetMetadataSecurityTest {
                     .isInstanceOf(AssetValidationException.class).hasMessageNotContaining("redacted").hasMessageNotContaining(key);
     }
     @Test void enforcesSerializedUtf8LimitAndCreatesStableNonReversibleFingerprint() {
-        assertThatThrownBy(()->security.validateAndCanonicalize(Map.of("data","x".repeat(16*1024))))
+        Map<String,Object> exact=security.validateAndCanonicalize(Map.of("data","x".repeat(16*1024-11)));
+        assertThat(exact).containsKey("data");
+        assertThatThrownBy(()->security.validateAndCanonicalize(Map.of("data","x".repeat(16*1024-10))))
                 .isInstanceOf(AssetValidationException.class);
         String first=security.fingerprint(Map.of("b",2,"a",1));
         assertThat(first).isEqualTo(security.fingerprint(Map.of("a",1,"b",2))).matches("\\[SHA256:[0-9a-f]{64}]").doesNotContain("1");

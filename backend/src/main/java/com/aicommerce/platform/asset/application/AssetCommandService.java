@@ -107,19 +107,19 @@ public class AssetCommandService {
     }
 
     private Product requireActiveProduct(UUID id) {
-        Product product=products.findById(id).orElseThrow(() -> new ProductNotFoundException(id));
+        Product product=products.findForAssetMutation(id).orElseThrow(() -> new ProductNotFoundException(id));
         if (product.getLifecycleStatus()==ProductLifecycleStatus.ARCHIVED) throw new ProductArchivedException();
         return product;
     }
     private void validateReferences(UUID productUuid, UUID creativePlanUuid, UUID campaignUuid) {
         if (creativePlanUuid != null) {
-            CreativePlan plan=creativePlans.findByCreativePlanUuidAndProductUuid(creativePlanUuid,productUuid)
+            CreativePlan plan=creativePlans.findForAssetMutation(creativePlanUuid,productUuid)
                     .orElseThrow(AssetRelationshipConflictException::new);
             if (plan.getLifecycleStatus()!=LifecycleStatus.ACTIVE) throw new AssetRelationshipConflictException();
         }
         if (campaignUuid != null) {
-            CampaignPlan campaign=campaigns.findById(campaignUuid).orElseThrow(AssetRelationshipConflictException::new);
-            CampaignProduct association=campaignProducts.findByCampaignUuidAndProductUuid(campaignUuid,productUuid)
+            CampaignPlan campaign=campaigns.findForMutation(campaignUuid).orElseThrow(AssetRelationshipConflictException::new);
+            CampaignProduct association=campaignProducts.findForMutation(campaignUuid,productUuid)
                     .orElseThrow(AssetRelationshipConflictException::new);
             if (campaign.getLifecycleStatus()!=LifecycleStatus.ACTIVE || association.getLifecycleStatus()!=LifecycleStatus.ACTIVE)
                 throw new AssetRelationshipConflictException();

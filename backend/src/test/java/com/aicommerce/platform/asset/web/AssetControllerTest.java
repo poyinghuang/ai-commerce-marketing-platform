@@ -39,6 +39,38 @@ class AssetControllerTest {
           .andExpect(header().string(HttpHeaders.LOCATION,"/api/products/"+PRODUCT+"/assets/"+ASSET))
           .andExpect(jsonPath("$.providerMetadata.region").value("eu"));
     }
+    @Test void getDetailReturnsEtag() throws Exception {
+        when(queries.get(PRODUCT,ASSET)).thenReturn(asset());
+        mvc.perform(get("/api/products/{p}/assets/{id}",PRODUCT,ASSET))
+          .andExpect(status().isOk()).andExpect(header().string(HttpHeaders.ETAG,"W/\"0\""))
+          .andExpect(jsonPath("$.assetUuid").value(ASSET.toString()));
+    }
+    @Test void patchWithCurrentEtagReturnsUpdatedEtag() throws Exception {
+        when(commands.patch(eq(PRODUCT),eq(ASSET),eq(0L),any(),anyString())).thenReturn(asset());
+        mvc.perform(patch("/api/products/{p}/assets/{id}",PRODUCT,ASSET)
+          .header(HttpHeaders.IF_MATCH,"W/\"0\"").contentType("application/merge-patch+json")
+          .content("{\"purpose\":\"updated\"}"))
+          .andExpect(status().isOk()).andExpect(header().string(HttpHeaders.ETAG,"W/\"0\""));
+        verify(commands).patch(eq(PRODUCT),eq(ASSET),eq(0L),any(),anyString());
+    }
+    @Test void archiveAndRestoreReturnEtag() throws Exception {
+        when(commands.archive(eq(PRODUCT),eq(ASSET),eq(0L),anyString())).thenReturn(asset());
+        mvc.perform(delete("/api/products/{p}/assets/{id}",PRODUCT,ASSET).header(HttpHeaders.IF_MATCH,"W/\"0\""))
+          .andExpect(status().isNoContent()).andExpect(header().string(HttpHeaders.ETAG,"W/\"0\""));
+        when(commands.restore(eq(PRODUCT),eq(ASSET),eq(0L),anyString())).thenReturn(asset());
+        mvc.perform(post("/api/products/{p}/assets/{id}/restore",PRODUCT,ASSET).header(HttpHeaders.IF_MATCH,"W/\"0\""))
+          .andExpect(status().isOk()).andExpect(header().string(HttpHeaders.ETAG,"W/\"0\""));
+    }
+    @Test void lifecycleRequiresStrictIfMatch() throws Exception {
+        mvc.perform(delete("/api/products/{p}/assets/{id}",PRODUCT,ASSET)).andExpect(status().isPreconditionRequired())
+          .andExpect(jsonPath("$.code").value("PRECONDITION_REQUIRED"));
+        mvc.perform(delete("/api/products/{p}/assets/{id}",PRODUCT,ASSET).header(HttpHeaders.IF_MATCH,"0"))
+          .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_IF_MATCH"));
+        mvc.perform(post("/api/products/{p}/assets/{id}/restore",PRODUCT,ASSET)).andExpect(status().isPreconditionRequired());
+        mvc.perform(post("/api/products/{p}/assets/{id}/restore",PRODUCT,ASSET).header(HttpHeaders.IF_MATCH,"*"))
+          .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_IF_MATCH"));
+        verifyNoInteractions(commands);
+    }
     @Test void patchUsesStrictEtagAndRejectsImmutableOrInvalidMetadata() throws Exception {
         mvc.perform(patch("/api/products/{p}/assets/{id}",PRODUCT,ASSET).contentType("application/merge-patch+json").content("{}"))
           .andExpect(status().isPreconditionRequired());
@@ -62,6 +94,15 @@ class AssetControllerTest {
         reset(commands); doThrow(new AssetPreconditionFailedException()).when(commands).patch(any(),any(),anyLong(),any(),anyString());
         mvc.perform(patch("/api/products/{p}/assets/{id}",PRODUCT,ASSET).header(HttpHeaders.IF_MATCH,"W/\"0\"").contentType("application/merge-patch+json").content("{}"))
           .andExpect(status().isPreconditionFailed()).andExpect(jsonPath("$.code").value("PRECONDITION_FAILED"));
+    }
+    @Test void mapsNotFoundAndArchivedContracts() throws Exception {
+        when(queries.get(PRODUCT,ASSET)).thenThrow(new AssetNotFoundException());
+        mvc.perform(get("/api/products/{p}/assets/{id}",PRODUCT,ASSET)).andExpect(status().isNotFound())
+          .andExpect(jsonPath("$.code").value("ASSET_NOT_FOUND"));
+        doThrow(new AssetArchivedException()).when(commands).patch(any(),any(),anyLong(),any(),anyString());
+        mvc.perform(patch("/api/products/{p}/assets/{id}",PRODUCT,ASSET).header(HttpHeaders.IF_MATCH,"W/\"0\"")
+          .contentType("application/merge-patch+json").content("{}"))
+          .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("RESOURCE_ARCHIVED"));
     }
     @Test void listValidatesFiltersAndUsesStableSecondaryOrdering() throws Exception {
         mvc.perform(get("/api/products/{p}/assets?size=101",PRODUCT)).andExpect(status().isBadRequest());

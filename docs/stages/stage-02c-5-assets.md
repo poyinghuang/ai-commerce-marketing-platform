@@ -153,6 +153,10 @@ Stop and escalate if implementation requires changing V1–V4, destructive data 
 
 ## Developer delivery record
 
+- Manager remediation verification: Backend 141 tests passed; Frontend lint, typecheck, 96 tests, production build, and production dependency audit passed.
+- Lifecycle mutations now send the version displayed to the user; 409/412/428 recovery clears stale selection, form state, and ETag before reloading.
+- Product, Creative Plan, Campaign, and Campaign Product active-state validation uses transaction-scoped pessimistic locks; PostgreSQL lock contention evidence passed.
+
 - Backend：133 tests passed, including PostgreSQL ownership, lifecycle, immutable identity, Audit confidentiality, and rollback evidence.
 - Frontend：lint, typecheck, 89 tests, production build, and production dependency audit passed.
 - Docker Compose：pinned images built; PostgreSQL, Backend, and Frontend became healthy; Backend and same-origin BFF Asset smoke passed.
