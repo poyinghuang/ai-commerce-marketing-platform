@@ -76,6 +76,15 @@ td small { display: block; margin-top: 0.25rem; color: #75827c; }
 .form-grid label { display: grid; gap: 0.4rem; color: #40534b; font-size: 0.84rem; font-weight: 750; }
 .span-two { grid-column: span 2; }
 .product-form .primary-button { justify-self: start; min-width: 9rem; }
+.detail-tabs { display:flex; gap:1rem; border-bottom:1px solid #cad7cf; padding-bottom:.75rem; }
+.creative-toolbar { max-width:14rem; margin-bottom:1rem; }
+.creative-toolbar label { display:grid; gap:.35rem; font-weight:700; }
+.creative-list { display:grid; gap:.75rem; margin-bottom:1rem; }
+.creative-item { display:flex; gap:.75rem; align-items:center; padding:.75rem; border:1px solid #e0e8e3; border-radius:.75rem; }
+.creative-select { flex:1; display:flex; justify-content:space-between; align-items:center; border:0; background:transparent; text-align:left; cursor:pointer; }
+.creative-form { display:grid; gap:1rem; border-top:1px solid #e0e8e3; margin-top:1.5rem; padding-top:1.5rem; }
+.creative-form label { display:grid; gap:.4rem; font-weight:700; color:#40534b; }
+.creative-form textarea { min-height:6rem; resize:vertical; }
 .knowledge-filters { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }.knowledge-filter { display: flex; align-items: center; gap: .75rem; max-width: 18rem; font-weight: 750; }
 .knowledge-list { display: grid; gap: 1rem; }
 .knowledge-card { display: flex; justify-content: space-between; gap: 1rem; padding: 1.25rem; border: 1px solid #dce5df; border-radius: .85rem; background: #fbfcfa; }

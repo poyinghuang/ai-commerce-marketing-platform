@@ -1,15 +1,15 @@
 import { NextRequest } from "next/server";
-import { forwardProductRequest } from "@/lib/backend-proxy";
+import { forwardKnowledgeRequest } from "@/lib/backend-proxy";
 type Context = { params: Promise<{ productUuid: string; knowledgeUuid: string }> };
 export async function GET(request: NextRequest, context: Context) {
   const { productUuid, knowledgeUuid } = await context.params;
-  return forwardProductRequest(request, `/api/products/${productUuid}/knowledge/${knowledgeUuid}`, { method: "GET" });
+  return forwardKnowledgeRequest(request, `/api/products/${productUuid}/knowledge/${knowledgeUuid}`, { method: "GET" });
 }
 export async function PATCH(request: NextRequest, context: Context) {
   const { productUuid, knowledgeUuid } = await context.params;
-  return forwardProductRequest(request, `/api/products/${productUuid}/knowledge/${knowledgeUuid}`, { method: "PATCH", contentType: "application/merge-patch+json" });
+  return forwardKnowledgeRequest(request, `/api/products/${productUuid}/knowledge/${knowledgeUuid}`, { method: "PATCH", contentType: "application/merge-patch+json" });
 }
 export async function DELETE(request: NextRequest, context: Context) {
   const { productUuid, knowledgeUuid } = await context.params;
-  return forwardProductRequest(request, `/api/products/${productUuid}/knowledge/${knowledgeUuid}`, { method: "DELETE" });
+  return forwardKnowledgeRequest(request, `/api/products/${productUuid}/knowledge/${knowledgeUuid}`, { method: "DELETE" });
 }

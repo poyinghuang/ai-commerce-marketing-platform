@@ -3,6 +3,7 @@ package com.aicommerce.platform.creativeplan.domain;
 import java.util.Objects;
 import java.util.UUID;
 
+import com.aicommerce.platform.common.domain.LifecycleStatus;
 import com.aicommerce.platform.common.persistence.ArchivableEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -49,14 +50,60 @@ public class CreativePlan extends ArchivableEntity {
     private CreativePlan(UUID creativePlanUuid, UUID productUuid, String planName) {
         this.creativePlanUuid = Objects.requireNonNull(creativePlanUuid, "creativePlanUuid is required");
         this.productUuid = Objects.requireNonNull(productUuid, "productUuid is required");
-        if (planName == null || planName.isBlank()) {
-            throw new IllegalArgumentException("planName is required");
-        }
-        this.planName = planName.trim();
+        this.planName = required(planName, "planName", 256);
     }
 
     public static CreativePlan create(UUID creativePlanUuid, UUID productUuid, String planName) {
         return new CreativePlan(creativePlanUuid, productUuid, planName);
+    }
+
+    public void update(
+            String planName,
+            String primaryAudience,
+            String secondaryAudience,
+            String painPoint,
+            String coreBenefit,
+            String creativeAngle,
+            String emotionalDirection,
+            String brandTone,
+            String visualStyle,
+            String mainColor,
+            String characterSetting,
+            String cta) {
+        if (getLifecycleStatus() == LifecycleStatus.ARCHIVED) {
+            throw new IllegalStateException("Archived creative plan cannot be modified");
+        }
+        this.planName = required(planName, "planName", 256);
+        this.primaryAudience = optional(primaryAudience, "primaryAudience", 2000);
+        this.secondaryAudience = optional(secondaryAudience, "secondaryAudience", 2000);
+        this.painPoint = optional(painPoint, "painPoint", 4000);
+        this.coreBenefit = optional(coreBenefit, "coreBenefit", 4000);
+        this.creativeAngle = optional(creativeAngle, "creativeAngle", 4000);
+        this.emotionalDirection = optional(emotionalDirection, "emotionalDirection", 1000);
+        this.brandTone = optional(brandTone, "brandTone", 1000);
+        this.visualStyle = optional(visualStyle, "visualStyle", 2000);
+        this.mainColor = optional(mainColor, "mainColor", 128);
+        this.characterSetting = optional(characterSetting, "characterSetting", 2000);
+        this.cta = optional(cta, "cta", 1000);
+    }
+
+    private static String required(String value, String field, int maxLength) {
+        String normalized = optional(value, field, maxLength);
+        if (normalized == null) {
+            throw new IllegalArgumentException(field + " is required");
+        }
+        return normalized;
+    }
+
+    private static String optional(String value, String field, int maxLength) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String normalized = value.trim();
+        if (normalized.length() > maxLength) {
+            throw new IllegalArgumentException(field + " exceeds " + maxLength + " characters");
+        }
+        return normalized;
     }
 
     public UUID getCreativePlanUuid() { return creativePlanUuid; }

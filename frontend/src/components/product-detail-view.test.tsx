@@ -32,7 +32,6 @@ describe("ProductDetailView", () => {
   it.each([409, 412, 428])("shows a reloadable conflict for HTTP %s", async (status) => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify(product), { status: 200, headers: { ETag: 'W/"0"' } }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ code: "PRECONDITION_FAILED" }), { status }));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -42,8 +41,8 @@ describe("ProductDetailView", () => {
     fireEvent.click(screen.getByRole("button", { name: "儲存變更" }));
 
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("資料已被其他操作更新"));
-    expect(fetchMock.mock.calls[2][0]).toBe(`/api/products/${product.productUuid}`);
-    expect(fetchMock.mock.calls[2][1]).toEqual(expect.objectContaining({
+    expect(fetchMock.mock.calls[1][0]).toBe(`/api/products/${product.productUuid}`);
+    expect(fetchMock.mock.calls[1][1]).toEqual(expect.objectContaining({
       method: "PATCH",
       headers: expect.objectContaining({ "If-Match": 'W/"0"' }),
     }));
@@ -51,8 +50,7 @@ describe("ProductDetailView", () => {
 
   it("reports a missing ETag instead of silently ignoring a save", async () => {
     const fetchMock = vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify(product), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }), { status: 200 }));
+      .mockResolvedValueOnce(new Response(JSON.stringify(product), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
 
     render(<ProductDetailView productUuid={product.productUuid} />);
@@ -61,6 +59,6 @@ describe("ProductDetailView", () => {
     fireEvent.click(screen.getByRole("button", { name: "儲存變更" }));
 
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("缺少版本資訊"));
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
