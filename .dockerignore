@@ -6,6 +6,8 @@ docs
 **/.next
 **/target
 **/coverage
+**/playwright-report
+**/test-results
 *.log
 .idea
 .vscode

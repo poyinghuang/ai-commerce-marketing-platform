@@ -1,0 +1,29 @@
+import { defineConfig, devices } from "@playwright/test";
+
+const isCi = Boolean(process.env.CI);
+
+export default defineConfig({
+  testDir: "./e2e",
+  fullyParallel: false,
+  workers: 1,
+  retries: isCi ? 1 : 0,
+  timeout: 90_000,
+  expect: { timeout: 10_000 },
+  outputDir: "test-results",
+  reporter: [
+    ["line"],
+    ["html", { outputFolder: "playwright-report", open: "never" }],
+  ],
+  use: {
+    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000",
+    trace: "retain-on-failure",
+    screenshot: "only-on-failure",
+    video: "off",
+  },
+  projects: [
+    {
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"] },
+    },
+  ],
+});

@@ -9,8 +9,8 @@
 - Specification Review：Passed
 - Manager Decision：APPROVE
 - Human Review Required：No
-- Implementation：Not started
-- Local Verification：Not started
+- Implementation：Complete
+- Local Verification：Passed
 - Remote CI：Not started
 - Manager Review：Not started
 - Merge：Not started
@@ -116,14 +116,14 @@ The separate pinned Gitleaks job remains unchanged. Workflow permissions remain 
 
 ## Acceptance checklist
 
-- [ ] Exact Playwright and artifact-action versions are pinned; no `latest`, floating Browser channel, or floating Action ref exists.
-- [ ] Complete Product graph is created through the UI and visible in Aggregate and tabs.
-- [ ] Two-page stale Knowledge mutation surfaces 412 and Reload shows the latest value.
-- [ ] Archived Product renders all child tabs read-only, rejects a child mutation with 409, and is restorable.
-- [ ] Knowledge Archive/Restore visibility, version-stable no-op, and exact Audit action counts are proven.
-- [ ] Tests use the real same-origin BFF, Backend, and PostgreSQL without mocked Domain APIs or a generic proxy.
-- [ ] Failure artifacts are non-sensitive, bounded, ignored by Git/Docker, and retained for seven days.
-- [ ] Backend, Frontend, Compose smoke, actionlint, npm audit, and Gitleaks regressions pass.
+- [x] Exact Playwright and artifact-action versions are pinned; no `latest`, floating Browser channel, or floating Action ref exists.
+- [x] Complete Product graph is created through the UI and visible in Aggregate and tabs.
+- [x] Two-page stale Knowledge mutation surfaces 412 and Reload shows the latest value.
+- [x] Archived Product renders all child tabs read-only, rejects a child mutation with 409, and is restorable.
+- [x] Knowledge Archive/Restore visibility, version-stable no-op, and exact Audit action counts are proven.
+- [x] Tests use the real same-origin BFF, Backend, and PostgreSQL without mocked Domain APIs or a generic proxy.
+- [x] Failure artifacts are non-sensitive, bounded, ignored by Git/Docker, and retained for seven days.
+- [x] Backend, Frontend, Compose smoke, actionlint, npm audit, and Gitleaks regressions pass.
 - [ ] Push and Pull Request Remote CI pass with the E2E step actually executed.
 - [ ] Independent Manager Review records one of the three allowed decisions.
 - [ ] Post-merge `main` CI passes before 2C-8 begins.
@@ -139,3 +139,16 @@ The separate pinned Gitleaks job remains unchanged. Workflow permissions remain 
 ## Mandatory escalation
 
 Stop and escalate if implementation requires a migration, production credential or access, authentication/RBAC/Tenant changes, a public test hook, lowering an existing gate, changing an approved API or lifecycle contract, destructive persistent data handling, a paid browser service, or scope outside the four approved scenarios.
+
+## Developer delivery record
+
+- Dependency and runtime：`@playwright/test` is pinned to `1.62.1`; the installed Chromium revision is `1234` (Chrome for Testing `151.0.7922.34`). Node, npm, Next.js, Docker images, and all existing dependencies remain pinned; no floating Browser channel was introduced.
+- Browser E2E：all four scenarios passed against the real cold Compose stack in 46.8 seconds with one Chromium worker. No Domain API was mocked.
+- Frontend regression：lint, typecheck, 16 Vitest files／108 tests, production build, Playwright test discovery, and production dependency audit with zero vulnerabilities passed under the Repository-pinned Node image.
+- Backend regression：150 tests passed with zero failure, error, or skip; Flyway V1–V4 and Hibernate validation remained green.
+- Compose：config validation, cold build, PostgreSQL／Backend／Frontend health checks, Browser E2E, Backend health, and same-origin health proxy passed.
+- Audit proof：the fourth Browser scenario used a UUID-validated fixed `psql` query against only the ephemeral Compose PostgreSQL service and observed exactly one CREATE, one ARCHIVE, and one RESTORE event after target-state no-ops.
+- Security and workflow：pinned Gitleaks history and working-tree scans found no leaks; actionlint `1.7.7` validated the changed workflow; failure screenshot／trace output was generated during negative test development, remained ignored by Git and Docker, contained only synthetic inputs, and is configured for seven-day CI retention.
+- Finding and fix：Browser verification found that Knowledge Archive did not retain the response ETag, so a same-view Restore sent the stale pre-archive token and received 412. `KnowledgeTab` now stores the successful lifecycle response ETag, with a component regression proving `W/"1"` is used for Restore. No Backend or concurrency contract was changed.
+- Known warnings：the pre-existing Byte Buddy dynamic-agent warning, npm allow-scripts notice for `unrs-resolver`, Windows Node engine mismatch for the local Browser runner, GitHub Actions Node.js compatibility annotation, and LF／CRLF informational warnings remain non-blocking. Exact Node verification passed inside the pinned image and remains mandatory in Remote CI.
+- Delivery state：Implementation and local verification are complete. Commit, Draft PR, Remote CI, independent Manager Review, Merge, and post-merge Main CI remain pending.
