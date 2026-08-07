@@ -229,6 +229,9 @@
 
 ### Milestone 2D — Quality and Workflow
 
+- Status：Specification drafted; implementation not started
+- Branch：`codex/stage-02-quality-workflow`
+- Detailed specification：[Milestone 2D — Quality and Workflow](stage-02d-quality-workflow.md)
 - Deterministic Quality Score
 - Blocking Reasons
 - Manual Adjustment
