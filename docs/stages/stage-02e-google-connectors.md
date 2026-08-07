@@ -3,18 +3,19 @@
 ## Gate status
 
 - Status：Approved for implementation under the existing Stage 02 architecture decisions
-- Branch：`codex/2e-specification`
+- Branch：Merged from `codex/2e-specification`
 - Base Commit：`b0abd9340358d233b782965b4562d21b04074699`
 - Specification：Complete
-- Implementation：Not started
-- Migration：Not created
+- Implementation：In progress — 2E-1 local implementation complete
+- Migration：V6 implemented on the 2E-1 delivery branch; not merged
 - Local Verification：Passed — documentation diff and exact-runtime regression verified
 - Remote CI：Passed — Push Run `31222354376`; PR Run `31222357524`
 - Manager Review：Passed
 - Manager Decision：`APPROVE`
 - Approved Specification Head：`f6ec441fcc166ee2d2028706a7e8a65d0c26ae28`
 - Human Review Required：No
-- Merge：Pending
+- Merge：Passed — specification Commit `d0e9516befcf00a1519c4c2c5867ea0418de46b8`
+- Post-merge CI：Passed — main Run `31223155344`
 - Stage 03：Not started
 
 ## Objective and authority
@@ -42,6 +43,14 @@ Deliver the Stage 02 Google Sheets import and Google Drive folder foundations wi
 5. **2E-5 E2E and Stage 02 acceptance** — Stub-backed real Compose flows, full regression, Manager Gate, final merge, post-merge CI, and `milestone-2e-complete` plus `stage-02-complete` tags.
 
 No dependent slice starts until the preceding slice is merged and its post-merge `main` CI passes. V6 and V7 are created only in their owning slices and become immutable after merge.
+
+### Delivery status
+
+- 2E-1 Sheets persistence and ports：Implementation complete; local verification passed; Commit／Push／Remote CI／Manager Review／Merge pending.
+- 2E-2 Sheets preview and execute：Not started.
+- 2E-3 Drive StorageProvider：Not started.
+- 2E-4 Connector UI：Not started.
+- 2E-5 E2E and Stage 02 acceptance：Not started.
 
 ## 2E-1 — V6 Sheets persistence contract
 

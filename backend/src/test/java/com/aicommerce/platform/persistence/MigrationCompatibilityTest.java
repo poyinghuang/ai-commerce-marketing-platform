@@ -28,19 +28,20 @@ class MigrationCompatibilityTest {
     private static final String V2_SHA256 = "8f944bfdb655ca90cffa37215e5e7bc8134fb13e021e261acf399e080b78d243";
     private static final String V3_SHA256 = "d1a5bc74fb4f2c57b711049fc6bb80e74dac1b7d5b4ff1905b95dec6ac204a93";
     private static final String V4_SHA256 = "d1b71029d5fa5cd9b283370281d57099495b3809e6c9fe43dc6afbc50f969ee9";
+    private static final String V5_SHA256 = "8bdf970eac44dbb14724dcda6ae1056439a2b241e53cf0988c737f00a89dee22";
 
     @Container
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17.6-alpine3.22");
 
     @Test
-    void emptyDatabaseRunsV1ThroughV5AndRepeatMigrationHasNoPendingWork() {
+    void emptyDatabaseRunsV1ThroughV6AndRepeatMigrationHasNoPendingWork() {
         Flyway flyway = flyway("empty_case", null);
 
-        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(5);
+        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(6);
         assertThat(List.of(flyway.info().applied()).stream()
                 .filter(info -> info.getVersion() != null)
                 .map(info -> info.getVersion().getVersion()))
-                .containsExactly("1", "2", "3", "4", "5");
+                .containsExactly("1", "2", "3", "4", "5", "6");
         assertThat(flyway.info().pending()).isEmpty();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
     }
@@ -139,7 +140,7 @@ class MigrationCompatibilityTest {
                 VALUES (?, ?, 'FEATURE', 'Feature', 'Content', 4)
                 """, knowledgeUuid, productUuid);
 
-        Flyway latest = flyway(schema, null);
+        Flyway latest = flyway(schema, MigrationVersion.fromVersion("5"));
         assertThat(latest.migrate().migrationsExecuted).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT version FROM v5_upgrade_case.products WHERE product_uuid = ?",
                 Long.class, productUuid)).isEqualTo(9L);
@@ -153,11 +154,47 @@ class MigrationCompatibilityTest {
     }
 
     @Test
-    void mergedV1ThroughV4CanonicalContentRemainsStable() throws Exception {
+    void populatedMilestone2DDataSurvivesUpgradeToV6() {
+        String schema = "v6_upgrade_case";
+        Flyway v5 = flyway(schema, MigrationVersion.fromVersion("5"));
+        assertThat(v5.migrate().migrationsExecuted).isEqualTo(5);
+        JdbcTemplate jdbc = jdbcTemplate();
+        UUID productUuid = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO v6_upgrade_case.products
+                    (product_uuid, product_id, product_name, lifecycle_status, created_at, updated_at, version)
+                VALUES (?, 'PROD-00000099', 'V6 Upgrade Product', 'ACTIVE',
+                        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 11)
+                """, productUuid);
+        UUID scoreUuid = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO v6_upgrade_case.quality_scores
+                    (quality_score_uuid, product_uuid, product_master_score, system_score, final_score)
+                VALUES (?, ?, 35, 35, 35)
+                """, scoreUuid, productUuid);
+
+        Flyway latest = flyway(schema, null);
+        assertThat(latest.migrate().migrationsExecuted).isEqualTo(1);
+
+        assertThat(jdbc.queryForObject(
+                "SELECT version FROM v6_upgrade_case.products WHERE product_uuid = ?",
+                Long.class, productUuid)).isEqualTo(11L);
+        assertThat(jdbc.queryForObject(
+                "SELECT final_score FROM v6_upgrade_case.quality_scores WHERE quality_score_uuid = ?",
+                Integer.class, scoreUuid)).isEqualTo(35);
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = ? AND table_name = ?",
+                Integer.class, schema, "sheet_import_jobs")).isEqualTo(1);
+        assertThat(latest.info().pending()).isEmpty();
+    }
+
+    @Test
+    void mergedV1ThroughV5CanonicalContentRemainsStable() throws Exception {
         assertThat(sha256("db/migration/V1__create_product_foundation.sql")).isEqualTo(V1_SHA256);
         assertThat(sha256("db/migration/V2__create_audit_foundation.sql")).isEqualTo(V2_SHA256);
         assertThat(sha256("db/migration/V3__add_product_master_fields.sql")).isEqualTo(V3_SHA256);
         assertThat(sha256("db/migration/V4__create_knowledge_plans_campaigns_assets.sql")).isEqualTo(V4_SHA256);
+        assertThat(sha256("db/migration/V5__create_quality_and_workflow.sql")).isEqualTo(V5_SHA256);
     }
 
     @Test
