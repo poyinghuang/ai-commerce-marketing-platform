@@ -232,4 +232,90 @@ describe("product backend proxy", () => {
     expect(response.headers.get("X-Request-ID")).toBe("campaign-request");
     expect(response.headers.has("X-Internal")).toBe(false);
   });
+
+  it("allowlists association collection queries and forwards only concurrency tracing headers", async () => {
+    process.env.BACKEND_INTERNAL_URL = "http://backend:8080";
+    const campaignUuid = "79be8758-1f0d-4ca5-bad6-f51aa923cdb9";
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const request = new NextRequest(
+      `http://localhost/api/campaigns/${campaignUuid}/products?status=ALL&page=2&size=10&sort=updatedAt,desc&productUuid=blocked&target=http://evil`,
+      {
+        method: "PATCH",
+        headers: {
+          "If-Match": 'W/"3"',
+          "X-Request-ID": "campaign-request",
+          Cookie: "session=secret",
+          Authorization: "Bearer secret",
+          "X-Actor-ID": "browser-actor",
+        },
+        body: "{}",
+      },
+    );
+
+    await forwardCampaignRequest(request, `/api/campaigns/${campaignUuid}/products`, {
+      method: "PATCH",
+      contentType: "application/merge-patch+json",
+    });
+
+    const [target, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(target.toString()).toBe(
+      `http://backend:8080/api/campaigns/${campaignUuid}/products?status=ALL&page=2&size=10&sort=updatedAt%2Cdesc`,
+    );
+    const headers = new Headers(init.headers);
+    expect(headers.get("If-Match")).toBe('W/"3"');
+    expect(headers.get("X-Request-ID")).toBe("campaign-request");
+    expect(headers.has("Cookie")).toBe(false);
+    expect(headers.has("Authorization")).toBe(false);
+    expect(headers.has("X-Actor-ID")).toBe(false);
+  });
+
+  it.each([
+    new DOMException("timed out", "TimeoutError"),
+    new TypeError("network details must not leak"),
+  ])("sanitizes Campaign upstream failures: %s", async (failure) => {
+    process.env.BACKEND_INTERNAL_URL = "http://backend:8080";
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(failure));
+    const response = await forwardCampaignRequest(
+      new NextRequest("http://localhost/api/campaigns"),
+      "/api/campaigns",
+      { method: "GET" },
+    );
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({
+      code: "BACKEND_UNAVAILABLE",
+      message: "Backend is unavailable",
+    });
+  });
+
+  it("preserves Campaign backend error status, body and approved headers only", async () => {
+    process.env.BACKEND_INTERNAL_URL = "http://backend:8080";
+    const campaignUuid = "79be8758-1f0d-4ca5-bad6-f51aa923cdb9";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ code: "PRECONDITION_FAILED" }), {
+          status: 412,
+          headers: {
+            "Content-Type": "application/json",
+            ETag: 'W/"4"',
+            Location: `/api/campaigns/${campaignUuid}`,
+            "X-Request-ID": "backend-request",
+            "X-Internal": "hidden",
+          },
+        }),
+      ),
+    );
+    const response = await forwardCampaignRequest(
+      new NextRequest(`http://localhost/api/campaigns/${campaignUuid}`),
+      `/api/campaigns/${campaignUuid}`,
+      { method: "GET" },
+    );
+    expect(response.status).toBe(412);
+    expect(await response.json()).toEqual({ code: "PRECONDITION_FAILED" });
+    expect(response.headers.get("ETag")).toBe('W/"4"');
+    expect(response.headers.get("Location")).toBe(`/api/campaigns/${campaignUuid}`);
+    expect(response.headers.get("X-Request-ID")).toBe("backend-request");
+    expect(response.headers.has("X-Internal")).toBe(false);
+  });
 });

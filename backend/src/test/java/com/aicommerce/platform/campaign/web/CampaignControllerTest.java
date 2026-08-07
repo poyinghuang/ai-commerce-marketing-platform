@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.aicommerce.platform.campaign.application.*;
 import com.aicommerce.platform.campaign.domain.*;
+import com.aicommerce.platform.product.application.ProductArchivedException;
 import com.aicommerce.platform.web.RequestIdFilter;
 import com.aicommerce.platform.web.error.GlobalExceptionHandler;
 import java.util.*;
@@ -136,5 +137,86 @@ class CampaignControllerTest {
                 .content("{\"productUuid\":\"" + PRODUCT + "\"}"))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.code").value("RELATIONSHIP_CONFLICT"));
+  }
+
+  @Test
+  void rejectsMissingAndMalformedIfMatchForBothResourceTypes() throws Exception {
+    mvc.perform(
+            patch("/api/campaigns/{id}", CAMPAIGN)
+                .contentType("application/merge-patch+json")
+                .content("{}"))
+        .andExpect(status().isPreconditionRequired())
+        .andExpect(jsonPath("$.code").value("PRECONDITION_REQUIRED"));
+    mvc.perform(
+            patch("/api/campaigns/{id}", CAMPAIGN)
+                .header(HttpHeaders.IF_MATCH, "0")
+                .contentType("application/merge-patch+json")
+                .content("{}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("INVALID_IF_MATCH"));
+    mvc.perform(
+            patch("/api/campaigns/{c}/products/{p}", CAMPAIGN, PRODUCT)
+                .contentType("application/merge-patch+json")
+                .content("{}"))
+        .andExpect(status().isPreconditionRequired());
+    mvc.perform(
+            delete("/api/campaigns/{c}/products/{p}", CAMPAIGN, PRODUCT)
+                .header(HttpHeaders.IF_MATCH, "W/\"bad\""))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("INVALID_IF_MATCH"));
+  }
+
+  @Test
+  void staleVersionsMapToPreconditionFailedForBothResourceTypes() throws Exception {
+    when(commands.patch(eq(CAMPAIGN), eq(1L), any(), anyString()))
+        .thenThrow(new CampaignPreconditionFailedException());
+    when(commands.patchProduct(eq(CAMPAIGN), eq(PRODUCT), eq(1L), any(), anyString()))
+        .thenThrow(new CampaignPreconditionFailedException());
+    mvc.perform(
+            patch("/api/campaigns/{id}", CAMPAIGN)
+                .header(HttpHeaders.IF_MATCH, "W/\"1\"")
+                .contentType("application/merge-patch+json")
+                .content("{}"))
+        .andExpect(status().isPreconditionFailed())
+        .andExpect(jsonPath("$.code").value("PRECONDITION_FAILED"));
+    mvc.perform(
+            patch("/api/campaigns/{c}/products/{p}", CAMPAIGN, PRODUCT)
+                .header(HttpHeaders.IF_MATCH, "W/\"1\"")
+                .contentType("application/merge-patch+json")
+                .content("{}"))
+        .andExpect(status().isPreconditionFailed())
+        .andExpect(jsonPath("$.code").value("PRECONDITION_FAILED"));
+  }
+
+  @Test
+  void archivedResourceAndProductConflictsHaveStableMappings() throws Exception {
+    when(commands.patch(eq(CAMPAIGN), eq(0L), any(), anyString()))
+        .thenThrow(new CampaignArchivedException());
+    when(commands.patchProduct(eq(CAMPAIGN), eq(PRODUCT), eq(0L), any(), anyString()))
+        .thenThrow(new CampaignProductArchivedException());
+    mvc.perform(
+            patch("/api/campaigns/{id}", CAMPAIGN)
+                .header(HttpHeaders.IF_MATCH, "W/\"0\"")
+                .contentType("application/merge-patch+json")
+                .content("{}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("RESOURCE_ARCHIVED"));
+    mvc.perform(
+            patch("/api/campaigns/{c}/products/{p}", CAMPAIGN, PRODUCT)
+                .header(HttpHeaders.IF_MATCH, "W/\"0\"")
+                .contentType("application/merge-patch+json")
+                .content("{}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("RESOURCE_ARCHIVED"));
+
+    reset(commands);
+    when(commands.addProduct(eq(CAMPAIGN), any(), anyString()))
+        .thenThrow(new ProductArchivedException());
+    mvc.perform(
+            post("/api/campaigns/{c}/products", CAMPAIGN)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"productUuid\":\"" + PRODUCT + "\"}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("PRODUCT_ARCHIVED"));
   }
 }
