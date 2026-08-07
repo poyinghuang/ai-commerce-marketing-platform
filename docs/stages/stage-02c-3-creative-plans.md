@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status：Manager approved, pending merge
+- Status：Completed
 - Branch：`codex/2c-3-creative-plans`
 - Base Commit：`9c2b678a7329c8a8c9519e05cc6bc4eec12d5e61`
 - Implementation：Complete
@@ -11,7 +11,7 @@
 - Manager Review：Passed
 - Manager Decision：APPROVE
 - Human Review Required：No
-- Merge：Pending
+- Merge：Passed
 - Milestone 2C-4：Locked
 
 ## Objective
@@ -95,7 +95,7 @@ Known non-blocking warnings：Mockito／Byte Buddy dynamic Java-agent future dep
 - [x] No AI, approval workflow, or other out-of-scope behavior is implemented.
 - [x] Local and Remote CI verification pass.
 - [x] Independent Manager Decision is `APPROVE` before merge.
-- [ ] Post-merge main CI passes before Campaign or Asset depends on this slice.
+- [x] Post-merge main CI passes before Campaign or Asset depends on this slice.
 
 ## Mandatory escalation
 
@@ -110,4 +110,8 @@ Stop and escalate if implementation requires changing V1–V4, breaking the Prod
 - Integration review: verified Product, Knowledge, and Creative Plan tabs coexist; Knowledge and Creative Plan retain separate collection-only query allowlists and do not accept Browser-controlled origins, paths, credentials, or actor headers.
 - Finding resolution: required explicit CREATE/UPDATE/ARCHIVE/RESTORE audit actor, request ID, actual-field, and `change_order` assertions; corrected in `fba8bb2f7c4d6a56ab4340cc22e44c1c6cae518e` and the targeted PostgreSQL Testcontainers test passed.
 - Security and data impact: no Secret, credential, authentication/RBAC, production-access, destructive-data, System-of-Record, V1–V4 migration, CI Workflow, or dependency impact.
-- Decision: `APPROVE`. No blocking or critical findings remain; no human escalation is required. Merge and post-merge `main` verification remain pending, and 2C-4 stays locked until they pass.
+- Decision: `APPROVE`. No blocking or critical findings remain; no human escalation was required.
+- Merge: Passed using Squash merge. Main commit: `e90ab7f8e1b8182cf85521f26149832c3fc3bca4`.
+- Post-merge verification: Passed. Main Push Run `31149254181` completed `quality-and-compose` and `secret-scan` successfully.
+- Final Manager documentation Head before merge: `fc92d145be83bacdc5824da687e294fa25de032d`.
+- Downstream gate: 2C-3 is complete. With 2C-2 also complete, Milestone 2C-4 Campaign may begin from the verified `main` branch.
