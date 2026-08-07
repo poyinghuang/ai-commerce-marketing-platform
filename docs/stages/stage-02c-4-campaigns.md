@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status：Manager approved, pending merge
+- Status：Completed
 - Branch：`codex/2c-4-campaigns`
 - Base Commit：`74f6a751f86cc5ec37f93fde6a3d08c415f31083`
 - Implementation：Passed
@@ -14,9 +14,12 @@
 - Approved Commit：`69bf261738fa06595a6bc0f79646c757b605943f`
 - Approved Push CI：Run `31159617017` — `quality-and-compose` and `secret-scan` Passed
 - Approved PR CI：Run `31159637596` — `quality-and-compose` and `secret-scan` Passed
+- Final documentation Push CI：Run `31160089481` — `quality-and-compose` and `secret-scan` Passed
+- Final documentation PR CI：Run `31160093885` — `quality-and-compose` and `secret-scan` Passed
 - Pull Request：[#12](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/12)
-- Merge：Pending
-- Milestone 2C-5：Locked
+- Merge：Passed — Squash Commit `21b78e0272054793ee039a2b7f6e269b62b1dd59`
+- Post-merge Main CI：Run `31160381082` — `quality-and-compose` and `secret-scan` Passed
+- Milestone 2C-5：Ready after this finalization record reaches `main`
 
 ## Objective
 
@@ -140,7 +143,7 @@ Validation and identity:
 - [x] No Asset, Aggregate, Google, AI, Quality, Workflow, Meta Ads, Dashboard, Decision Engine, or Stage 03 scope is introduced.
 - [x] Local and Remote CI verification pass.
 - [x] Independent Manager Decision is `APPROVE` before merge.
-- [ ] Post-merge main CI passes before 2C-5 begins.
+- [x] Post-merge main CI passes before 2C-5 begins.
 
 ## Manager review record
 
@@ -156,7 +159,7 @@ Validation and identity:
 - Data impact：Additive use of the approved V4 schema only; archive-only lifecycle, transactional audit, and non-cascading associations preserved.
 - Known limitations：Playwright remains assigned to 2C-7. Byte Buddy dynamic-agent and GitHub Actions Node.js compatibility warnings remain non-blocking technical debt.
 - Decision：`APPROVE`
-- Required next action：Commit and push this Markdown-only approval record, require the final Push and PR CI runs to pass, then mark PR #12 Ready and merge without starting 2C-5 until post-merge `main` CI passes.
+- Required next action：Merge this Markdown-only finalization record, verify `main`, then begin Milestone 2C-5 from the resulting clean base.
 - Human approval required：No
 
 ## Mandatory escalation
