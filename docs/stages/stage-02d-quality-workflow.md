@@ -2,12 +2,12 @@
 
 ## Gate status
 
-- Status：2D-1 and 2D-2 completed; 2D-3 not started
-- Branch：`codex/2d-2-finalize`
+- Status：2D-1 and 2D-2 completed; 2D-3 complete locally, delivery pending
+- Branch：`codex/2d-3-quality-ui`
 - Base Commit：`6ba92bdc48a50f61448ee347b89939f961bdb5e4`
 - Specification Merge：Passed — `6ba92bdc48a50f61448ee347b89939f961bdb5e4`
 - Specification Post-merge CI：Passed — Run `31198925437`
-- Implementation：2D-1 and 2D-2 completed; 2D-3 and 2D-4 not started
+- Implementation：2D-1 and 2D-2 completed; 2D-3 complete locally; 2D-4 not started
 - Migration：V5 committed in `558262f1474618e58a4d7b8cce76d838dc46822a`
 - Local Verification：2D-1 Passed
 - Remote CI：2D-1 Passed — Push Run `31202242425`; PR Run `31202259584`; 2D-2 Passed — Push Run `31207893627`; PR Run `31207911328`
@@ -21,6 +21,7 @@
 - 2D-2 Merge：Passed — PR #25, `84d7131524e734de0354dc1468bdd1e001aa6509`
 - 2D-2 Post-merge CI：Passed — main Run `31208990817`
 - 2D-2 delivery record：[Milestone 2D-2 — Recalculation, API, Audit, and Aggregate](stage-02d-2-recalculation-api.md)
+- 2D-3 delivery record：[Milestone 2D-3 — Quality UI](stage-02d-3-quality-ui.md)
 - Milestone 2E：Not started
 
 ## Objective

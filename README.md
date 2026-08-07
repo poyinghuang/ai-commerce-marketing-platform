@@ -42,7 +42,7 @@ Backend 的 Stage 2D Quality API 提供：
 - `GET /api/products/{productUuid}/quality`
 - `PATCH /api/products/{productUuid}/quality/manual-adjustment`
 
-Quality 使用確定性規則、blocking reasons 與版本型 `ETag`。非零人工調整限 `-20..20`，必須提供理由並使用可信 Audit Actor。Frontend BFF 與 Quality UI 將由 Milestone 2D-3 提供；本階段 Browser 不應直接依賴 Docker 內部 hostname。
+Quality 使用確定性規則、blocking reasons 與版本型 `ETag`。非零人工調整限 `-20..20`，必須提供理由並使用可信 Audit Actor。Product detail 的 `?tab=quality` 提供 component breakdown、readiness、blocking reasons 與人工調整介面；Browser 只透過固定 same-origin Quality Route Handlers 存取 Backend，不直接依賴 Docker 內部 hostname。
 
 停止服務：
 
