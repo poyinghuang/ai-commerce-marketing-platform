@@ -2,16 +2,16 @@
 
 ## Gate status
 
-- Status：Approved for implementation
+- Status：Manager approved, pending merge
 - Branch：`codex/2c-3-creative-plans`
 - Base Commit：`9c2b678a7329c8a8c9519e05cc6bc4eec12d5e61`
 - Implementation：Complete
 - Local Verification：Passed
-- Remote CI：Not started
-- Manager Review：Not started
-- Manager Decision：Pending
+- Remote CI：Passed
+- Manager Review：Passed
+- Manager Decision：APPROVE
 - Human Review Required：No
-- Merge：Not started
+- Merge：Pending
 - Milestone 2C-4：Locked
 
 ## Objective
@@ -93,10 +93,21 @@ Known non-blocking warnings：Mockito／Byte Buddy dynamic Java-agent future dep
 - [x] BFF security boundary is preserved.
 - [x] V1–V4 remain unchanged.
 - [x] No AI, approval workflow, or other out-of-scope behavior is implemented.
-- [ ] Local and Remote CI verification pass.
-- [ ] Independent Manager Decision is `APPROVE` before merge.
+- [x] Local and Remote CI verification pass.
+- [x] Independent Manager Decision is `APPROVE` before merge.
 - [ ] Post-merge main CI passes before Campaign or Asset depends on this slice.
 
 ## Mandatory escalation
 
 Stop and escalate if implementation requires changing V1–V4, breaking the Product contract, weakening BFF/audit boundaries, adding AI/authentication/production credentials, destructive data changes, or extending scope beyond Creative Plans.
+
+## Manager verification record
+
+- Manager-reviewed Head: `fba8bb2f7c4d6a56ab4340cc22e44c1c6cae518e`.
+- Remote CI: Push Run `31148770170` and Pull Request Run `31148772646` both completed `quality-and-compose` and `secret-scan` successfully on the integrated Head.
+- Review commands and evidence: `git status --short`; `git log --oneline --decorate -8`; `git diff --check main...HEAD`; `git diff --stat main...HEAD`; `git diff --name-status main...HEAD`; direct V1–V4 and Workflow diff; fresh Surefire XML aggregation (`23` reports, `104` tests, `0` failures, `0` errors, `0` skipped).
+- Contract review: verified all six Creative Plan endpoints, the twelve approved writable fields, strict resource ETag/If-Match, field-presence-safe merge patch, archive/restore idempotency, stable collection queries, Product ownership, and fixed-path BFF behavior.
+- Integration review: verified Product, Knowledge, and Creative Plan tabs coexist; Knowledge and Creative Plan retain separate collection-only query allowlists and do not accept Browser-controlled origins, paths, credentials, or actor headers.
+- Finding resolution: required explicit CREATE/UPDATE/ARCHIVE/RESTORE audit actor, request ID, actual-field, and `change_order` assertions; corrected in `fba8bb2f7c4d6a56ab4340cc22e44c1c6cae518e` and the targeted PostgreSQL Testcontainers test passed.
+- Security and data impact: no Secret, credential, authentication/RBAC, production-access, destructive-data, System-of-Record, V1–V4 migration, CI Workflow, or dependency impact.
+- Decision: `APPROVE`. No blocking or critical findings remain; no human escalation is required. Merge and post-merge `main` verification remain pending, and 2C-4 stays locked until they pass.
