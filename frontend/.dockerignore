@@ -4,6 +4,8 @@ docs
 node_modules
 .next
 coverage
+playwright-report
+test-results
 *.tsbuildinfo
 *.log
 .idea

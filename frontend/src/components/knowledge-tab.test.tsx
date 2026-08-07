@@ -133,6 +133,35 @@ describe("KnowledgeTab", () => {
     ]);
   });
 
+  it("uses the archive response ETag when restoring in the same view", async () => {
+    const archived: Knowledge = {
+      ...entry,
+      lifecycleStatus: "ARCHIVED",
+      archivedAt: "2026-08-07T01:00:00Z",
+      version: 1,
+    };
+    const restored = { ...entry, version: 2 };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(page([entry])))
+      .mockResolvedValueOnce(new Response(null, { status: 204, headers: { ETag: 'W/"1"' } }))
+      .mockResolvedValueOnce(jsonResponse(page([archived])))
+      .mockResolvedValueOnce(jsonResponse(restored, 200, { ETag: 'W/"2"' }))
+      .mockResolvedValueOnce(jsonResponse(page([restored])));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<KnowledgeTab productUuid={entry.productUuid} productArchived={false} />);
+    await screen.findByText("Feature title");
+    fireEvent.click(screen.getByRole("button", { name: "Archive" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Restore" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Restore" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(5));
+
+    expect(fetchMock.mock.calls[3][1]).toEqual(expect.objectContaining({
+      method: "POST",
+      headers: { "If-Match": 'W/"1"' },
+    }));
+  });
+
   it("requests stable pages and approved sorts", async () => {
     const second = { ...entry, knowledgeUuid: "6cf53b23-eabe-4b51-b565-62dbe4333722", title: "Second" };
     const fetchMock = vi.fn()

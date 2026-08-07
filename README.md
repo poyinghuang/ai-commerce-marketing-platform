@@ -104,6 +104,21 @@ npm test
 npm run build
 ```
 
+Browser E2E uses the real Docker Compose Frontend, Backend, and PostgreSQL stack. Start an isolated cold stack, install the package-pinned Chromium runtime, and run:
+
+```powershell
+docker compose up --detach --build --wait --wait-timeout 180
+cd frontend
+npx playwright install chromium
+$env:PLAYWRIGHT_BASE_URL="http://127.0.0.1:3000"
+$env:PLAYWRIGHT_AUDIT_DB_ASSERTION="1"
+npm run test:e2e
+cd ..
+docker compose down --volumes
+```
+
+The E2E data is synthetic and the final command removes the ephemeral PostgreSQL volume. Do not point this flow at a persistent or production database.
+
 ## 安全與設定
 
 - 複製 `.env.example` 為 `.env` 僅供本機使用；不得提交 `.env`。

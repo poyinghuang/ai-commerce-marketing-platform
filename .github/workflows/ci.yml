@@ -67,11 +67,33 @@ jobs:
           npm run build
           npm audit --omit=dev
 
+      - name: Install pinned Playwright Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
       - name: Validate Docker Compose
         run: docker compose config --quiet
 
       - name: Start and wait for the full stack
         run: docker compose up --detach --build --wait --wait-timeout 180
+
+      - name: Run Browser E2E
+        working-directory: frontend
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+          PLAYWRIGHT_AUDIT_DB_ASSERTION: "1"
+        run: npm run test:e2e
+
+      - name: Upload Playwright failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v7.0.1
+        with:
+          name: playwright-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            frontend/test-results
+            frontend/playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Smoke test health chain and product vertical slice
         run: |
