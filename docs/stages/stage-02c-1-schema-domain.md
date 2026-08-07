@@ -2,16 +2,17 @@
 
 ## Gate status
 
-- Status：Approved for implementation
+- Status：Manager approved；pending merge
 - Branch：`codex/2c-1-schema-domain`
 - Base Commit：`5cb6131594eddc029d48880a0174bed573e33837`
 - Implementation：Complete
 - Local Verification：Passed
-- Remote CI：Not started
-- Manager Review：Not started
-- Manager Decision：Pending
+- Remote CI：Passed — Push Run `31141729630`；PR Run `31141749841`
+- Manager Review：Passed
+- Manager Decision：APPROVE
+- Approved Implementation Head：`6756d10b92c8509ad702f4b51ae015f1ef275c6a`
 - Human Review Required：No — the additive V4 model and audit constraint expansion were approved in the parent Milestone 2C specification
-- Merge：Not started
+- Merge：Pending
 - Dependent Stage：2C-2 and 2C-3 remain locked until merge and post-merge verification
 
 ## Developer verification evidence
@@ -35,6 +36,14 @@
 - `git diff --check`：Passed。
 
 Known non-blocking warnings：Mockito／Byte Buddy dynamic Java agent future deprecation remains present. The host Node.js 24.14.0／npm 11.9.0 does not match the repository pin, so Frontend verification used the pinned Node.js 24.18.0／npm 11.16.0 Docker build instead of weakening the engine requirement.
+
+## Manager review evidence
+
+- Initial review of `cf676ec844c657dbf21074e76b984617eb9a06ce` returned `REQUEST_CHANGES` because the five repositories exposed hard-delete APIs and `archive(null)` could partially mutate lifecycle state.
+- Fix Commit `6756d10b92c8509ad702f4b51ae015f1ef275c6a` introduced an archive-only repository contract and made archive validation atomic, with regression tests.
+- Independent migration review found no CRITICAL, BLOCKING, or MAJOR finding; V1–V3 are unchanged and V4 matches the approved additive five-table contract.
+- Independent domain review confirmed the two findings are closed; enum mapping, ETag, patch presence, JPA mappings, scope boundaries, and archive-only persistence contract conform to the approved specification.
+- Required Remote CI jobs ran without skipped verification steps. The existing GitHub Actions Node.js compatibility annotation remains non-blocking technical debt.
 
 ## Objective
 
@@ -134,9 +143,9 @@ The authoritative field definitions, constraints, indexes, ownership rules, audi
 - [x] Existing Product identity and Audit append-only protections regress successfully.
 - [x] Entities, enums, repositories, lifecycle, patch presence, and ETag primitives have automated tests.
 - [x] No Controller, public API, BFF, Frontend, external Provider, Quality, Workflow, or later-stage behavior is implemented.
-- [ ] Backend, Frontend, Compose, smoke, Gitleaks, dependency audit, and actionlint pass locally and remotely.
-- [ ] Draft PR contains the implementation report and exact migration／test evidence.
-- [ ] Independent Manager Review returns `APPROVE` before merge.
+- [x] Backend, Frontend, Compose, smoke, Gitleaks, dependency audit, and actionlint pass locally and remotely.
+- [x] Draft PR contains the implementation report and exact migration／test evidence.
+- [x] Independent Manager Review returns `APPROVE` before merge.
 - [ ] Post-merge main CI passes before 2C-2 or 2C-3 starts.
 
 ## Mandatory escalation conditions
