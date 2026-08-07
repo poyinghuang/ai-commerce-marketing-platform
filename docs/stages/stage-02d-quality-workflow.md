@@ -2,8 +2,8 @@
 
 ## Gate status
 
-- Status：2D-1, 2D-2, and 2D-3 completed; 2D-4 complete locally, delivery pending
-- Branch：`codex/2d-4-e2e-acceptance`
+- Status：2D-1 through 2D-4 completed; final delivery record and tag pending
+- Branch：`codex/2d-finalize`
 - Base Commit：`6ba92bdc48a50f61448ee347b89939f961bdb5e4`
 - Specification Merge：Passed — `6ba92bdc48a50f61448ee347b89939f961bdb5e4`
 - Specification Post-merge CI：Passed — Run `31198925437`
@@ -27,6 +27,8 @@
 - 2D-3 delivery record：[Milestone 2D-3 — Quality UI](stage-02d-3-quality-ui.md)
 - 2D-4 delivery record：[Milestone 2D-4 — E2E and Acceptance](stage-02d-4-e2e-acceptance.md)
 - 2D-4 Implementation：`59865f18365781673853f618c6c2154f8d9d7ad2`; Push Run `31217643930` and PR Run `31217660098` passed; Manager Decision `APPROVE`
+- 2D-4 Merge：Passed — PR #30, `9f81fc2b0e06cfcd0f2d0a78fc64660295a0086c`
+- 2D-4 Post-merge CI：Passed — main Run `31218488133`
 - Milestone 2E：Not started
 
 ## Objective
