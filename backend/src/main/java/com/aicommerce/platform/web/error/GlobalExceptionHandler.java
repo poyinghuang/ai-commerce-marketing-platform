@@ -18,6 +18,9 @@ import com.aicommerce.platform.product.application.ProductValidationException;
 import com.aicommerce.platform.product.web.InvalidIfMatchException;
 import com.aicommerce.platform.product.web.InvalidMergePatchException;
 import com.aicommerce.platform.product.web.PreconditionRequiredException;
+import com.aicommerce.platform.quality.application.QualityNotFoundException;
+import com.aicommerce.platform.quality.application.QualityPreconditionFailedException;
+import com.aicommerce.platform.quality.application.QualityValidationException;
 import com.aicommerce.platform.web.RequestIdFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
@@ -38,6 +41,24 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 public class GlobalExceptionHandler {
 
   private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+  @ExceptionHandler(QualityValidationException.class)
+  ResponseEntity<ApiError> handleQualityValidation(QualityValidationException exception,
+      HttpServletRequest request) {
+    return ResponseEntity.badRequest().body(error("VALIDATION_ERROR", "Request validation failed", request,
+        List.of(new FieldErrorDetail(exception.getField(), exception.getMessage()))));
+  }
+
+  @ExceptionHandler(QualityNotFoundException.class)
+  ResponseEntity<ApiError> handleQualityNotFound(HttpServletRequest request) {
+    return ResponseEntity.status(404).body(error("QUALITY_NOT_FOUND", "Quality projection not found", request, null));
+  }
+
+  @ExceptionHandler(QualityPreconditionFailedException.class)
+  ResponseEntity<ApiError> handleQualityPrecondition(HttpServletRequest request) {
+    return ResponseEntity.status(412).body(error("PRECONDITION_FAILED",
+        "Quality version does not match If-Match", request, null));
+  }
 
   @ExceptionHandler(AssetValidationException.class)
   ResponseEntity<ApiError> handleAssetValidation(AssetValidationException e, HttpServletRequest request) {

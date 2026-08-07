@@ -38,3 +38,7 @@ logging:
   structured:
     format:
       console: ecs
+
+app:
+  quality:
+    startup-repair-enabled: false

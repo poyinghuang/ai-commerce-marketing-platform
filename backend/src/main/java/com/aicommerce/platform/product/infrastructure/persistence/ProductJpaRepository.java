@@ -10,8 +10,11 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 import java.util.Optional;
+import java.util.List;
 
 public interface ProductJpaRepository extends JpaRepository<Product, UUID>, JpaSpecificationExecutor<Product> {
+    @Query("select p.productUuid from Product p order by p.productUuid")
+    List<UUID> findAllProductUuids();
     @Lock(LockModeType.PESSIMISTIC_READ)
     @Query("select p from Product p where p.productUuid = :productUuid")
     Optional<Product> findForKnowledgeMutation(@Param("productUuid") UUID productUuid);
@@ -19,4 +22,8 @@ public interface ProductJpaRepository extends JpaRepository<Product, UUID>, JpaS
     @Lock(LockModeType.PESSIMISTIC_READ)
     @Query("select p from Product p where p.productUuid = :productUuid")
     Optional<Product> findForAssetMutation(@Param("productUuid") UUID productUuid);
+
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    @Query("select p from Product p where p.productUuid = :productUuid")
+    Optional<Product> findForQualityMutation(@Param("productUuid") UUID productUuid);
 }

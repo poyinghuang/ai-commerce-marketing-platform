@@ -2,3 +2,7 @@ spring:
   config:
     activate:
       on-profile: test
+
+app:
+  quality:
+    startup-repair-enabled: true

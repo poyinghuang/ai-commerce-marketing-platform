@@ -8,6 +8,7 @@ import com.aicommerce.platform.common.domain.LifecycleStatus;
 import com.aicommerce.platform.product.application.*;
 import com.aicommerce.platform.product.domain.*;
 import com.aicommerce.platform.product.infrastructure.persistence.ProductJpaRepository;
+import com.aicommerce.platform.quality.application.ProductQualityRecalculationService;
 import java.time.*;
 import java.util.*;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -22,6 +23,7 @@ public class CampaignCommandService {
   private final AuditOperationContextFactory contexts;
   private final AuditWriter audit;
   private final CampaignAuditChangeFactory changes;
+  private final ProductQualityRecalculationService quality;
   private final Clock clock;
 
   public CampaignCommandService(
@@ -31,6 +33,7 @@ public class CampaignCommandService {
       AuditOperationContextFactory x,
       AuditWriter w,
       CampaignAuditChangeFactory f,
+      ProductQualityRecalculationService quality,
       Clock clock) {
     campaigns = c;
     associations = a;
@@ -38,6 +41,7 @@ public class CampaignCommandService {
     contexts = x;
     audit = w;
     changes = f;
+    this.quality = quality;
     this.clock = clock;
   }
 
@@ -94,6 +98,7 @@ public class CampaignCommandService {
     if (actual.isEmpty()) return c;
     c = campaigns.saveAndFlush(c);
     append(c, context, AuditAction.UPDATE, actual);
+    recalculateCampaignProducts(id, context);
     return c;
   }
 
@@ -106,6 +111,7 @@ public class CampaignCommandService {
     if (!c.archive(Instant.now(clock))) return c;
     c = campaigns.saveAndFlush(c);
     append(c, context, AuditAction.ARCHIVE, changes.campaign(before, CampaignSnapshot.from(c)));
+    recalculateCampaignProducts(id, context);
     return c;
   }
 
@@ -118,6 +124,7 @@ public class CampaignCommandService {
     if (!c.restore()) return c;
     c = campaigns.saveAndFlush(c);
     append(c, context, AuditAction.RESTORE, changes.campaign(before, CampaignSnapshot.from(c)));
+    recalculateCampaignProducts(id, context);
     return c;
   }
 
@@ -141,6 +148,7 @@ public class CampaignCommandService {
     }
     append(
         cp, context, AuditAction.CREATE, changes.productCreate(CampaignProductSnapshot.from(cp)));
+    quality.recalculate(x.productUuid(), context);
     return cp;
   }
 
@@ -167,6 +175,7 @@ public class CampaignCommandService {
     if (actual.isEmpty()) return cp;
     cp = associations.saveAndFlush(cp);
     append(cp, context, AuditAction.UPDATE, actual);
+    quality.recalculate(p, context);
     return cp;
   }
 
@@ -185,6 +194,7 @@ public class CampaignCommandService {
         context,
         AuditAction.ARCHIVE,
         changes.product(before, CampaignProductSnapshot.from(cp)));
+    quality.recalculate(p, context);
     return cp;
   }
 
@@ -203,6 +213,7 @@ public class CampaignCommandService {
         context,
         AuditAction.RESTORE,
         changes.product(before, CampaignProductSnapshot.from(cp)));
+    quality.recalculate(p, context);
     return cp;
   }
 
@@ -277,5 +288,9 @@ public class CampaignCommandService {
     String m = e.getMessage() == null ? "Campaign validation failed" : e.getMessage();
     String f = m.contains(" ") ? m.substring(0, m.indexOf(' ')) : "campaign";
     return new CampaignValidationException(f, m);
+  }
+
+  private void recalculateCampaignProducts(UUID campaignUuid, AuditOperationContext context) {
+    associations.findActiveProductUuids(campaignUuid).forEach(productUuid -> quality.recalculate(productUuid, context));
   }
 }

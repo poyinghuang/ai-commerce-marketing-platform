@@ -100,7 +100,7 @@ class ProductAggregateIntegrationTest {
     }
 
     @Test
-    void queryCountIsFiveAndConstantWhenCardinalityIncreases() {
+    void queryCountIncludesQualityAndRemainsConstantWhenCardinalityIncreases() {
         Product product = createProduct("Query count");
         seedOneOfEach(product, 0);
         service.get(product.getProductUuid(), false);
@@ -113,12 +113,13 @@ class ProductAggregateIntegrationTest {
         statistics.clear();
         ProductAggregateView result = service.get(product.getProductUuid(), false);
 
-        assertThat(initial).isEqualTo(5);
-        assertThat(statistics.getPrepareStatementCount()).isEqualTo(5);
+        assertThat(initial).isEqualTo(9);
+        assertThat(statistics.getPrepareStatementCount()).isEqualTo(9);
         assertThat(result.knowledge()).hasSize(5);
         assertThat(result.creativePlans()).hasSize(5);
         assertThat(result.campaigns()).hasSize(5);
         assertThat(result.assets()).hasSize(5);
+        assertThat(result.quality()).isNotNull();
     }
 
     @Test

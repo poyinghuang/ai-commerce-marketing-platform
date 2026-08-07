@@ -2,21 +2,23 @@
 
 ## Gate status
 
-- Status：2D-1 completed; 2D-2 not started
-- Branch：`codex/2d-1-finalize`
+- Status：2D-1 completed; 2D-2 Manager approved, merge pending
+- Branch：`codex/2d-2-recalculation-api`
 - Base Commit：`6ba92bdc48a50f61448ee347b89939f961bdb5e4`
 - Specification Merge：Passed — `6ba92bdc48a50f61448ee347b89939f961bdb5e4`
 - Specification Post-merge CI：Passed — Run `31198925437`
-- Implementation：2D-1 completed; 2D-2 through 2D-4 not started
+- Implementation：2D-1 completed; 2D-2 Manager approved; 2D-3 and 2D-4 not started
 - Migration：V5 committed in `558262f1474618e58a4d7b8cce76d838dc46822a`
 - Local Verification：2D-1 Passed
-- Remote CI：2D-1 Passed — Push Run `31202242425`; PR Run `31202259584`
-- Manager Review：2D-1 Passed
-- Manager Decision：2D-1 APPROVE
+- Remote CI：2D-1 Passed — Push Run `31202242425`; PR Run `31202259584`; 2D-2 Passed — Push Run `31207893627`; PR Run `31207911328`
+- Manager Review：2D-1 Passed; 2D-2 Passed
+- Manager Decision：2D-1 APPROVE; 2D-2 APPROVE at `f3cdb3386584fe182ea8c3f2dabc3ffdb07ac44f`
 - Approved Specification Commit：`fd1813653113cef26361c2aa815f2e303f5c6bc2`
 - Human Review Required：No
 - 2D-1 Merge：Passed — PR #23, `c897bb6f6f3847e62fea9b6d334400349c87e3b0`
 - 2D-1 Post-merge CI：Passed — main Run `31203178454`
+- 2D-1 Finalization Merge：Passed — `3b047d99eb99fddfd03ea0861ab32bff146a8267`; main Run `31204042828` passed
+- 2D-2 delivery record：[Milestone 2D-2 — Recalculation, API, Audit, and Aggregate](stage-02d-2-recalculation-api.md)
 - Milestone 2E：Not started
 
 ## Objective

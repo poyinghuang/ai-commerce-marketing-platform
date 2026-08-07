@@ -76,6 +76,6 @@ class ProductAggregateControllerTest {
     }
 
     private ProductAggregateView emptyView() {
-        return new ProductAggregateView(null, List.of(), List.of(), List.of(), List.of());
+        return new ProductAggregateView(null, List.of(), List.of(), List.of(), List.of(), null);
     }
 }

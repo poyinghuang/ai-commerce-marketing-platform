@@ -26,6 +26,11 @@ public interface CampaignProductJpaRepository
   List<CampaignProduct> findByCampaignUuidInAndProductUuid(
       Collection<UUID> campaignUuids, UUID productUuid);
 
+  @Query("select cp.productUuid from CampaignProduct cp where cp.campaignUuid=:campaignUuid "
+      + "and cp.lifecycleStatus=com.aicommerce.platform.common.domain.LifecycleStatus.ACTIVE "
+      + "order by cp.productUuid")
+  List<UUID> findActiveProductUuids(@Param("campaignUuid") UUID campaignUuid);
+
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query(
       "select cp from CampaignProduct cp where cp.campaignUuid=:campaignUuid and"

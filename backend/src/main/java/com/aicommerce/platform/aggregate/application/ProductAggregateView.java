@@ -10,6 +10,7 @@ import com.aicommerce.platform.knowledge.domain.KnowledgeType;
 import com.aicommerce.platform.knowledge.domain.ProductKnowledge;
 import com.aicommerce.platform.product.domain.Product;
 import com.aicommerce.platform.product.domain.ProductLifecycleStatus;
+import com.aicommerce.platform.quality.application.QualityProjectionView;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -25,7 +26,8 @@ public record ProductAggregateView(
         List<KnowledgeView> knowledge,
         List<CreativePlanView> creativePlans,
         List<CampaignView> campaigns,
-        List<AssetView> assets) {
+        List<AssetView> assets,
+        QualityProjectionView quality) {
 
     public ProductAggregateView {
         knowledge = List.copyOf(knowledge);

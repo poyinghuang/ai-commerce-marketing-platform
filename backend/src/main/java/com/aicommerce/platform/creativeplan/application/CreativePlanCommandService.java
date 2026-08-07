@@ -13,6 +13,7 @@ import com.aicommerce.platform.product.application.*;
 import com.aicommerce.platform.product.domain.Product;
 import com.aicommerce.platform.product.domain.ProductLifecycleStatus;
 import com.aicommerce.platform.product.infrastructure.persistence.ProductJpaRepository;
+import com.aicommerce.platform.quality.application.ProductQualityRecalculationService;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,13 +26,14 @@ public class CreativePlanCommandService {
     private final AuditOperationContextFactory contexts;
     private final AuditWriter auditWriter;
     private final CreativePlanAuditChangeFactory changes;
+    private final ProductQualityRecalculationService quality;
     private final Clock clock;
 
     public CreativePlanCommandService(CreativePlanJpaRepository plans, ProductJpaRepository products,
             AuditOperationContextFactory contexts, AuditWriter auditWriter,
-            CreativePlanAuditChangeFactory changes, Clock clock) {
+            CreativePlanAuditChangeFactory changes, ProductQualityRecalculationService quality, Clock clock) {
         this.plans = plans; this.products = products; this.contexts = contexts;
-        this.auditWriter = auditWriter; this.changes = changes; this.clock = clock;
+        this.auditWriter = auditWriter; this.changes = changes; this.quality = quality; this.clock = clock;
     }
 
     @Transactional
@@ -47,6 +49,7 @@ public class CreativePlanCommandService {
         } catch (IllegalArgumentException exception) { throw validation(exception); }
         plan = plans.saveAndFlush(plan);
         append(plan, context, AuditAction.CREATE, changes.forCreate(CreativePlanSnapshot.from(plan)));
+        quality.recalculate(productUuid, context);
         return plan;
     }
 
@@ -74,7 +77,7 @@ public class CreativePlanCommandService {
         } catch (IllegalArgumentException exception) { throw validation(exception); }
         List<AuditChange> actual = changes.between(before, CreativePlanSnapshot.from(plan));
         if (actual.isEmpty()) return plan;
-        flush(plan); append(plan, context, AuditAction.UPDATE, actual); return plan;
+        flush(plan); append(plan, context, AuditAction.UPDATE, actual); quality.recalculate(productUuid, context); return plan;
     }
 
     @Transactional
@@ -84,7 +87,7 @@ public class CreativePlanCommandService {
         CreativePlanSnapshot before = CreativePlanSnapshot.from(plan);
         if (!plan.archive(Instant.now(clock))) return plan;
         List<AuditChange> actual = changes.between(before, CreativePlanSnapshot.from(plan));
-        flush(plan); append(plan, context, AuditAction.ARCHIVE, actual); return plan;
+        flush(plan); append(plan, context, AuditAction.ARCHIVE, actual); quality.recalculate(productUuid, context); return plan;
     }
 
     @Transactional
@@ -94,7 +97,7 @@ public class CreativePlanCommandService {
         CreativePlanSnapshot before = CreativePlanSnapshot.from(plan);
         if (!plan.restore()) return plan;
         List<AuditChange> actual = changes.between(before, CreativePlanSnapshot.from(plan));
-        flush(plan); append(plan, context, AuditAction.RESTORE, actual); return plan;
+        flush(plan); append(plan, context, AuditAction.RESTORE, actual); quality.recalculate(productUuid, context); return plan;
     }
 
     private Product requireActiveProduct(UUID uuid) {

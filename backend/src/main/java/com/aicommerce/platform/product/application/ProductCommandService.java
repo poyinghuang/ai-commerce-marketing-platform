@@ -14,6 +14,7 @@ import com.aicommerce.platform.audit.domain.AuditOperationContext;
 import com.aicommerce.platform.product.domain.Product;
 import com.aicommerce.platform.product.domain.ProductLifecycleStatus;
 import com.aicommerce.platform.product.infrastructure.persistence.ProductJpaRepository;
+import com.aicommerce.platform.quality.application.ProductQualityRecalculationService;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +29,7 @@ public class ProductCommandService {
     private final AuditOperationContextFactory contextFactory;
     private final AuditWriter auditWriter;
     private final ProductAuditChangeFactory changeFactory;
+    private final ProductQualityRecalculationService quality;
     private final Clock clock;
 
     public ProductCommandService(
@@ -36,12 +38,14 @@ public class ProductCommandService {
             AuditOperationContextFactory contextFactory,
             AuditWriter auditWriter,
             ProductAuditChangeFactory changeFactory,
+            ProductQualityRecalculationService quality,
             Clock clock) {
         this.productRepository = productRepository;
         this.productIdGenerator = productIdGenerator;
         this.contextFactory = contextFactory;
         this.auditWriter = auditWriter;
         this.changeFactory = changeFactory;
+        this.quality = quality;
         this.clock = clock;
     }
 
@@ -71,6 +75,7 @@ public class ProductCommandService {
         // create response includes auditing timestamps populated during persistence.
         product = productRepository.saveAndFlush(product);
         appendAudit(product, context, AuditAction.CREATE, changeFactory.forCreate(ProductSnapshot.from(product)));
+        quality.recalculate(product.getProductUuid(), context);
         return product;
     }
 
@@ -105,6 +110,7 @@ public class ProductCommandService {
         }
         flush(product);
         appendAudit(product, context, AuditAction.UPDATE, changes);
+        quality.recalculate(product.getProductUuid(), context);
         return product;
     }
 
@@ -120,6 +126,7 @@ public class ProductCommandService {
         List<AuditChange> changes = changeFactory.between(before, ProductSnapshot.from(product));
         flush(product);
         appendAudit(product, context, AuditAction.ARCHIVE, changes);
+        quality.recalculate(product.getProductUuid(), context);
         return product;
     }
 
@@ -135,6 +142,7 @@ public class ProductCommandService {
         List<AuditChange> changes = changeFactory.between(before, ProductSnapshot.from(product));
         flush(product);
         appendAudit(product, context, AuditAction.RESTORE, changes);
+        quality.recalculate(product.getProductUuid(), context);
         return product;
     }
 

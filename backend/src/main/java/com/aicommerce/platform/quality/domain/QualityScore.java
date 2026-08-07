@@ -64,6 +64,11 @@ public class QualityScore extends MutableEntity {
     }
 
     public boolean applyAssessment(QualityAssessment assessment, Instant calculatedAt) {
+        return applyAssessment(assessment, false, calculatedAt);
+    }
+
+    public boolean applyAssessment(QualityAssessment assessment, boolean relatedProjectionChanged,
+            Instant calculatedAt) {
         Objects.requireNonNull(assessment, "assessment is required");
         if (assessment.manualAdjustment() != manualAdjustment) {
             throw new IllegalArgumentException("assessment must retain the persisted manual adjustment");
@@ -74,7 +79,8 @@ public class QualityScore extends MutableEntity {
                 && assetMetadataScore == assessment.assetMetadataScore()
                 && campaignReadinessScore == assessment.campaignReadinessScore()
                 && systemScore == assessment.systemScore()
-                && finalScore == assessment.finalScore()) {
+                && finalScore == assessment.finalScore()
+                && !relatedProjectionChanged) {
             return false;
         }
         this.productMasterScore = assessment.productMasterScore();
