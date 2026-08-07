@@ -13,7 +13,13 @@
 - Manager Decision：APPROVE
 - Review Findings：None
 - Human Review Required：No
-- Merge：Pending
+- Merge：Passed — implementation PR #27, `4f4aace65a737305f15bf3c9b34633dfc66366ba`
+- Initial Post-merge CI：Failed — main Run `31214177537`; asynchronous Aggregate assertion raced its response.
+- Corrective Commit：`aeef9757388ab38b98023ca2b5b1bb093e44192c`
+- Corrective Remote CI：Passed — Push Run `31214636761`; Pull Request Run `31214655119`
+- Corrective Manager Decision：APPROVE; no remaining findings; Human approval not required.
+- Corrective Merge：Passed — PR #28, `131274be0fff0230ce9cdd7ef1ca53d1d09cbcb7`
+- Final Post-merge CI：Passed — main Run `31215080850`
 - Milestone 2D-4：Not started
 
 ## Scope delivered
@@ -77,7 +83,7 @@
 - [x] Frontend and Backend regression suites, Compose build/start, and runtime smoke pass locally.
 - [x] Push and Pull Request Remote CI pass at the committed Head.
 - [x] Exact-head Manager Review records one of the three allowed Gate decisions.
-- [ ] Merge and post-merge `main` verification complete before 2D-4 starts.
+- [x] Merge and post-merge `main` verification complete before 2D-4 starts.
 
 ## Manager review record
 
@@ -90,3 +96,11 @@
 - Remote evidence：Push Run `31213276000` and Pull Request Run `31213280058`; both `quality-and-compose` and `secret-scan` passed, including Backend, Frontend, Compose cold start, Browser E2E, smoke, actionlint, and Gitleaks.
 - Known non-blocking warnings：GitHub Actions Node.js compatibility annotation and Byte Buddy dynamic-agent future deprecation.
 - Human approval required：No.
+
+## Post-merge corrective record
+
+- Main Run `31214177537` correctly blocked completion after exposing a nondeterministic synchronous assertion in `product-detail-view.test.tsx`.
+- The correction changed only the assertion from synchronous `getAllByText` to awaited `findAllByText`; production behavior and contracts were unchanged.
+- The target test passed 10 consecutive local runs before the complete Frontend Gate passed.
+- Exact-head Push Run `31214636761`, PR Run `31214655119`, and corrective post-merge main Run `31215080850` passed.
+- 2D-3 is completed; 2D-4 may start only after this finalization record is merged and its post-merge main CI passes.
