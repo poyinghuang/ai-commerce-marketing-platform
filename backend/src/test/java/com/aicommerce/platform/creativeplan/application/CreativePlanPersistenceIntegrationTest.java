@@ -2,6 +2,9 @@ package com.aicommerce.platform.creativeplan.application;
 
 import static org.assertj.core.api.Assertions.*;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.IntStream;
 import com.aicommerce.platform.common.application.FieldPatch;
 import com.aicommerce.platform.common.domain.LifecycleStatus;
 import com.aicommerce.platform.creativeplan.domain.CreativePlan;
@@ -33,13 +36,14 @@ class CreativePlanPersistenceIntegrationTest {
   CreativePlan second=commands.create(product.getProductUuid(),create,"plan-create-2");
   java.util.UUID firstUuid=first.getCreativePlanUuid();
   assertThat(actions(first)).containsExactly("CREATE");
+  assertAudit(firstUuid,"CREATE","plan-create-1",List.of("plan_name","lifecycle_status"));
 
   var absent=FieldPatch.<String>absent();
   PatchCreativePlanCommand update=new PatchCreativePlanCommand(absent,FieldPatch.present("Parents"),absent,absent,absent,absent,absent,absent,absent,absent,absent,absent);
   first=commands.patch(product.getProductUuid(),first.getCreativePlanUuid(),0,update,"plan-update");
   assertThat(first.getVersion()).isEqualTo(1);
   assertThat(actions(first)).containsExactly("CREATE","UPDATE");
-  assertThat(changeFields(first,"UPDATE")).containsExactly("primary_audience");
+  assertAudit(firstUuid,"UPDATE","plan-update",List.of("primary_audience"));
   long afterUpdate=auditCount();
   assertThatThrownBy(()->commands.patch(product.getProductUuid(),firstUuid,0,update,"stale"))
    .isInstanceOf(CreativePlanPreconditionFailedException.class);
@@ -49,6 +53,7 @@ class CreativePlanPersistenceIntegrationTest {
 
   first=commands.archive(product.getProductUuid(),first.getCreativePlanUuid(),1,"archive");
   assertThat(first.getVersion()).isEqualTo(2); assertThat(actions(first)).containsExactly("CREATE","UPDATE","ARCHIVE");
+  assertAudit(firstUuid,"ARCHIVE","archive",List.of("lifecycle_status","archived_at"));
   long afterArchive=auditCount(); commands.archive(product.getProductUuid(),first.getCreativePlanUuid(),2,"archive-noop");
   assertThat(auditCount()).isEqualTo(afterArchive);
   assertThatThrownBy(()->commands.patch(product.getProductUuid(),firstUuid,2,update,"archived-patch"))
@@ -68,6 +73,7 @@ class CreativePlanPersistenceIntegrationTest {
 
   first=commands.restore(product.getProductUuid(),first.getCreativePlanUuid(),2,"restore");
   assertThat(first.getVersion()).isEqualTo(3); assertThat(actions(first)).containsExactly("CREATE","UPDATE","ARCHIVE","RESTORE");
+  assertAudit(firstUuid,"RESTORE","restore",List.of("lifecycle_status","archived_at"));
   long afterRestore=auditCount(); commands.restore(product.getProductUuid(),first.getCreativePlanUuid(),3,"restore-noop");
   assertThat(auditCount()).isEqualTo(afterRestore);
   assertThatThrownBy(()->commands.create(product.getProductUuid(),new CreateCreativePlanCommand(" ",null,null,null,null,null,null,null,null,null,null,null),"invalid"))
@@ -78,6 +84,12 @@ class CreativePlanPersistenceIntegrationTest {
  }
  private CreateProductCommand productCommand(String name){return new CreateProductCommand(null,name,null,null,null,null,null,null,null,null,null);}
  private List<String> actions(CreativePlan plan){return jdbc.queryForList("SELECT action FROM audit_logs WHERE entity_type='CREATIVE_PLAN' AND entity_uuid=? ORDER BY occurred_at,audit_uuid",String.class,plan.getCreativePlanUuid());}
- private List<String> changeFields(CreativePlan plan,String action){return jdbc.queryForList("SELECT c.field_name FROM audit_log_changes c JOIN audit_logs l ON l.audit_uuid=c.audit_uuid WHERE l.entity_uuid=? AND l.action=? ORDER BY c.change_order",String.class,plan.getCreativePlanUuid(),action);}
+ private void assertAudit(UUID entityUuid,String action,String requestId,List<String> changedFields){
+  Map<String,Object> audit=jdbc.queryForMap("SELECT action,actor_id,request_id FROM audit_logs WHERE entity_type='CREATIVE_PLAN' AND entity_uuid=? AND action=?",entityUuid,action);
+  assertThat(audit).containsEntry("action",action).containsEntry("actor_id","local-admin").containsEntry("request_id",requestId);
+  List<Map<String,Object>> changes=jdbc.queryForList("SELECT c.field_name,c.change_order FROM audit_log_changes c JOIN audit_logs l ON l.audit_uuid=c.audit_uuid WHERE l.entity_type='CREATIVE_PLAN' AND l.entity_uuid=? AND l.action=? ORDER BY c.change_order",entityUuid,action);
+  assertThat(changes).extracting(change->change.get("field_name")).containsExactlyElementsOf(changedFields);
+  assertThat(changes).extracting(change->((Number)change.get("change_order")).intValue()).containsExactlyElementsOf(IntStream.range(0,changedFields.size()).boxed().toList());
+ }
  private long auditCount(){return jdbc.queryForObject("SELECT COUNT(*) FROM audit_logs WHERE entity_type='CREATIVE_PLAN'",Long.class);}
 }
