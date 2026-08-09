@@ -3,6 +3,8 @@ import {afterEach,describe,expect,it,vi} from "vitest";
 import {AssetsTab} from "./assets-tab";
 import type {Asset} from "@/lib/assets";
 
+vi.mock("@/components/storage-folder-panel",()=>({StorageFolderPanel:()=>null}));
+
 const PRODUCT="d4476a19-30ed-48d9-a518-f9b111bd0911",ASSET="79be8758-1f0d-4ca5-bad6-f51aa923cdb9";
 const asset:Asset={assetUuid:ASSET,productUuid:PRODUCT,creativePlanUuid:null,campaignUuid:null,assetType:"IMAGE",purpose:"Hero",storageProvider:"s3",providerFileId:"a",fileUrl:"https://cdn.example/a.jpg",mediaType:"image/jpeg",originalFilename:"a.jpg",sizeBytes:4,checksumSha256:null,providerMetadata:{region:"eu"},lifecycleStatus:"ACTIVE",archivedAt:null,createdAt:"2026-08-07T00:00:00Z",updatedAt:"2026-08-07T00:00:00Z",version:4};
 const page=(content:ReadonlyArray<typeof asset>=[],overrides={})=>({content,page:0,size:10,totalElements:content.length,totalPages:content.length?1:0,sort:"updatedAt,desc",...overrides});

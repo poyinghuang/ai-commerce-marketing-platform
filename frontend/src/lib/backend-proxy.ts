@@ -21,6 +21,12 @@ const SAFE_QUALITY_PATH = new RegExp(
 const SAFE_CAMPAIGN_PATH = new RegExp(
   `^/api/campaigns(?:/${PRODUCT_UUID_PATH}(?:/restore|/products(?:/${PRODUCT_UUID_PATH}(?:/restore)?)?)?)?$`, "i",
 );
+const SAFE_SHEET_CONNECTOR_PATH = new RegExp(
+  `^/api/connectors/google-sheets(?:/template|/imports/preview|/imports/${PRODUCT_UUID_PATH}(?:/execute)?)$`, "i",
+);
+const SAFE_STORAGE_FOLDER_PATH = new RegExp(
+  `^/api/products/${PRODUCT_UUID_PATH}/storage-folder$`, "i",
+);
 
 type ProxyOptions = {
   method: "GET" | "POST" | "PATCH" | "DELETE";
@@ -115,6 +121,20 @@ export async function forwardCampaignRequest(request: NextRequest, backendPath: 
       ? new Set(["page", "size", "status", "sort"])
       : new Set<string>();
   return forwardAllowlistedRequest(request, backendPath, options, allowedQuery);
+}
+
+export async function forwardSheetConnectorRequest(request: NextRequest, backendPath: string, options: ProxyOptions) {
+  if (!SAFE_SHEET_CONNECTOR_PATH.test(backendPath)) {
+    return proxyError("INVALID_SHEET_CONNECTOR_PATH", "Google Sheets connector path is invalid", 400);
+  }
+  return forwardAllowlistedRequest(request, backendPath, options, new Set<string>());
+}
+
+export async function forwardStorageFolderRequest(request: NextRequest, backendPath: string, options: ProxyOptions) {
+  if (!SAFE_STORAGE_FOLDER_PATH.test(backendPath)) {
+    return proxyError("INVALID_STORAGE_FOLDER_PATH", "Storage folder path is invalid", 400);
+  }
+  return forwardAllowlistedRequest(request, backendPath, options, new Set<string>());
 }
 
 async function forwardAllowlistedRequest(

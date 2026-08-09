@@ -10,7 +10,7 @@ export default function Home() {
         <p className="summary">
           專案基礎與 Product Master Vertical Slice 已就緒，可建立、搜尋、編輯、封存與還原商品。
         </p>
-        <Link className="primary-button link-button" href="/products">進入商品主檔</Link>
+        <div className="home-actions"><Link className="primary-button link-button" href="/products">Product Center</Link><Link className="secondary-button link-button" href="/connectors/google-sheets">Google Sheets import</Link></div>
         <BackendHealth />
       </section>
     </main>
