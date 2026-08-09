@@ -2,11 +2,11 @@
 
 ## Gate status
 
-- Status：Approved for implementation under the existing Stage 02 architecture decisions
-- Branch：Merged from `codex/2e-specification`
+- Status：Completed
+- Branch：Merged
 - Base Commit：`b0abd9340358d233b782965b4562d21b04074699`
 - Specification：Complete
-- Implementation：In progress — 2E-1, 2E-2, and 2E-3 delivered
+- Implementation：Complete — 2E-1 through 2E-5 delivered
 - Migration：V6, additive V6.1, and V7 merged
 - Local Verification：Passed — documentation diff and exact-runtime regression verified
 - Remote CI：Passed — Push Run `31222354376`; PR Run `31222357524`
@@ -15,7 +15,8 @@
 - Approved Specification Head：`f6ec441fcc166ee2d2028706a7e8a65d0c26ae28`
 - Human Review Required：No
 - Merge：Passed — specification Commit `d0e9516befcf00a1519c4c2c5867ea0418de46b8`
-- Post-merge CI：Passed — main Run `31223155344`
+- Final Post-merge CI：Passed — main Run `31308700018`
+- Completion Tags：`milestone-2e-complete` and `stage-02-complete` at `73f20fe75ef64da8add771087a2035a773d905af`
 - Stage 03：Not started
 
 ## Objective and authority
@@ -274,4 +275,4 @@ All errors retain the standard `code`, `message`, `requestId`, `timestamp`, `pat
 - [x] All Stage 02 Backend, Frontend, migration, Compose, smoke, Playwright, audit, dependency, secret, and workflow checks pass locally and remotely.
 - [x] No Sheets polling/two-way sync, file upload/delete, live export write-back, AI, Meta Ads, Dashboard, Decision Engine, or Stage 03 scope is introduced.
 - [x] Every completed slice received exact-head Manager `APPROVE`, merge, and post-merge verification before the next slice started.
-- [ ] Final Stage 02 acceptance is merged, post-merge main CI passes, and `milestone-2e-complete` plus `stage-02-complete` tags are created.
+- [x] Final Stage 02 acceptance is merged, post-merge main CI passes, and `milestone-2e-complete` plus `stage-02-complete` tags are created.

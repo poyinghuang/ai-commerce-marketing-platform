@@ -1,6 +1,6 @@
 # AI Commerce Marketing Platform
 
-以 AI 為核心的電商素材、廣告投放、成效分析與決策平台。本 Repository 已完成 Stage 01 與 Stage 02 Milestone 2A，並提供 Milestone 2B Product Master Vertical Slice；尚未包含 Product Knowledge、AI、廣告平台、Dashboard 或 Decision Engine 功能。
+以 AI 為核心的電商素材、廣告投放、成效分析與決策平台。本 Repository 已完成 Stage 01 與完整 Stage 02 Product Knowledge Center，包括 Product Master、Knowledge／Plans／Campaigns／Assets、Quality Workflow，以及 Google Sheets／Drive Connector；Stage 03 AI Creative Factory、廣告平台、Dashboard 與 Decision Engine 尚未開始。
 
 ## Stage 01 技術基線
 
