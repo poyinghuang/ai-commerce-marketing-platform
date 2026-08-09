@@ -2,20 +2,19 @@
 
 ## Gate status
 
-- Status: Detailed specification complete; Manager approved, pending merge
-- Branch: `codex/stage-03-ai-creative-spec`
-- Base Commit: `d039478d477c97e0f7cd658bd46cca2719b4cc33`
+- Status: Milestone 3A implementation complete; local verification passed, pending delivery
+- Branch: `codex/stage-03-ai-foundation`
+- Base Commit: `718b60c3a4a2507716089f38fc77dacde731a769`
 - Stage 02 prerequisite: Passed — `stage-02-complete` at `73f20fe75ef64da8add771087a2035a773d905af`
-- Implementation: Not started
-- Migration: Not created
-- Local Verification: Passed — documentation scope, diff, history, and Stage 02 lineage verified
-- Remote CI: Passed — Push Run `31325958691`; PR Run `31325960958`
-- Manager Review: Passed
-- Manager Decision: `APPROVE`
-- Approved Specification Commit: `f3990a72b8fea967f67280b132e1840e005d9c1e`
-- Approved CI Runs: Push `31325958691`; Pull Request `31325960958`
-- Human Review Required: No for the approved specification; Yes only if an escalation boundary below is crossed
-- Merge: Pending
+- Specification: Merged — `718b60c3a4a2507716089f38fc77dacde731a769`
+- Implementation: Passed locally for Milestone 3A
+- Migration: V8 created; V1–V7 unchanged
+- Local Verification: Passed — Backend, migration, schema, transaction, Frontend regression, Compose, actionlint, Gitleaks, and dependency audit
+- Remote CI: Pending
+- Manager Review: Pending exact-head delivery and Remote CI
+- Manager Decision: Pending
+- Human Review Required: No; required only if an escalation boundary below is crossed
+- Merge: Pending for Milestone 3A
 - Stage 04: Not started
 
 ## Human-approved decisions
@@ -60,6 +59,20 @@ No dependent milestone starts until the preceding milestone receives exact-head 
 - Server-only `AiBudgetPolicyProvider`, deterministic UTC budget guard, reservation/commit/release behavior, and concurrent overspend protection.
 - Provider ports, local/test deterministic stubs, default/production fail-closed profiles, trusted actor/request ID, Audit, migration compatibility, and Testcontainers.
 - No generation REST API or Frontend.
+
+#### 3A delivery evidence
+
+- V8 creates only prompt templates/versions, generation batches/jobs, and the append-only budget ledger.
+- Prompt versions are immutable and reject nested credential/provider configuration keys; generation identity and associations are protected at the database boundary.
+- Budget policy has no defaults, validates a single configured ISO currency, reserves the deterministic worst-case amount before a provider call, and serializes daily reservations with a PostgreSQL transaction advisory lock.
+- Accepted and budget-rejected operations persist their bounded Audit records in the same transaction. An outer rollback removes batch, jobs, ledger, and Audit together. SYSTEM operations receive one non-empty server-generated request ID.
+- Budget settlement writes ordered COMMIT/RELEASE entries; direct SQL cannot mutate or delete ledger entries or bypass reservation reconciliation.
+- Local Backend verification: 59 suites, 246 tests, 0 failures, 0 errors, 0 skipped. Targeted V8 cold/upgrade migration, Hibernate validation, constraint, trigger, concurrency, rollback, budget, and provider-profile tests passed.
+- Frontend regression: lint, typecheck, 21 Vitest files/127 tests, production build, and production dependency audit passed; audit found 0 vulnerabilities.
+- Compose cold start: PostgreSQL, Backend, and Frontend healthy; V1→V8 applied successfully; Backend health and same-origin proxy returned `UP`; runtime UIDs were non-root (`999` and `1000`).
+- Security/tooling: actionlint passed; Gitleaks history and worktree scans found no leaks; `git diff --check` passed.
+- Known non-blocking warnings: Byte Buddy/Mockito dynamic-agent future deprecation; Surefire needed to force-close a completed fork JVM after all reports were written; local host port 8080 was occupied by an unrelated repository, so Compose verification used fixed isolated test ports.
+- Milestone 3B must consume the settlement invariant result: provider-reported actual cost above the reservation is retained and flagged, and orchestration must block the job/batch from further automatic submission.
 
 ### 3B — Text generation vertical slice
 
