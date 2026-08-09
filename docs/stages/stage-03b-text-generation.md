@@ -2,16 +2,17 @@
 
 ## Gate status
 
-- Status: Implementation complete; delivery gates pending
+- Status: Manager approved; approval-record CI and merge pending
 - Branch: `codex/stage-03-text-generation`
 - Base Commit: `4386eed412f0c49f740e4fad17ba781e12afd078`
 - Prerequisite: Milestone 3A completed at `b90517a7c5cf9b37c894ceea8beef090a04b149d`
 - Prerequisite tag: `milestone-3a-complete`
 - Implementation: Complete
 - Local Verification: Passed for Backend, Frontend, migration, Compose, smoke, Playwright, dependency audit, Gitleaks, and diff checks; local actionlint not verified
-- Remote CI: Pending
-- Manager Review: Pending
-- Manager Decision: Pending
+- Remote CI: Passed — Push Run `31336947018`; Pull Request Run `31336949428`
+- Manager Review: Passed for implementation Head `5696c68d8c07bb4188c7c4e26a8cf9f20b181941`
+- Manager Decision: `APPROVE`
+- Approved CI Runs: Push `31336947018`; Pull Request `31336949428`
 - Merge: Pending
 - Milestone 3C: Not started
 

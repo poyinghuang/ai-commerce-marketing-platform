@@ -19,7 +19,7 @@
 - Merge: Passed — PR #46, Squash Commit `b90517a7c5cf9b37c894ceea8beef090a04b149d`
 - Post-merge CI: Passed — main Run `31332810286`
 - Completion Tag: `milestone-3a-complete`
-- Milestone 3B: Implementation complete on `codex/stage-03-text-generation`; Remote CI, exact-head Manager Gate, merge, and post-merge verification pending. Detailed contract: [Stage 03B — Text Generation Vertical Slice](stage-03b-text-generation.md)
+- Milestone 3B: Manager approved at `5696c68d8c07bb4188c7c4e26a8cf9f20b181941`; approval-record CI, merge, and post-merge verification pending. Detailed contract: [Stage 03B — Text Generation Vertical Slice](stage-03b-text-generation.md)
 - Stage 04: Not started
 
 ## Human-approved decisions
