@@ -255,8 +255,8 @@
 
 ### Milestone 2E — Google Connectors and Final Integration
 
-- Status：Implementation, local/remote verification, Manager Review, merge, and implementation post-merge CI passed; final closeout CI and tags pending
-- Branch：`codex/2e-5-closeout`
+- Status：Completed — final main Run `31308700018`; tags `milestone-2e-complete` and `stage-02-complete`
+- Branch：Merged
 - Detailed specification：[Milestone 2E — Google Connectors and Final Stage 02 Integration](stage-02e-google-connectors.md)
 - Google Sheets Preview／Execute／Upsert
 - Google Drive `StorageProvider`

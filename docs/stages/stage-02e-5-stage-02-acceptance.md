@@ -2,7 +2,7 @@
 
 ## Delivery status
 
-- Branch: `codex/2e-5-stage-02-acceptance`
+- Branch: Merged
 - Base Commit: `4e12c9f72a9ed7810ee95b96143b51f8c3a31906`
 - Implementation: Complete
 - Local Verification: Passed
@@ -10,6 +10,8 @@
 - Manager Review / Decision: Passed — `APPROVE`
 - Human Review Required: No
 - Merge: Passed — PR #42, Squash Commit `3b49205f2bb32c5472dd39ee170ad3476d535590`
+- Final Closeout: Passed — PR #43, Commit `73f20fe75ef64da8add771087a2035a773d905af`; main Run `31308700018`
+- Completion Tags: `milestone-2e-complete`, `stage-02-complete`
 - Stage 03: Not started
 
 ## Approved scope

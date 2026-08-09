@@ -87,3 +87,13 @@ None open. No CRITICAL, BLOCKING, or necessary MAJOR finding was identified.
 - Post-merge main Run `31308196281`: `quality-and-compose` and `secret-scan` Passed, including all eight Playwright scenarios
 - Milestone 2E-5 and Stage 02: implementation delivered; this closeout merge, final main CI, and completion tags remain required
 - Stage 03: not allowed until the final main Commit is verified and tagged
+
+## Final release record
+
+- Final closeout PR #43: Merged
+- Verified release Commit: `73f20fe75ef64da8add771087a2035a773d905af`
+- Final main Run `31308700018`: `quality-and-compose` and `secret-scan` Passed
+- Completion tags: `milestone-2e-complete` and `stage-02-complete`, both at `73f20fe75ef64da8add771087a2035a773d905af`
+- Final Manager Decision: `APPROVE`
+- Stage 02: Completed
+- Stage 03: Not started; requires a separately approved specification and any applicable human escalation
