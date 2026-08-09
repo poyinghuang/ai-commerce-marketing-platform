@@ -7,7 +7,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 
 import com.aicommerce.platform.ai.domain.PromptTemplate;
@@ -27,9 +26,6 @@ import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class AiPromptTemplateService {
-
-    private static final List<String> FORBIDDEN_SCHEMA_KEYS = List.of(
-            "credential", "secret", "token", "providerurl", "baseurl", "apikey");
 
     private final PromptTemplateJpaRepository templateRepository;
     private final PromptTemplateVersionJpaRepository versionRepository;
@@ -110,7 +106,7 @@ public class AiPromptTemplateService {
             if (schema == null || !schema.isObject()) {
                 throw new AiFoundationValidationException("inputSchema must be a JSON object");
             }
-            validateSchemaKeys(schema);
+            AiInputDataPolicy.validateSchema(schema);
             String canonical = objectMapper.writeValueAsString(schema);
             if (canonical.length() > 16384) {
                 throw new AiFoundationValidationException("inputSchema exceeds 16384 characters");
@@ -120,21 +116,6 @@ public class AiPromptTemplateService {
             throw exception;
         } catch (RuntimeException exception) {
             throw new AiFoundationValidationException("inputSchema must be valid JSON", exception);
-        }
-    }
-
-    private void validateSchemaKeys(JsonNode node) {
-        if (node.isObject()) {
-            for (String name : node.propertyNames()) {
-                String normalized = name.toLowerCase(Locale.ROOT).replace("_", "").replace("-", "");
-                if (FORBIDDEN_SCHEMA_KEYS.stream().anyMatch(normalized::contains)) {
-                    throw new AiFoundationValidationException(
-                            "inputSchema contains a forbidden provider or secret key");
-                }
-                validateSchemaKeys(node.get(name));
-            }
-        } else if (node.isArray()) {
-            for (JsonNode child : node) validateSchemaKeys(child);
         }
     }
 

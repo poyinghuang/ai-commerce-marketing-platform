@@ -116,7 +116,7 @@ public class AiGenerationFoundationService {
                 jobs.add(GenerationJob.create(UUID.randomUUID(), batchUuid, product.getProductUuid(),
                         plan == null ? null : plan.getCreativePlanUuid(), request.promptTemplateVersionUuid(),
                         request.generationType(), request.providerKey(), request.modelKey(),
-                        request.renderedPrompt(), request.negativePrompt(), canonicalSnapshot(request.inputSnapshot()),
+                        request.renderedPrompt(), request.negativePrompt(), draft.canonicalSnapshot(),
                         draft.cost().estimatedCost(), draft.cost().worstCaseCost(), budgetPolicy.currency()));
             } catch (IllegalArgumentException exception) {
                 throw new AiFoundationValidationException(exception.getMessage(), exception);
@@ -164,19 +164,22 @@ public class AiGenerationFoundationService {
         }
         try {
             return new JobDraft(request, costCeilingProvider.ceilingFor(
-                    request.generationType(), request.providerKey(), request.modelKey()));
+                    request.generationType(), request.providerKey(), request.modelKey()),
+                    canonicalSnapshot(request.inputSnapshot(), version.getInputSchema()));
         } catch (IllegalArgumentException exception) {
             throw new AiFoundationValidationException("AI provider/model cost profile is not allowlisted", exception);
         }
     }
 
-    private String canonicalSnapshot(String raw) {
+    private String canonicalSnapshot(String raw, String rawSchema) {
         if (raw == null || raw.isBlank()) return null;
         try {
             JsonNode value = objectMapper.readTree(raw);
             if (value == null || !value.isObject()) {
                 throw new AiFoundationValidationException("inputSnapshot must be a JSON object");
             }
+            JsonNode schema = objectMapper.readTree(rawSchema);
+            AiInputDataPolicy.validateSnapshot(value, schema);
             String canonical = objectMapper.writeValueAsString(value);
             if (canonical.length() > 32768) {
                 throw new AiFoundationValidationException("inputSnapshot exceeds 32768 characters");
@@ -220,6 +223,6 @@ public class AiGenerationFoundationService {
         return new AuditChange(field, oldValue, newValue, type, order);
     }
 
-    private record JobDraft(GenerationJobFoundationRequest request, AiCostCeiling cost) {
+    private record JobDraft(GenerationJobFoundationRequest request, AiCostCeiling cost, String canonicalSnapshot) {
     }
 }

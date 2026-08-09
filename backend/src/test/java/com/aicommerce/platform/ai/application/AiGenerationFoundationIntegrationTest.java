@@ -256,6 +256,27 @@ class AiGenerationFoundationIntegrationTest {
                 Integer.class, context.operationUuid())).isZero();
     }
 
+    @Test
+    void generationRejectsSensitiveOrNonAllowlistedSnapshotFieldsBeforePersistence() {
+        AuditOperationContext context = contextFactory.forSystem("ai-input-policy-test");
+
+        assertThatThrownBy(() -> generationService.create(commandWithSnapshot(
+                "{\"productName\":\"AI Test Product\",\"customerEmail\":\"person@example.com\"}"), context))
+                .isInstanceOf(AiFoundationValidationException.class)
+                .hasMessageContaining("prohibited sensitive-data key");
+        assertThatThrownBy(() -> generationService.create(commandWithSnapshot(
+                "{\"productName\":\"AI Test Product\",\"unapprovedField\":\"value\"}"), context))
+                .isInstanceOf(AiFoundationValidationException.class)
+                .hasMessageContaining("not allowlisted");
+
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM ai_generation_batches WHERE product_uuid=?",
+                Integer.class, productUuid)).isZero();
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM audit_logs WHERE operation_uuid=?",
+                Integer.class, context.operationUuid())).isZero();
+    }
+
     private CreateGenerationFoundationCommand command(String worstCase) {
         String modelKey = switch (worstCase) {
             case "1.000000" -> "stub-text-low";
@@ -268,6 +289,12 @@ class AiGenerationFoundationIntegrationTest {
                 new GenerationJobFoundationRequest(templateVersionUuid, GenerationType.TEXT,
                         "stub", modelKey, "Write a product caption", null,
                         "{\"productName\":\"AI Test Product\"}")));
+    }
+
+    private CreateGenerationFoundationCommand commandWithSnapshot(String snapshot) {
+        return new CreateGenerationFoundationCommand(productUuid, null, List.of(
+                new GenerationJobFoundationRequest(templateVersionUuid, GenerationType.TEXT,
+                        "stub", "stub-text", "Write a product caption", null, snapshot)));
     }
 
     private String productId(UUID uuid) {
