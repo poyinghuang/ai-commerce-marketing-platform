@@ -1,0 +1,14 @@
+{
+  "workflowKey": "background-composite-v1",
+  "workflowVersion": "1",
+  "mutableInputs": {
+    "1": [
+      "prompt",
+      "source_png_base64",
+      "mask_png_base64",
+      "width",
+      "height",
+      "filename_prefix"
+    ]
+  }
+}

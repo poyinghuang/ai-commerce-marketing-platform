@@ -20,6 +20,8 @@ import com.aicommerce.platform.ai.application.AiGenerationException;
 import com.aicommerce.platform.ai.application.CreateTextGenerationBatchCommand;
 import com.aicommerce.platform.ai.application.GenerationFoundationResult;
 import com.aicommerce.platform.ai.application.TextGenerationService;
+import com.aicommerce.platform.ai.application.ImageGenerationService;
+import com.aicommerce.platform.ai.application.CreateImageGenerationBatchCommand;
 import com.aicommerce.platform.ai.domain.GenerationBatch;
 import com.aicommerce.platform.ai.domain.GenerationJob;
 import com.aicommerce.platform.ai.domain.GenerationOutput;
@@ -49,6 +51,7 @@ class AiGenerationControllerTest {
 
     @Autowired MockMvc mvc;
     @MockitoBean TextGenerationService service;
+    @MockitoBean ImageGenerationService images;
     @MockitoBean AiBudgetPolicyProvider budgetPolicies;
 
     @Test
@@ -90,6 +93,7 @@ class AiGenerationControllerTest {
         GenerationOutput output = GenerationOutput.createText(OUTPUT, JOB, BATCH, PRODUCT, "Generated copy",
                 "stub-text", 1, 2, BigDecimal.ZERO, "USD", "[]", "{}");
         when(service.execute(eq(JOB), eq(2L), anyString())).thenReturn(output);
+        when(service.getJob(JOB)).thenReturn(job(JOB));
         mvc.perform(post("/api/ai-generation-jobs/{jobUuid}/execute", JOB)
                         .header(HttpHeaders.IF_MATCH, "W/\"2\""))
                 .andExpect(status().isOk())
@@ -100,6 +104,7 @@ class AiGenerationControllerTest {
 
     @Test
     void staleExecutionUsesStableErrorContract() throws Exception {
+        when(service.getJob(JOB)).thenReturn(job(JOB));
         when(service.execute(eq(JOB), eq(1L), anyString())).thenThrow(new AiGenerationException(
                 "AI_GENERATION_PRECONDITION_FAILED", "Generation job version is stale"));
         mvc.perform(post("/api/ai-generation-jobs/{jobUuid}/execute", JOB)
@@ -109,9 +114,40 @@ class AiGenerationControllerTest {
                 .andExpect(jsonPath("$.path").value("/api/ai-generation-jobs/" + JOB + "/execute"));
     }
 
+    @Test
+    void imageCreateUsesOnlyLogicalWorkflowAndSourceIdentifiers() throws Exception {
+        GenerationBatch batch = GenerationBatch.create(BATCH, PRODUCT, PLAN, "USD",
+                new BigDecimal("1.000000"), new BigDecimal("4.000000"), 1, "local-admin");
+        when(images.createBatch(any(), anyString())).thenReturn(new GenerationFoundationResult(
+                batch, List.of(imageJob(JOB)), true, null));
+        UUID source = UUID.randomUUID();
+
+        mvc.perform(post("/api/products/{productUuid}/ai-generation-batches", PRODUCT)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"generationType":"IMAGE","creativePlanUuid":"%s",
+                                 "templateKey":"image.background-composite-v1",
+                                 "workflowKey":"background-composite-v1","modelProfile":"STANDARD_IMAGE",
+                                 "variationCount":1,"sourceAssetUuid":"%s"}
+                                """.formatted(PLAN, source)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.requestedJobCount").value(1))
+                .andExpect(jsonPath("$.jobs[0].generationType").value("IMAGE"));
+        ArgumentCaptor<CreateImageGenerationBatchCommand> command =
+                ArgumentCaptor.forClass(CreateImageGenerationBatchCommand.class);
+        verify(images).createBatch(command.capture(), anyString());
+        org.assertj.core.api.Assertions.assertThat(command.getValue().sourceAssetUuid()).isEqualTo(source);
+    }
+
     private GenerationJob job(UUID id) {
         return GenerationJob.create(id, BATCH, PRODUCT, PLAN, TEMPLATE_VERSION, GenerationType.TEXT,
                 "stub", "stub-text", "Prompt", null, "{}", new BigDecimal("0.500000"),
                 new BigDecimal("2.000000"), "USD");
+    }
+
+    private GenerationJob imageJob(UUID id) {
+        return GenerationJob.create(id, BATCH, PRODUCT, PLAN, TEMPLATE_VERSION, GenerationType.IMAGE,
+                "stub", "stub-image", "Prompt", null, "{}", new BigDecimal("1.000000"),
+                new BigDecimal("4.000000"), "USD");
     }
 }

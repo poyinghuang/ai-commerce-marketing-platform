@@ -148,7 +148,8 @@ public class TextGenerationService {
         } catch (IllegalStateException exception) {
             throw new AiGenerationException("AUDIT_ACTOR_UNAVAILABLE", "A trusted audit actor is unavailable", exception);
         }
-        TextGenerationExecutionTransactions.PreparedJob prepared = execution.prepare(jobUuid, expectedVersion, context);
+        TextGenerationExecutionTransactions.PreparedJob prepared = execution.prepare(
+                jobUuid, expectedVersion, GenerationType.TEXT, context);
         try {
             TextGenerationProvider.TextResult result = provider.generate(new TextGenerationProvider.TextRequest(
                     prepared.jobUuid(), prepared.prompt(), prepared.modelKey(), 16000, Duration.ofSeconds(30)));

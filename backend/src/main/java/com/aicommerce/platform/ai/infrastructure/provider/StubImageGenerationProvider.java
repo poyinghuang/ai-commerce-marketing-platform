@@ -1,6 +1,8 @@
 package com.aicommerce.platform.ai.infrastructure.provider;
 
 import java.util.Map;
+import java.math.BigDecimal;
+import java.util.List;
 
 import com.aicommerce.platform.ai.application.ImageGenerationProvider;
 import org.springframework.context.annotation.Profile;
@@ -16,5 +18,11 @@ public class StubImageGenerationProvider implements ImageGenerationProvider {
                 "stub-image-" + request.generationJobUuid(),
                 "deterministic-local-stub",
                 Map.of("fixture", "stage-03"));
+    }
+
+    @Override
+    public ImageResult await(ImageRequest request, ImageSubmission submission) {
+        return new ImageResult(request.sourceBytes().clone(), "image/png", submission.modelLabel(),
+                BigDecimal.ZERO, List.of(), submission.metadata());
     }
 }

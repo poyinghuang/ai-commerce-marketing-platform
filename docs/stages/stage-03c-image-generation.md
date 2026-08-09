@@ -2,14 +2,14 @@
 
 ## Gate status
 
-- Status: Approved for implementation
+- Status: Implementation complete; awaiting Remote CI and Manager Gate
 - Branch: `codex/stage-03-image-generation`
 - Base Commit: `c5d1e18233c2a2b3760bb16118edaca32084d200`
 - Prerequisite: Milestone 3B completed at `c1659cf0508e961860d95b13f52db72bfa4dc0c7`
 - Prerequisite tag: `milestone-3b-complete`
-- Implementation: Not started
-- Migration: Not created
-- Local Verification: Not started
+- Implementation: Passed locally
+- Migration: V10 created; V1–V9 unchanged
+- Local Verification: Passed
 - Remote CI: Not started
 - Manager Review: Not started
 - Manager Decision: Pending
@@ -47,7 +47,7 @@ The migration expands `ai_generation_outputs` for coherent IMAGE rows:
 - optional `image_width`, `image_height INTEGER` constrained to `1..4096`; total decoded pixels are application-bounded to 16,777,216.
 - optional `media_type VARCHAR(64)` allows `image/png` or `image/jpeg`.
 - optional `size_bytes BIGINT` constrained to `1..16777216`.
-- optional `source_checksum_sha256`, `mask_checksum_sha256`, `output_checksum_sha256`, and `protected_pixels_sha256 CHAR(64)` use lower-case SHA-256 format.
+- optional `source_checksum_sha256`, `mask_checksum_sha256`, `output_checksum_sha256`, and `protected_pixels_sha256 VARCHAR(64)` use lower-case SHA-256 format.
 - optional `preservation_algorithm VARCHAR(64)` allows `RGBA_MASK_EXACT_V1`.
 - optional `preservation_status VARCHAR(16)` allows `PASSED` or `BLOCKED`.
 - optional bounded `preservation_details JSONB` is an object without bytes, paths, URLs, provider bodies, credentials, or source content.
@@ -129,3 +129,16 @@ Requests cannot include raw bytes, URLs, provider origin, workflow JSON/node IDs
 - Provider/binary-store profile matrices prove deterministic local/test and production fail closed, including mixed production profiles.
 - Frontend BFF/component tests, lint, typecheck, tests, production build, npm audit, Compose, existing Playwright, Gitleaks, actionlint, Remote CI, exact-head Manager Review, merge, and post-merge main CI pass.
 - No production credential/call, publication, approval mutation, Product redraw, video, Ads, Decision Engine, or Stage 04 code exists.
+
+## Local delivery evidence
+
+- Empty V1→V10, populated V9→V10, repeat/no-pending, Hibernate validation, and canonical V1–V10 checksum tests passed. Direct JDBC tests reject invalid mode, unexpected preservation metadata, cross-Product Asset linkage, immutable-field updates, and deletes.
+- Image integration tests prove source metadata verification, budget reservation/settlement, generated binary/Asset/output persistence, exact protected-pixel evidence, one operation context for completion Audit, duplicate terminal rejection, and resumable RUNNING recovery without duplicate transition Audit.
+- Pixel unit tests cover alpha and explicit masks, exact/changed pixels, empty or mismatched masks, malformed/oversized bytes, dimensions, media type, and checksum mismatch.
+- ComfyUI mock tests prove the repository workflow, fixed `/prompt`, `/history/{id}`, and `/view` routes, strict returned identifiers, bounded response bodies, fixed origin, and redirect rejection. Local/test provider and binary-store profiles are deterministic; default and every production combination fail closed.
+- Backend regression executed 276 tests. The only initial failures were six stale latest-migration assertions; after updating those assertions to V10, all six affected suites (40 tests) passed with no errors. Targeted 3C suites also passed.
+- Frontend lint and typecheck passed; 22 Vitest files / 131 tests passed; production build passed; production dependency audit reported 0 vulnerabilities.
+- Compose config and isolated-port cold start passed. PostgreSQL, Backend, and Frontend were healthy; V10 was latest; Backend health and same-origin proxy returned `UP`; runtime UIDs were non-root (`999`, `1000`). Existing Playwright regression passed 8/8.
+- actionlint 1.7.7 passed. Gitleaks 8.28.0 worktree and full-history scans found no leaks. `git diff --check` passed.
+- The first Compose start attempt was blocked by an unrelated local process already using port 8080. Verification used the approved `BACKEND_PORT=18080` and `FRONTEND_PORT=13000` overrides without stopping the unrelated process.
+- Known non-blocking warnings: Mockito/Byte Buddy dynamic-agent future deprecation and informational Windows LF/CRLF conversion notices.

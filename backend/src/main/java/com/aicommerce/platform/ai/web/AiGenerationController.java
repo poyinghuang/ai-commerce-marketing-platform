@@ -9,6 +9,9 @@ import com.aicommerce.platform.ai.application.AiBudgetPolicyProvider;
 import com.aicommerce.platform.ai.application.CreateTextGenerationBatchCommand;
 import com.aicommerce.platform.ai.application.GenerationFoundationResult;
 import com.aicommerce.platform.ai.application.TextGenerationService;
+import com.aicommerce.platform.ai.application.ImageGenerationService;
+import com.aicommerce.platform.ai.application.CreateImageGenerationBatchCommand;
+import com.aicommerce.platform.ai.domain.GenerationType;
 import com.aicommerce.platform.ai.domain.GenerationJob;
 import com.aicommerce.platform.ai.domain.GenerationOutput;
 import com.aicommerce.platform.product.web.ProductEtag;
@@ -31,12 +34,15 @@ import tools.jackson.databind.ObjectMapper;
 public class AiGenerationController {
 
     private final TextGenerationService service;
+    private final ImageGenerationService images;
     private final AiBudgetPolicyProvider budgetPolicies;
     private final ObjectMapper objectMapper;
 
-    public AiGenerationController(TextGenerationService service, AiBudgetPolicyProvider budgetPolicies,
+    public AiGenerationController(TextGenerationService service, ImageGenerationService images,
+            AiBudgetPolicyProvider budgetPolicies,
             ObjectMapper objectMapper) {
         this.service = service;
+        this.images = images;
         this.budgetPolicies = budgetPolicies;
         this.objectMapper = objectMapper;
     }
@@ -45,10 +51,17 @@ public class AiGenerationController {
     public ResponseEntity<AiGenerationResponse.Batch> create(
             @PathVariable UUID productUuid, @Valid @RequestBody CreateTextGenerationBatchRequest request,
             HttpServletRequest servletRequest) {
-        int count = request.variationCount() == null ? 3 : request.variationCount();
-        GenerationFoundationResult result = service.createBatch(new CreateTextGenerationBatchCommand(
-                productUuid, request.creativePlanUuid(), request.templateKey(), request.modelProfile(), count),
-                requestId(servletRequest));
+        boolean image = "IMAGE".equals(request.generationType());
+        int count = request.variationCount() == null ? (image ? 1 : 3) : request.variationCount();
+        if (image && count != 1) throw new com.aicommerce.platform.ai.application.AiGenerationException(
+                "AI_PROMPT_INPUT_INVALID", "Image batch count must be one");
+        GenerationFoundationResult result = image
+                ? images.createBatch(new CreateImageGenerationBatchCommand(productUuid, request.creativePlanUuid(),
+                        request.templateKey(), request.workflowKey(), request.modelProfile(),
+                        request.sourceAssetUuid(), request.maskAssetUuid()), requestId(servletRequest))
+                : service.createBatch(new CreateTextGenerationBatchCommand(
+                        productUuid, request.creativePlanUuid(), request.templateKey(), request.modelProfile(), count),
+                        requestId(servletRequest));
         List<AiGenerationResponse.Job> jobs = result.jobs().stream()
                 .map(job -> AiGenerationResponse.Job.from(job, null)).toList();
         URI location = URI.create("/api/ai-generation-batches/" + result.batch().getGenerationBatchUuid());
@@ -80,7 +93,11 @@ public class AiGenerationController {
     public ResponseEntity<AiGenerationResponse.Output> execute(@PathVariable UUID jobUuid,
             @RequestHeader(value = HttpHeaders.IF_MATCH, required = false) String ifMatch,
             HttpServletRequest servletRequest) {
-        GenerationOutput output = service.execute(jobUuid, ProductEtag.requireVersion(ifMatch), requestId(servletRequest));
+        long expectedVersion = ProductEtag.requireVersion(ifMatch);
+        GenerationJob job = service.getJob(jobUuid);
+        GenerationOutput output = job.getGenerationType() == GenerationType.IMAGE
+                ? images.execute(jobUuid, expectedVersion, requestId(servletRequest))
+                : service.execute(jobUuid, expectedVersion, requestId(servletRequest));
         return ResponseEntity.ok().eTag(ProductEtag.fromVersion(output.getVersion()))
                 .body(AiGenerationResponse.Output.from(output, objectMapper));
     }
@@ -97,7 +114,8 @@ public class AiGenerationController {
         AiBudgetPolicy policy = budgetPolicies.currentPolicy();
         return new BudgetStatus(policy.currency(), policy.maximumJobCost(), policy.maximumBatchCost(),
                 policy.maximumDailyCost(), service.availableModelProfiles(),
-                service.textTemplateKeys());
+                service.textTemplateKeys(), images.availableModelProfiles(), images.imageTemplateKeys(),
+                images.availableWorkflowKeys());
     }
 
     private AiGenerationResponse.Job jobResponse(GenerationJob job) {
@@ -110,6 +128,8 @@ public class AiGenerationController {
 
     public record BudgetStatus(String currency, java.math.BigDecimal maximumJobCost,
             java.math.BigDecimal maximumBatchCost, java.math.BigDecimal maximumDailyCost,
-            List<String> modelProfiles, List<String> textTemplateKeys) {
+            List<String> modelProfiles, List<String> textTemplateKeys,
+            List<String> imageModelProfiles, List<String> imageTemplateKeys,
+            List<String> imageWorkflowKeys) {
     }
 }
