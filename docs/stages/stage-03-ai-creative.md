@@ -20,7 +20,7 @@
 - Post-merge CI: Passed — main Run `31332810286`
 - Completion Tag: `milestone-3a-complete`
 - Milestone 3B: Completed — PR #48, Squash Commit `c1659cf0508e961860d95b13f52db72bfa4dc0c7`, post-merge Run `31337531564`, tag `milestone-3b-complete`. Detailed contract: [Stage 03B — Text Generation Vertical Slice](stage-03b-text-generation.md)
-- Milestone 3C: Local implementation and verification passed on `codex/stage-03-image-generation`; Remote CI, exact-head Manager Review, and merge remain pending. Detailed contract: [Stage 03C — ComfyUI Background Image Generation](stage-03c-image-generation.md)
+- Milestone 3C: Exact-head implementation, local/Remote CI, and Manager Review passed at `2d6c9c39be66b0e9809dbfdc0dc055fde35c280a`; merge remains pending. Detailed contract: [Stage 03C — ComfyUI Background Image Generation](stage-03c-image-generation.md)
 - Stage 04: Not started
 
 ## Human-approved decisions
