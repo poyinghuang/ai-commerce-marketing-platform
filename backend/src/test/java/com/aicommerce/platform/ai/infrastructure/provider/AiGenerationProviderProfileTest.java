@@ -10,8 +10,10 @@ import java.util.UUID;
 import java.util.stream.Stream;
 
 import com.aicommerce.platform.ai.application.AiProviderException;
+import com.aicommerce.platform.ai.application.AiCostCeilingProvider;
 import com.aicommerce.platform.ai.application.ImageGenerationProvider;
 import com.aicommerce.platform.ai.application.TextGenerationProvider;
+import com.aicommerce.platform.ai.domain.GenerationType;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -27,27 +29,37 @@ class AiGenerationProviderProfileTest {
             context.register(
                     StubTextGenerationProvider.class,
                     StubImageGenerationProvider.class,
+                    DeterministicAiCostCeilingProvider.class,
                     DenyTextGenerationProvider.class,
-                    DenyImageGenerationProvider.class);
+                    DenyImageGenerationProvider.class,
+                    DenyAiCostCeilingProvider.class);
             context.refresh();
 
             Map<String, TextGenerationProvider> textProviders = context.getBeansOfType(TextGenerationProvider.class);
             Map<String, ImageGenerationProvider> imageProviders = context.getBeansOfType(ImageGenerationProvider.class);
+            Map<String, AiCostCeilingProvider> costProviders = context.getBeansOfType(AiCostCeilingProvider.class);
             assertThat(textProviders).hasSize(1);
             assertThat(imageProviders).hasSize(1);
+            assertThat(costProviders).hasSize(1);
 
             TextGenerationProvider textProvider = textProviders.values().iterator().next();
             ImageGenerationProvider imageProvider = imageProviders.values().iterator().next();
+            AiCostCeilingProvider costProvider = costProviders.values().iterator().next();
             if (expectStub) {
                 assertThat(textProvider).isExactlyInstanceOf(StubTextGenerationProvider.class);
                 assertThat(imageProvider).isExactlyInstanceOf(StubImageGenerationProvider.class);
+                assertThat(costProvider).isExactlyInstanceOf(DeterministicAiCostCeilingProvider.class);
                 assertThat(textProvider.generate(textRequest()).actualCost()).isEqualByComparingTo(BigDecimal.ZERO);
                 assertThat(imageProvider.submit(imageRequest()).providerJobId()).startsWith("stub-image-");
+                assertThat(costProvider.ceilingFor(GenerationType.TEXT, "stub", "stub-text").worstCaseCost())
+                        .isEqualByComparingTo("2.000000");
             } else {
                 assertThat(textProvider).isExactlyInstanceOf(DenyTextGenerationProvider.class);
                 assertThat(imageProvider).isExactlyInstanceOf(DenyImageGenerationProvider.class);
+                assertThat(costProvider).isExactlyInstanceOf(DenyAiCostCeilingProvider.class);
                 assertNotConfigured(() -> textProvider.generate(textRequest()));
                 assertNotConfigured(() -> imageProvider.submit(imageRequest()));
+                assertNotConfigured(() -> costProvider.ceilingFor(GenerationType.TEXT, "stub", "stub-text"));
             }
         }
     }

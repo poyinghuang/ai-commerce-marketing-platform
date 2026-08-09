@@ -6,6 +6,5 @@ import java.util.UUID;
 public record CreateGenerationFoundationCommand(
         UUID productUuid,
         UUID creativePlanUuid,
-        String currency,
         List<GenerationJobFoundationRequest> jobs) {
 }

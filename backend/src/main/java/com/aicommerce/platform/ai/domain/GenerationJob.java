@@ -105,14 +105,14 @@ public class GenerationJob extends MutableEntity {
                 estimatedCost, reservedCost, currency);
     }
 
-    public boolean rejectBudget(Instant rejectedAt) {
+    public boolean rejectBudget(Instant rejectedAt, String rejectionCode) {
         if (status == GenerationJobStatus.BUDGET_REJECTED) return false;
         if (status != GenerationJobStatus.CREATED) {
             throw new IllegalStateException("Only a created job can be budget rejected");
         }
         status = GenerationJobStatus.BUDGET_REJECTED;
         completedAt = Objects.requireNonNull(rejectedAt, "rejectedAt is required");
-        failureCode = "AI_BUDGET_EXCEEDED";
+        failureCode = AiDomainRules.required(rejectionCode, "rejectionCode", 64);
         failureMessage = "Generation was rejected before provider submission";
         return true;
     }

@@ -64,10 +64,10 @@ No dependent milestone starts until the preceding milestone receives exact-head 
 
 - V8 creates only prompt templates/versions, generation batches/jobs, and the append-only budget ledger.
 - Prompt versions are immutable and reject nested credential/provider configuration keys; generation identity and associations are protected at the database boundary.
-- Budget policy has no defaults, validates a single configured ISO currency, reserves the deterministic worst-case amount before a provider call, and serializes daily reservations with a PostgreSQL transaction advisory lock.
+- Budget policy has no defaults, validates a single configured ISO currency, derives estimated/worst-case cost only from a server-side allowlisted provider/model profile, reserves that ceiling before a provider call, and serializes daily reservations with a PostgreSQL transaction advisory lock. Generation commands cannot supply or override cost or currency.
 - Accepted and budget-rejected operations persist their bounded Audit records in the same transaction. An outer rollback removes batch, jobs, ledger, and Audit together. SYSTEM operations receive one non-empty server-generated request ID.
 - Budget settlement writes ordered COMMIT/RELEASE entries; direct SQL cannot mutate or delete ledger entries or bypass reservation reconciliation.
-- Local Backend verification: 59 suites, 246 tests, 0 failures, 0 errors, 0 skipped. Targeted V8 cold/upgrade migration, Hibernate validation, constraint, trigger, concurrency, rollback, budget, and provider-profile tests passed.
+- Local Backend verification: 59 suites, 247 tests, 0 failures, 0 errors, 0 skipped. Targeted V8 cold/upgrade migration, Hibernate validation, constraint, trigger, concurrency, rollback, server-derived cost ceiling, budget, and provider-profile tests passed.
 - Frontend regression: lint, typecheck, 21 Vitest files/127 tests, production build, and production dependency audit passed; audit found 0 vulnerabilities.
 - Compose cold start: PostgreSQL, Backend, and Frontend healthy; V1→V8 applied successfully; Backend health and same-origin proxy returned `UP`; runtime UIDs were non-root (`999` and `1000`).
 - Security/tooling: actionlint passed; Gitleaks history and worktree scans found no leaks; `git diff --check` passed.

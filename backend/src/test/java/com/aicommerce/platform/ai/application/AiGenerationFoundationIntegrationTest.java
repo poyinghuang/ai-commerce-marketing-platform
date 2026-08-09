@@ -117,9 +117,13 @@ class AiGenerationFoundationIntegrationTest {
         GenerationFoundationResult result = generationService.create(command("7.000000"), context);
 
         assertThat(result.budgetAccepted()).isFalse();
-        assertThat(result.budgetRejectionCode()).isEqualTo("AI_BUDGET_EXCEEDED");
+        assertThat(result.budgetRejectionCode()).isEqualTo("AI_JOB_BUDGET_EXCEEDED");
         assertThat(result.batch().getStatus().name()).isEqualTo("BUDGET_REJECTED");
         assertThat(result.jobs().getFirst().getStatus().name()).isEqualTo("BUDGET_REJECTED");
+        assertThat(jdbc.queryForObject(
+                "SELECT failure_code FROM ai_generation_jobs WHERE generation_job_uuid=?",
+                String.class, result.jobs().getFirst().getGenerationJobUuid()))
+                .isEqualTo("AI_JOB_BUDGET_EXCEEDED");
         assertThat(jdbc.queryForObject(
                 "SELECT COUNT(*) FROM ai_budget_ledger WHERE generation_job_uuid=?",
                 Integer.class, result.jobs().getFirst().getGenerationJobUuid())).isZero();
@@ -233,12 +237,37 @@ class AiGenerationFoundationIntegrationTest {
         assertThat(first.getContentSha256()).hasSize(64).isNotEqualTo(second.getContentSha256());
     }
 
-    private CreateGenerationFoundationCommand command(String worstCase) {
-        return new CreateGenerationFoundationCommand(productUuid, null, "USD", List.of(
+    @Test
+    void generationRejectsUnknownProviderModelCostProfileBeforePersistence() {
+        AuditOperationContext context = contextFactory.forSystem("ai-cost-profile-test");
+        CreateGenerationFoundationCommand command = new CreateGenerationFoundationCommand(productUuid, null, List.of(
                 new GenerationJobFoundationRequest(templateVersionUuid, GenerationType.TEXT,
-                        "stub", "stub-text", "Write a product caption", null,
-                        "{\"productName\":\"AI Test Product\"}", new BigDecimal("0.500000"),
-                        new BigDecimal(worstCase))));
+                        "browser-provider", "arbitrary-model", "Write a product caption", null,
+                        "{\"productName\":\"AI Test Product\"}")));
+
+        assertThatThrownBy(() -> generationService.create(command, context))
+                .isInstanceOf(AiFoundationValidationException.class)
+                .hasMessageContaining("cost profile is not allowlisted");
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM ai_generation_batches WHERE product_uuid=?",
+                Integer.class, productUuid)).isZero();
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM audit_logs WHERE operation_uuid=?",
+                Integer.class, context.operationUuid())).isZero();
+    }
+
+    private CreateGenerationFoundationCommand command(String worstCase) {
+        String modelKey = switch (worstCase) {
+            case "1.000000" -> "stub-text-low";
+            case "2.000000" -> "stub-text";
+            case "6.000000" -> "stub-text-daily";
+            case "7.000000" -> "stub-text-over-job";
+            default -> throw new IllegalArgumentException("Unsupported deterministic test cost profile");
+        };
+        return new CreateGenerationFoundationCommand(productUuid, null, List.of(
+                new GenerationJobFoundationRequest(templateVersionUuid, GenerationType.TEXT,
+                        "stub", modelKey, "Write a product caption", null,
+                        "{\"productName\":\"AI Test Product\"}")));
     }
 
     private String productId(UUID uuid) {

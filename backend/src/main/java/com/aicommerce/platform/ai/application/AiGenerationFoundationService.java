@@ -43,6 +43,8 @@ public class AiGenerationFoundationService {
     private final PromptTemplateVersionJpaRepository versionRepository;
     private final GenerationBatchJpaRepository batchRepository;
     private final GenerationJobJpaRepository jobRepository;
+    private final AiBudgetPolicyProvider budgetPolicyProvider;
+    private final AiCostCeilingProvider costCeilingProvider;
     private final AiBudgetLedgerService budgetLedgerService;
     private final AuditWriter auditWriter;
     private final ObjectMapper objectMapper;
@@ -51,7 +53,8 @@ public class AiGenerationFoundationService {
     public AiGenerationFoundationService(ProductJpaRepository productRepository,
             CreativePlanJpaRepository creativePlanRepository, PromptTemplateJpaRepository templateRepository,
             PromptTemplateVersionJpaRepository versionRepository, GenerationBatchJpaRepository batchRepository,
-            GenerationJobJpaRepository jobRepository, AiBudgetLedgerService budgetLedgerService,
+            GenerationJobJpaRepository jobRepository, AiBudgetPolicyProvider budgetPolicyProvider,
+            AiCostCeilingProvider costCeilingProvider, AiBudgetLedgerService budgetLedgerService,
             AuditWriter auditWriter, ObjectMapper objectMapper, Clock clock) {
         this.productRepository = productRepository;
         this.creativePlanRepository = creativePlanRepository;
@@ -59,6 +62,8 @@ public class AiGenerationFoundationService {
         this.versionRepository = versionRepository;
         this.batchRepository = batchRepository;
         this.jobRepository = jobRepository;
+        this.budgetPolicyProvider = budgetPolicyProvider;
+        this.costCeilingProvider = costCeilingProvider;
         this.budgetLedgerService = budgetLedgerService;
         this.auditWriter = auditWriter;
         this.objectMapper = objectMapper;
@@ -88,15 +93,16 @@ public class AiGenerationFoundationService {
         }
 
         List<JobDraft> drafts = command.jobs().stream().map(this::validateJob).toList();
-        BigDecimal estimatedTotal = drafts.stream().map(draft -> draft.request().estimatedCost())
+        AiBudgetPolicy budgetPolicy = budgetPolicyProvider.currentPolicy();
+        BigDecimal estimatedTotal = drafts.stream().map(draft -> draft.cost().estimatedCost())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal reservedTotal = drafts.stream().map(draft -> draft.request().worstCaseCost())
+        BigDecimal reservedTotal = drafts.stream().map(draft -> draft.cost().worstCaseCost())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         UUID batchUuid = UUID.randomUUID();
         GenerationBatch batch;
         try {
             batch = GenerationBatch.create(batchUuid, product.getProductUuid(),
-                    plan == null ? null : plan.getCreativePlanUuid(), command.currency(), estimatedTotal,
+                    plan == null ? null : plan.getCreativePlanUuid(), budgetPolicy.currency(), estimatedTotal,
                     reservedTotal, drafts.size(), context.actor().id());
         } catch (IllegalArgumentException exception) {
             throw new AiFoundationValidationException(exception.getMessage(), exception);
@@ -111,7 +117,7 @@ public class AiGenerationFoundationService {
                         plan == null ? null : plan.getCreativePlanUuid(), request.promptTemplateVersionUuid(),
                         request.generationType(), request.providerKey(), request.modelKey(),
                         request.renderedPrompt(), request.negativePrompt(), canonicalSnapshot(request.inputSnapshot()),
-                        request.estimatedCost(), request.worstCaseCost(), command.currency()));
+                        draft.cost().estimatedCost(), draft.cost().worstCaseCost(), budgetPolicy.currency()));
             } catch (IllegalArgumentException exception) {
                 throw new AiFoundationValidationException(exception.getMessage(), exception);
             }
@@ -122,12 +128,12 @@ public class AiGenerationFoundationService {
         try {
             budgetLedgerService.reserve(jobs.stream()
                     .map(job -> new BudgetReservation(job.getGenerationJobUuid(), job.getReservedCost()))
-                    .toList(), command.currency(), product.getProductUuid(), context);
+                    .toList(), budgetPolicy.currency(), product.getProductUuid(), context);
             return new GenerationFoundationResult(batch, List.copyOf(jobs), true, null);
         } catch (AiBudgetExceededException exception) {
             batch.rejectBudget();
             Instant rejectedAt = Instant.now(clock);
-            jobs.forEach(job -> job.rejectBudget(rejectedAt));
+            jobs.forEach(job -> job.rejectBudget(rejectedAt, exception.code()));
             batchRepository.saveAndFlush(batch);
             jobRepository.saveAllAndFlush(jobs);
             auditWriter.append(event(context, AuditAction.UPDATE, "AI_GENERATION_BATCH", batchUuid,
@@ -139,9 +145,9 @@ public class AiGenerationFoundationService {
                 auditWriter.append(event(context, AuditAction.UPDATE, "AI_GENERATION_JOB",
                         job.getGenerationJobUuid(), product.getProductUuid(), List.of(
                                 change("status", "CREATED", "BUDGET_REJECTED", AuditValueType.ENUM, 0),
-                                change("failureCode", null, "AI_BUDGET_EXCEEDED", AuditValueType.STRING, 1))));
+                                change("failureCode", null, exception.code(), AuditValueType.STRING, 1))));
             }
-            return new GenerationFoundationResult(batch, List.copyOf(jobs), false, "AI_BUDGET_EXCEEDED");
+            return new GenerationFoundationResult(batch, List.copyOf(jobs), false, exception.code());
         }
     }
 
@@ -156,12 +162,12 @@ public class AiGenerationFoundationService {
         if (template.getGenerationType() != request.generationType()) {
             throw new AiFoundationValidationException("Generation type does not match prompt template");
         }
-        if (request.estimatedCost() == null || request.worstCaseCost() == null
-                || request.estimatedCost().signum() < 0 || request.worstCaseCost().signum() <= 0
-                || request.estimatedCost().compareTo(request.worstCaseCost()) > 0) {
-            throw new AiFoundationValidationException("Job cost bounds are invalid");
+        try {
+            return new JobDraft(request, costCeilingProvider.ceilingFor(
+                    request.generationType(), request.providerKey(), request.modelKey()));
+        } catch (IllegalArgumentException exception) {
+            throw new AiFoundationValidationException("AI provider/model cost profile is not allowlisted", exception);
         }
-        return new JobDraft(request);
     }
 
     private String canonicalSnapshot(String raw) {
@@ -214,6 +220,6 @@ public class AiGenerationFoundationService {
         return new AuditChange(field, oldValue, newValue, type, order);
     }
 
-    private record JobDraft(GenerationJobFoundationRequest request) {
+    private record JobDraft(GenerationJobFoundationRequest request, AiCostCeiling cost) {
     }
 }
