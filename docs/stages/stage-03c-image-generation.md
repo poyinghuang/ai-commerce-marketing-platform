@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status: Implementation complete; awaiting Remote CI and Manager Gate
+- Status: Completed
 - Branch: `codex/stage-03-image-generation`
 - Base Commit: `c5d1e18233c2a2b3760bb16118edaca32084d200`
 - Prerequisite: Milestone 3B completed at `c1659cf0508e961860d95b13f52db72bfa4dc0c7`
@@ -16,7 +16,10 @@
 - Human Review Required: No
 - Approved Commit: `2d6c9c39be66b0e9809dbfdc0dc055fde35c280a`
 - Approved CI Runs: Push `31341109478`; Pull Request `31341120208`
-- Merge: Not started
+- Approval-record CI Runs: Push `31341453075`; Pull Request `31341455749`
+- Merge: Passed — PR #50, Squash Commit `fded67da3c539dbeef59f5e5d3a62a35e9041c30`
+- Post-merge CI: Passed — main Run `31341738821`
+- Completion Tag: `milestone-3c-complete`
 - Milestone 3D: Not started
 
 ## Scope
