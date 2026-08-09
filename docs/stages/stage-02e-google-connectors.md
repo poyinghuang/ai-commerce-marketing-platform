@@ -6,8 +6,8 @@
 - Branch：Merged from `codex/2e-specification`
 - Base Commit：`b0abd9340358d233b782965b4562d21b04074699`
 - Specification：Complete
-- Implementation：In progress — 2E-1 and 2E-2 delivered
-- Migration：V6 and additive V6.1 merged; V7 not created
+- Implementation：In progress — 2E-1, 2E-2, and 2E-3 delivered
+- Migration：V6, additive V6.1, and V7 merged
 - Local Verification：Passed — documentation diff and exact-runtime regression verified
 - Remote CI：Passed — Push Run `31222354376`; PR Run `31222357524`
 - Manager Review：Passed
@@ -48,7 +48,7 @@ No dependent slice starts until the preceding slice is merged and its post-merge
 
 - 2E-1 Sheets persistence and ports：Completed — PR #34, Squash Commit `d776111d24fdec00eff871a62f6472f18a520b91`; post-merge main Run `31228371345` passed.
 - 2E-2 Sheets preview and execute：Completed — PR #36, Squash Commit `7dd925af3c4f79abd26c522d646a45c2ee7649f3`; post-merge main Run `31294372079` passed.
-- 2E-3 Drive StorageProvider：Manager `APPROVE` at implementation Commit `7016ab76236f16033dda3df240208cdaa6874590`; merge and post-merge verification pending.
+- 2E-3 Drive StorageProvider：Completed — PR #38, Squash Commit `6e0efaabd3d1595e17899b9f9ff459f4298896d2`; post-merge main Run `31303057300` passed.
 - 2E-4 Connector UI：Not started.
 - 2E-5 E2E and Stage 02 acceptance：Not started.
 
