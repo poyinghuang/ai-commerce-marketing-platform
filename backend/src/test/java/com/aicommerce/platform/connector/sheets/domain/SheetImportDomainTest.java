@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.aicommerce.platform.connector.sheets.application.ProductSheetMapping;
+import com.aicommerce.platform.connector.sheets.application.SheetSource;
 import com.aicommerce.platform.connector.sheets.application.SheetSnapshotFingerprint;
 import org.junit.jupiter.api.Test;
 
@@ -26,6 +27,16 @@ class SheetImportDomainTest {
         assertThat(ProductSheetMapping.REQUIRED_HEADERS)
                 .containsExactlyInAnyOrder("product_uuid", "product_id", "product_name");
         assertThat(ProductSheetMapping.MAX_DATA_ROWS).isEqualTo(1_000);
+        assertThat(ProductSheetMapping.presenceMask(ProductSheetMapping.HEADERS)).isEqualTo(8191);
+        assertThat(ProductSheetMapping.presenceMask(List.of("product_uuid", "product_id", "product_name")))
+                .isEqualTo(11);
+        assertThat(ProductSheetMapping.isPresent(11, "product_name")).isTrue();
+        assertThat(ProductSheetMapping.isPresent(11, "sku")).isFalse();
+        assertThatThrownBy(() -> ProductSheetMapping.presenceMask(List.of("product_uuid", "product_name")))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> ProductSheetMapping.presenceMask(
+                List.of("product_uuid", "product_id", "product_name", "product_name")))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -42,9 +53,34 @@ class SheetImportDomainTest {
     }
 
     @Test
+    void sourceAcceptsBoundedA1RangesAndRejectsUrlOrPathInjection() {
+        assertThat(new SheetSource("sheet_123", "Products", "'Products'!A1:M1001").range())
+                .isEqualTo("'Products'!A1:M1001");
+        assertThat(new SheetSource("sheet_123", "Sheet 1", "'Sheet 1'!A1:M1001").range())
+                .isEqualTo("'Sheet 1'!A1:M1001");
+        assertThat(new SheetSource("sheet_123", "O'Brien", "'O''Brien'!B1:N1001").range())
+                .isEqualTo("'O''Brien'!B1:N1001");
+        assertThatThrownBy(() -> new SheetSource("sheet_123", "Products", "Products!A2:M1001"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new SheetSource("sheet_123", "Products", "Products!A1:M1002"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new SheetSource("sheet_123", "Products", "Products!A1:N1001"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new SheetSource("sheet_123", "Products", "Other!A1:M1001"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new SheetSource("sheet_123", "Products", "https://evil.example/x"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new SheetSource("sheet_123", "Products", "Products!A1:M1001/../../token"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new SheetSource("https://evil.example", "Products", "Products!A1:M1001"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void jobStateRequiresCoherentCountsAndTerminalTransitions() {
         SheetImportJob job = SheetImportJob.previewed(
-                UUID.randomUUID(), "sheet", "Products", "Products!A:M", HASH, 2, 1, "local-admin");
+                UUID.randomUUID(), "sheet", "Products", "Products!A:M", HASH,
+                ProductSheetMapping.ALL_HEADER_MASK, 2, 1, "local-admin");
         assertThat(job.getTotalRows()).isEqualTo(3);
         assertThat(job.startExecution()).isTrue();
         assertThat(job.startExecution()).isFalse();
@@ -53,7 +89,8 @@ class SheetImportDomainTest {
         assertThatThrownBy(() -> job.fail("FAILED", "late failure"))
                 .isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> SheetImportJob.previewed(
-                UUID.randomUUID(), "sheet", "Products", "Products!A:M", HASH, 1_001, 0, "local-admin"))
+                UUID.randomUUID(), "sheet", "Products", "Products!A:M", HASH,
+                ProductSheetMapping.ALL_HEADER_MASK, 1_001, 0, "local-admin"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("cannot exceed 1000");
     }

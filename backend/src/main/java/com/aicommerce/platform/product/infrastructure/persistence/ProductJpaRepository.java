@@ -13,6 +13,7 @@ import java.util.Optional;
 import java.util.List;
 
 public interface ProductJpaRepository extends JpaRepository<Product, UUID>, JpaSpecificationExecutor<Product> {
+    Optional<Product> findByProductId(String productId);
     @Query("select p.productUuid from Product p order by p.productUuid")
     List<UUID> findAllProductUuids();
     @Lock(LockModeType.PESSIMISTIC_READ)

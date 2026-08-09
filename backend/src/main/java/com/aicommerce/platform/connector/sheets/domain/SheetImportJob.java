@@ -3,6 +3,7 @@ package com.aicommerce.platform.connector.sheets.domain;
 import java.util.Objects;
 import java.util.UUID;
 
+import com.aicommerce.platform.connector.sheets.application.ProductSheetMapping;
 import com.aicommerce.platform.common.persistence.MutableEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -40,6 +41,9 @@ public class SheetImportJob extends MutableEntity {
     @Column(name = "source_fingerprint", nullable = false, updatable = false, columnDefinition = "char(64)")
     private String sourceFingerprint;
 
+    @Column(name = "header_presence_mask", nullable = false, updatable = false)
+    private int headerPresenceMask;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 32)
     private SheetImportStatus status;
@@ -75,13 +79,15 @@ public class SheetImportJob extends MutableEntity {
     }
 
     private SheetImportJob(UUID importJobUuid, String spreadsheetId, String sheetName, String sourceRange,
-            String sourceFingerprint, int validRows, int invalidRows, String createdBy) {
+            String sourceFingerprint, int headerPresenceMask, int validRows, int invalidRows, String createdBy) {
         this.importJobUuid = Objects.requireNonNull(importJobUuid, "importJobUuid is required");
         this.provider = SheetImportProvider.GOOGLE_SHEETS;
         this.spreadsheetId = requireText(spreadsheetId, "spreadsheetId", 256);
         this.sheetName = requireText(sheetName, "sheetName", 128);
         this.sourceRange = requireText(sourceRange, "sourceRange", 256);
         this.sourceFingerprint = requireSha256(sourceFingerprint, "sourceFingerprint");
+        ProductSheetMapping.requireValidMask(headerPresenceMask);
+        this.headerPresenceMask = headerPresenceMask;
         if (validRows < 0 || invalidRows < 0) {
             throw new IllegalArgumentException("row counts must be non-negative");
         }
@@ -96,9 +102,10 @@ public class SheetImportJob extends MutableEntity {
     }
 
     public static SheetImportJob previewed(UUID importJobUuid, String spreadsheetId, String sheetName,
-            String sourceRange, String sourceFingerprint, int validRows, int invalidRows, String createdBy) {
+            String sourceRange, String sourceFingerprint, int headerPresenceMask,
+            int validRows, int invalidRows, String createdBy) {
         return new SheetImportJob(importJobUuid, spreadsheetId, sheetName, sourceRange,
-                sourceFingerprint, validRows, invalidRows, createdBy);
+                sourceFingerprint, headerPresenceMask, validRows, invalidRows, createdBy);
     }
 
     public boolean startExecution() {
@@ -171,6 +178,7 @@ public class SheetImportJob extends MutableEntity {
     public String getSheetName() { return sheetName; }
     public String getSourceRange() { return sourceRange; }
     public String getSourceFingerprint() { return sourceFingerprint; }
+    public int getHeaderPresenceMask() { return headerPresenceMask; }
     public SheetImportStatus getStatus() { return status; }
     public int getTotalRows() { return totalRows; }
     public int getValidRows() { return validRows; }

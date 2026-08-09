@@ -13,6 +13,7 @@ import com.aicommerce.platform.connector.sheets.domain.SheetImportRow;
 import com.aicommerce.platform.connector.sheets.domain.SheetImportStatus;
 import com.aicommerce.platform.connector.sheets.domain.SheetProductRowSnapshot;
 import com.aicommerce.platform.connector.sheets.domain.SheetValidationError;
+import com.aicommerce.platform.connector.sheets.application.ProductSheetMapping;
 import com.aicommerce.platform.connector.sheets.infrastructure.persistence.SheetImportJobJpaRepository;
 import com.aicommerce.platform.connector.sheets.infrastructure.persistence.SheetImportRowJpaRepository;
 import org.flywaydb.core.Flyway;
@@ -48,7 +49,7 @@ class Milestone2ESheetsSchemaIntegrationTest {
         assertThat(List.of(flyway.info().applied()).stream()
                 .filter(info -> info.getVersion() != null)
                 .map(info -> info.getVersion().getVersion()))
-                .containsExactly("1", "2", "3", "4", "5", "6");
+                .containsExactly("1", "2", "3", "4", "5", "6", "6.1");
         assertThat(flyway.info().pending()).isEmpty();
         assertThat(List.of("sheet_import_jobs", "sheet_import_rows")).allMatch(this::tableExists);
         assertThat(List.of("product_storage_folders", "product_storage_subfolders"))
@@ -66,12 +67,17 @@ class Milestone2ESheetsSchemaIntegrationTest {
                 .isInstanceOf(DataAccessException.class);
         assertThatThrownBy(() -> insertRawJob(UUID.randomUUID(), "GOOGLE_SHEETS", "ABC", "PREVIEWED", 1, 1, 0))
                 .isInstanceOf(DataAccessException.class);
+        assertThatThrownBy(() -> insertRawJob(UUID.randomUUID(), "GOOGLE_SHEETS", HASH,
+                "PREVIEWED", 1, 1, 0, 7)).isInstanceOf(DataAccessException.class);
+        assertThatThrownBy(() -> insertRawJob(UUID.randomUUID(), "GOOGLE_SHEETS", HASH,
+                "PREVIEWED", 1, 1, 0, 8192)).isInstanceOf(DataAccessException.class);
         assertRejected("UPDATE sheet_import_jobs SET total_rows = -1 WHERE import_job_uuid = ?", job);
         assertRejected("UPDATE sheet_import_jobs SET total_rows = 1001, valid_rows = 1001 "
                 + "WHERE import_job_uuid = ?", job);
         assertRejected("UPDATE sheet_import_jobs SET valid_rows = 2 WHERE import_job_uuid = ?", job);
         assertRejected("UPDATE sheet_import_jobs SET status = 'COMPLETED' WHERE import_job_uuid = ?", job);
         assertRejected("UPDATE sheet_import_jobs SET status = 'FAILED' WHERE import_job_uuid = ?", job);
+        assertRejected("UPDATE sheet_import_jobs SET header_presence_mask = 11 WHERE import_job_uuid = ?", job);
 
         jdbc.update("UPDATE sheet_import_jobs SET status = 'EXECUTING', updated_at = CURRENT_TIMESTAMP, version = 1 "
                 + "WHERE import_job_uuid = ?", job);
@@ -155,7 +161,8 @@ class Milestone2ESheetsSchemaIntegrationTest {
     void jpaPersistsPreviewJsonAndOptimisticExecutionState() {
         UUID product = insertProduct("JPA");
         SheetImportJob job = jobs.saveAndFlush(SheetImportJob.previewed(
-                UUID.randomUUID(), "sheet-id", "Products", "Products!A:M", HASH, 1, 1, "local-admin"));
+                UUID.randomUUID(), "sheet-id", "Products", "Products!A:M", HASH,
+                ProductSheetMapping.ALL_HEADER_MASK, 1, 1, "local-admin"));
         SheetProductRowSnapshot snapshot = new SheetProductRowSnapshot(
                 null, null, "SKU-JPA", "Product JPA", null, null, null, null,
                 "not-a-number", "10.00", "TWD", "5", "https://example.com/product");
@@ -196,12 +203,18 @@ class Milestone2ESheetsSchemaIntegrationTest {
 
     private void insertRawJob(UUID job, String provider, String fingerprint, String status,
             int totalRows, int validRows, int invalidRows) {
+        insertRawJob(job, provider, fingerprint, status, totalRows, validRows, invalidRows,
+                ProductSheetMapping.ALL_HEADER_MASK);
+    }
+
+    private void insertRawJob(UUID job, String provider, String fingerprint, String status,
+            int totalRows, int validRows, int invalidRows, int headerPresenceMask) {
         jdbc.update("""
                 INSERT INTO sheet_import_jobs
                     (import_job_uuid, provider, spreadsheet_id, sheet_name, source_range,
-                     source_fingerprint, status, total_rows, valid_rows, invalid_rows, created_by)
-                VALUES (?, ?, 'sheet-id', 'Products', 'Products!A:M', ?, ?, ?, ?, ?, 'local-admin')
-                """, job, provider, fingerprint, status, totalRows, validRows, invalidRows);
+                     source_fingerprint, header_presence_mask, status, total_rows, valid_rows, invalid_rows, created_by)
+                VALUES (?, ?, 'sheet-id', 'Products', 'Products!A:M', ?, ?, ?, ?, ?, ?, 'local-admin')
+                """, job, provider, fingerprint, headerPresenceMask, status, totalRows, validRows, invalidRows);
     }
 
     private void insertRawRow(UUID job, int rowNumber, String hash, String action, String strategy,
