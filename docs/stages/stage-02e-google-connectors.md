@@ -47,7 +47,7 @@ No dependent slice starts until the preceding slice is merged and its post-merge
 ### Delivery status
 
 - 2E-1 Sheets persistence and ports：Completed — PR #34, Squash Commit `d776111d24fdec00eff871a62f6472f18a520b91`; post-merge main Run `31228371345` passed.
-- 2E-2 Sheets preview and execute：Not started.
+- 2E-2 Sheets preview and execute：Implementation complete; acceptance gate in progress on `codex/2e-2-sheets-preview-execute`.
 - 2E-3 Drive StorageProvider：Not started.
 - 2E-4 Connector UI：Not started.
 - 2E-5 E2E and Stage 02 acceptance：Not started.
@@ -91,6 +91,10 @@ Database constraints keep totals coherent. UUID, provider, source identity, fing
 - `UNIQUE (import_job_uuid, row_number)` and indexes on target UUID, planned action, and execution status
 
 Source identity, row number/hash, matching decision, target version, Product snapshot, and validation errors are immutable after preview. Only bounded execution result fields may change. Delete is rejected by a database trigger.
+
+### Approved V6.1 header-presence amendment
+
+`V6_1__add_sheet_import_header_presence.sql` is an approved additive compatibility migration owned by 2E-2. It does not modify V1–V6. It adds immutable `header_presence_mask INTEGER NOT NULL`, backfills existing V6 jobs to all thirteen headers (`8191`), removes the temporary database default, and constrains new values to `0..8191` with required header bits `11`. Every new Preview explicitly persists the computed mask. The mask is the source of truth for UPDATE semantics: an omitted optional header leaves the Product field unchanged, while a present blank optional cell explicitly clears it.
 
 ## Canonical Sheet mapping
 

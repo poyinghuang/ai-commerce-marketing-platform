@@ -51,7 +51,11 @@ public class ProductCommandService {
 
     @Transactional
     public Product create(CreateProductCommand command, String requestId) {
-        AuditOperationContext context = currentContext(requestId);
+        return create(command, currentContext(requestId));
+    }
+
+    @Transactional
+    public Product create(CreateProductCommand command, AuditOperationContext context) {
         Product product;
         try {
             product = Product.create(
@@ -81,7 +85,12 @@ public class ProductCommandService {
 
     @Transactional
     public Product patch(UUID productUuid, long expectedVersion, PatchProductCommand command, String requestId) {
-        AuditOperationContext context = currentContext(requestId);
+        return patch(productUuid, expectedVersion, command, currentContext(requestId));
+    }
+
+    @Transactional
+    public Product patch(UUID productUuid, long expectedVersion, PatchProductCommand command,
+            AuditOperationContext context) {
         Product product = find(productUuid);
         checkVersion(product, expectedVersion);
         if (product.getLifecycleStatus() == ProductLifecycleStatus.ARCHIVED) {

@@ -2,6 +2,11 @@ package com.aicommerce.platform.web.error;
 
 import com.aicommerce.platform.asset.application.*;
 import com.aicommerce.platform.campaign.application.*;
+import com.aicommerce.platform.connector.sheets.application.SheetImportNotFoundException;
+import com.aicommerce.platform.connector.sheets.application.SheetImportPreconditionFailedException;
+import com.aicommerce.platform.connector.sheets.application.SheetImportStateConflictException;
+import com.aicommerce.platform.connector.sheets.application.SheetImportValidationException;
+import com.aicommerce.platform.connector.sheets.application.SheetProviderException;
 import com.aicommerce.platform.creativeplan.application.CreativePlanArchivedException;
 import com.aicommerce.platform.creativeplan.application.CreativePlanNotFoundException;
 import com.aicommerce.platform.creativeplan.application.CreativePlanPreconditionFailedException;
@@ -41,6 +46,42 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 public class GlobalExceptionHandler {
 
   private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+  @ExceptionHandler(SheetImportValidationException.class)
+  ResponseEntity<ApiError> handleSheetImportValidation(SheetImportValidationException exception,
+      HttpServletRequest request) {
+    return ResponseEntity.badRequest().body(error(exception.getCode(), "Request validation failed", request,
+        List.of(new FieldErrorDetail(exception.getField(), exception.getMessage()))));
+  }
+
+  @ExceptionHandler(SheetProviderException.class)
+  ResponseEntity<ApiError> handleSheetProvider(SheetProviderException exception, HttpServletRequest request) {
+    HttpStatus status = switch (exception.getCode()) {
+      case "GOOGLE_PERMISSION_DENIED" -> HttpStatus.FORBIDDEN;
+      case "GOOGLE_RATE_LIMITED" -> HttpStatus.TOO_MANY_REQUESTS;
+      default -> HttpStatus.SERVICE_UNAVAILABLE;
+    };
+    return ResponseEntity.status(status).body(error(exception.getCode(), exception.getMessage(), request, null));
+  }
+
+  @ExceptionHandler(SheetImportNotFoundException.class)
+  ResponseEntity<ApiError> handleSheetImportNotFound(HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .body(error("IMPORT_JOB_NOT_FOUND", "Sheet import job not found", request, null));
+  }
+
+  @ExceptionHandler(SheetImportStateConflictException.class)
+  ResponseEntity<ApiError> handleSheetImportStateConflict(SheetImportStateConflictException exception,
+      HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(error("IMPORT_JOB_STATE_CONFLICT", exception.getMessage(), request, null));
+  }
+
+  @ExceptionHandler(SheetImportPreconditionFailedException.class)
+  ResponseEntity<ApiError> handleSheetImportPrecondition(HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.PRECONDITION_FAILED)
+        .body(error("IMPORT_JOB_STALE", "Sheet import job version does not match If-Match", request, null));
+  }
 
   @ExceptionHandler(QualityValidationException.class)
   ResponseEntity<ApiError> handleQualityValidation(QualityValidationException exception,
