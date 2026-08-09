@@ -11,8 +11,9 @@ import { CampaignsTab } from "@/components/campaigns-tab";
 import { AssetsTab } from "@/components/assets-tab";
 import { ProductAggregateSummary } from "@/components/product-aggregate-summary";
 import { QualityTab } from "@/components/quality-tab";
+import { CreativeFactoryTab } from "@/components/creative-factory-tab";
 
-type ProductDetailTab = "product" | "knowledge" | "creative-plans" | "campaigns" | "assets" | "quality";
+type ProductDetailTab = "product" | "knowledge" | "creative-plans" | "campaigns" | "assets" | "quality" | "creative-factory";
 
 export function ProductDetailView({ productUuid, initialTab = "product" }: { productUuid: string; initialTab?: ProductDetailTab }) {
   const [product, setProduct] = useState<Product | null>(null);
@@ -125,8 +126,11 @@ export function ProductDetailView({ productUuid, initialTab = "product" }: { pro
         <Link href={`/products/${productUuid}?tab=campaigns`}>Campaigns</Link>
         <Link href={`/products/${productUuid}?tab=assets`}>Assets</Link>
         <Link href={`/products/${productUuid}?tab=quality`}>Quality</Link>
+        <Link href={`/products/${productUuid}?tab=creative-factory`}>Creative Factory</Link>
       </nav>
-      {initialTab === "quality" ? (
+      {initialTab === "creative-factory" ? (
+        <CreativeFactoryTab productUuid={productUuid} productArchived={product.lifecycleStatus === "ARCHIVED"} />
+      ) : initialTab === "quality" ? (
         <QualityTab productUuid={productUuid} productArchived={product.lifecycleStatus === "ARCHIVED"} />
       ) : initialTab === "assets" ? (
         <AssetsTab productUuid={productUuid} productArchived={product.lifecycleStatus === "ARCHIVED"} />

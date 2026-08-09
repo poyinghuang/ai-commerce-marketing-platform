@@ -140,6 +140,14 @@ The E2E data is synthetic and the final command removes the ephemeral PostgreSQL
 
 Logging、Request ID 與錯誤格式請見 [Logging and Error Handling](docs/Logging-and-Error-Handling.md)。開發必須依照 [Development Rules](docs/Development-Rules.md) 與各 [Stage 文件](docs/stages/) 逐階段進行。
 
+## Stage 03 text generation
+
+Milestone 3B adds the Product `Creative Factory` tab and provider-neutral text generation APIs. Generation
+is fail-closed until `AI_BUDGET_CURRENCY`, `AI_MAX_JOB_COST`, `AI_MAX_BATCH_COST`, and
+`AI_MAX_DAILY_COST` are explicitly supplied as server-side environment configuration. The local/test
+profile uses a deterministic Stub and a local default prompt template. Default/production profiles expose
+no usable model profile and normal CI receives no production credentials.
+
 ## Stage Gate governance
 
 Repository 採用人工 Manager Gate。每個 Stage／Milestone 必須在 Remote CI 通過後接受實際 Diff、Migration、Contract、安全與測試審查；只有 `Manager Decision: APPROVE` 才允許合併。規則與報告格式請見：

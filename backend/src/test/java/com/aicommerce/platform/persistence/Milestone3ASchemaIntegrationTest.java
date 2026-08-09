@@ -31,12 +31,12 @@ class Milestone3ASchemaIntegrationTest {
     @Autowired Flyway flyway;
 
     @Test
-    void v8CreatesOnlyApprovedFoundationTablesAndHibernateValidates() {
+    void latestSchemaRetainsApprovedFoundationTablesAndHibernateValidates() {
         assertThat(List.of(flyway.info().applied()).stream()
                 .filter(info -> info.getVersion() != null)
                 .map(info -> info.getVersion().getVersion()))
-                .containsExactly("1", "2", "3", "4", "5", "6", "6.1", "7", "8");
-        assertThat(aiTables()).containsExactly(
+                .containsExactly("1", "2", "3", "4", "5", "6", "6.1", "7", "8", "9");
+        assertThat(aiTables()).contains(
                 "ai_budget_ledger",
                 "ai_generation_batches",
                 "ai_generation_jobs",

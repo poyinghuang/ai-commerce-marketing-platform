@@ -92,6 +92,24 @@ public class GenerationBatch extends MutableEntity {
         return true;
     }
 
+    public void refreshProgress(int succeeded, int failed, int rejected) {
+        if (succeeded < 0 || failed < 0 || rejected < 0
+                || succeeded + failed + rejected > requestedJobCount) {
+            throw new IllegalArgumentException("Invalid batch progress counts");
+        }
+        succeededJobCount = succeeded;
+        failedJobCount = failed;
+        rejectedJobCount = rejected;
+        int terminal = succeeded + failed + rejected;
+        if (terminal == requestedJobCount) {
+            status = failed > 0 || rejected > 0
+                    ? GenerationBatchStatus.COMPLETED_WITH_ERRORS
+                    : GenerationBatchStatus.COMPLETED;
+        } else if (terminal > 0 || status == GenerationBatchStatus.CREATED) {
+            status = GenerationBatchStatus.RUNNING;
+        }
+    }
+
     public UUID getGenerationBatchUuid() { return generationBatchUuid; }
     public UUID getProductUuid() { return productUuid; }
     public UUID getCreativePlanUuid() { return creativePlanUuid; }

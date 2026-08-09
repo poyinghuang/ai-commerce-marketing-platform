@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status: Milestone 3A completed; Milestone 3B may start after this closeout merges
+- Status: Milestone 3A completed; Milestone 3B implementation complete with delivery gates pending
 - Branch: Merged from `codex/stage-03-ai-foundation`
 - Base Commit: `718b60c3a4a2507716089f38fc77dacde731a769`
 - Stage 02 prerequisite: Passed — `stage-02-complete` at `73f20fe75ef64da8add771087a2035a773d905af`
@@ -19,6 +19,7 @@
 - Merge: Passed — PR #46, Squash Commit `b90517a7c5cf9b37c894ceea8beef090a04b149d`
 - Post-merge CI: Passed — main Run `31332810286`
 - Completion Tag: `milestone-3a-complete`
+- Milestone 3B: Manager approved at `5696c68d8c07bb4188c7c4e26a8cf9f20b181941`; approval-record CI, merge, and post-merge verification pending. Detailed contract: [Stage 03B — Text Generation Vertical Slice](stage-03b-text-generation.md)
 - Stage 04: Not started
 
 ## Human-approved decisions

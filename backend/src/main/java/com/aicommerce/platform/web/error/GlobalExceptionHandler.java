@@ -1,6 +1,8 @@
 package com.aicommerce.platform.web.error;
 
 import com.aicommerce.platform.asset.application.*;
+import com.aicommerce.platform.ai.application.AiBudgetUnavailableException;
+import com.aicommerce.platform.ai.application.AiGenerationException;
 import com.aicommerce.platform.campaign.application.*;
 import com.aicommerce.platform.connector.sheets.application.SheetImportNotFoundException;
 import com.aicommerce.platform.connector.sheets.application.SheetImportPreconditionFailedException;
@@ -48,6 +50,28 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 public class GlobalExceptionHandler {
 
   private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+  @ExceptionHandler(AiGenerationException.class)
+  ResponseEntity<ApiError> handleAiGeneration(AiGenerationException exception, HttpServletRequest request) {
+    HttpStatus status = switch (exception.code()) {
+      case "AI_GENERATION_BATCH_NOT_FOUND", "AI_GENERATION_JOB_NOT_FOUND", "AI_OUTPUT_NOT_FOUND",
+          "AI_PROMPT_TEMPLATE_NOT_FOUND", "PRODUCT_NOT_FOUND" -> HttpStatus.NOT_FOUND;
+      case "AI_GENERATION_PRECONDITION_FAILED" -> HttpStatus.PRECONDITION_FAILED;
+      case "AI_GENERATION_STATE_CONFLICT", "AI_COST_INVARIANT_VIOLATION", "PRODUCT_ARCHIVED",
+          "AI_JOB_BUDGET_EXCEEDED", "AI_BATCH_BUDGET_EXCEEDED", "AI_DAILY_BUDGET_EXCEEDED" -> HttpStatus.CONFLICT;
+      case "AI_PROVIDER_RATE_LIMITED" -> HttpStatus.TOO_MANY_REQUESTS;
+      case "AI_PROVIDER_NOT_CONFIGURED", "AI_PROVIDER_UNAVAILABLE", "AUDIT_ACTOR_UNAVAILABLE" ->
+          HttpStatus.SERVICE_UNAVAILABLE;
+      default -> HttpStatus.BAD_REQUEST;
+    };
+    return ResponseEntity.status(status).body(error(exception.code(), exception.getMessage(), request, null));
+  }
+
+  @ExceptionHandler(AiBudgetUnavailableException.class)
+  ResponseEntity<ApiError> handleAiBudgetUnavailable(HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+        .body(error("AI_BUDGET_NOT_CONFIGURED", "AI budget policy is unavailable", request, null));
+  }
 
   @ExceptionHandler(StorageFolderNotFoundException.class)
   ResponseEntity<ApiError> handleStorageFolderNotFound(HttpServletRequest request) {

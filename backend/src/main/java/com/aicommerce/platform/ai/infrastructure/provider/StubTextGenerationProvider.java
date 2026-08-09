@@ -14,11 +14,18 @@ public class StubTextGenerationProvider implements TextGenerationProvider {
 
     @Override
     public TextResult generate(TextRequest request) {
+        if ("stub-text-partial".equals(request.modelKey())
+                && request.renderedPrompt().contains("\"variationIndex\":2")) {
+            throw new com.aicommerce.platform.ai.application.AiProviderException(
+                    "AI_PROVIDER_REJECTED", "Deterministic partial-failure fixture");
+        }
+        BigDecimal actualCost = "stub-text-cost-invariant".equals(request.modelKey())
+                ? new BigDecimal("3.000000") : BigDecimal.ZERO;
         return new TextResult(
                 "stub-text-" + request.generationJobUuid(),
                 1,
                 1,
-                BigDecimal.ZERO,
+                actualCost,
                 "deterministic-local-stub",
                 List.of(),
                 Map.of("fixture", "stage-03"));
