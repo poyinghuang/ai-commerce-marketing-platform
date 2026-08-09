@@ -25,8 +25,12 @@ services:
       DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ai_commerce}
       DATABASE_USERNAME: ${POSTGRES_USER:-ai_commerce}
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-ai_commerce_local}
+      AI_BUDGET_CURRENCY: ${AI_BUDGET_CURRENCY:-}
+      AI_MAX_JOB_COST: ${AI_MAX_JOB_COST:-}
+      AI_MAX_BATCH_COST: ${AI_MAX_BATCH_COST:-}
+      AI_MAX_DAILY_COST: ${AI_MAX_DAILY_COST:-}
     ports:
-      - "8080:8080"
+      - "${BACKEND_PORT:-8080}:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -47,7 +51,7 @@ services:
       BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL:-http://backend:8080}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
     ports:
-      - "3000:3000"
+      - "${FRONTEND_PORT:-3000}:3000"
     depends_on:
       backend:
         condition: service_healthy

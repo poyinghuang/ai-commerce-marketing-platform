@@ -27,6 +27,9 @@ const SAFE_SHEET_CONNECTOR_PATH = new RegExp(
 const SAFE_STORAGE_FOLDER_PATH = new RegExp(
   `^/api/products/${PRODUCT_UUID_PATH}/storage-folder$`, "i",
 );
+const SAFE_AI_GENERATION_PATH = new RegExp(
+  `^/api/(?:products/${PRODUCT_UUID_PATH}/ai-generation-batches|ai-generation-batches/${PRODUCT_UUID_PATH}|ai-generation-jobs/${PRODUCT_UUID_PATH}(?:/execute)?|ai-generation-outputs/${PRODUCT_UUID_PATH}|ai-budget/status)$`, "i",
+);
 
 type ProxyOptions = {
   method: "GET" | "POST" | "PATCH" | "DELETE";
@@ -133,6 +136,13 @@ export async function forwardSheetConnectorRequest(request: NextRequest, backend
 export async function forwardStorageFolderRequest(request: NextRequest, backendPath: string, options: ProxyOptions) {
   if (!SAFE_STORAGE_FOLDER_PATH.test(backendPath)) {
     return proxyError("INVALID_STORAGE_FOLDER_PATH", "Storage folder path is invalid", 400);
+  }
+  return forwardAllowlistedRequest(request, backendPath, options, new Set<string>());
+}
+
+export async function forwardAiGenerationRequest(request: NextRequest, backendPath: string, options: ProxyOptions) {
+  if (!SAFE_AI_GENERATION_PATH.test(backendPath)) {
+    return proxyError("INVALID_AI_GENERATION_PATH", "AI generation path is invalid", 400);
   }
   return forwardAllowlistedRequest(request, backendPath, options, new Set<string>());
 }

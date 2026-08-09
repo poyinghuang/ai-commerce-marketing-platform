@@ -33,19 +33,20 @@ class MigrationCompatibilityTest {
     private static final String V6_1_SHA256 = "4682d9dfbb9e194824064460242d81a665fc79bad6d41f5fb5059abf1fa18b67";
     private static final String V7_SHA256 = "74a0fc97fb1315a98336f54f7391e18011d53daffcace7b83805a910461d4cac";
     private static final String V8_SHA256 = "046d604295d83e94fba93fb54943fc832b3944ced5ebcc989ca475bb8bcef9f4";
+    private static final String V9_SHA256 = "7c7e14faae71394182ecca06010dd8b97f42598480530abfeb13ccacefca7367";
 
     @Container
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17.6-alpine3.22");
 
     @Test
-    void emptyDatabaseRunsV1ThroughV8AndRepeatMigrationHasNoPendingWork() {
+    void emptyDatabaseRunsV1ThroughV9AndRepeatMigrationHasNoPendingWork() {
         Flyway flyway = flyway("empty_case", null);
 
-        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(9);
+        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(10);
         assertThat(List.of(flyway.info().applied()).stream()
                 .filter(info -> info.getVersion() != null)
                 .map(info -> info.getVersion().getVersion()))
-                .containsExactly("1", "2", "3", "4", "5", "6", "6.1", "7", "8");
+                .containsExactly("1", "2", "3", "4", "5", "6", "6.1", "7", "8", "9");
         assertThat(flyway.info().pending()).isEmpty();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
     }
@@ -278,7 +279,60 @@ class MigrationCompatibilityTest {
     }
 
     @Test
-    void canonicalV1ThroughV8ContentRemainsStable() throws Exception {
+    void populatedV8DataSurvivesUpgradeToV9() {
+        String schema = "v9_upgrade_case";
+        Flyway v8 = flyway(schema, MigrationVersion.fromVersion("8"));
+        assertThat(v8.migrate().migrationsExecuted).isEqualTo(9);
+        JdbcTemplate jdbc = jdbcTemplate(schema);
+        UUID productUuid = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO v9_upgrade_case.products
+                    (product_uuid, product_id, product_name, lifecycle_status, version)
+                VALUES (?, 'PROD-00000109', 'V9 Upgrade Product', 'ACTIVE', 13)
+                """, productUuid);
+        UUID templateUuid = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO v9_upgrade_case.ai_prompt_templates
+                    (prompt_template_uuid, template_key, generation_type, display_name)
+                VALUES (?, 'text.v9-upgrade', 'TEXT', 'V9 Upgrade')
+                """, templateUuid);
+        UUID versionUuid = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO v9_upgrade_case.ai_prompt_template_versions
+                    (prompt_template_version_uuid, prompt_template_uuid, version_number, template_text,
+                     input_schema, content_sha256, created_by)
+                VALUES (?, ?, 1, 'Write copy', '{}'::jsonb, ?, 'tester')
+                """, versionUuid, templateUuid, "9".repeat(64));
+        UUID batchUuid = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO v9_upgrade_case.ai_generation_batches
+                    (generation_batch_uuid, product_uuid, status, currency, estimated_cost,
+                     reserved_cost, requested_job_count, created_by)
+                VALUES (?, ?, 'CREATED', 'USD', 0.5, 1, 1, 'tester')
+                """, batchUuid, productUuid);
+        UUID jobUuid = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO v9_upgrade_case.ai_generation_jobs
+                    (generation_job_uuid, generation_batch_uuid, product_uuid,
+                     prompt_template_version_uuid, generation_type, provider_key, model_key,
+                     rendered_prompt, input_snapshot, estimated_cost, reserved_cost, currency)
+                VALUES (?, ?, ?, ?, 'TEXT', 'stub', 'stub-text', 'Write copy', '{}'::jsonb, 0.5, 1, 'USD')
+                """, jobUuid, batchUuid, productUuid, versionUuid);
+
+        Flyway v9 = flyway(schema, MigrationVersion.fromVersion("9"));
+        assertThat(v9.migrate().migrationsExecuted).isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                "SELECT version FROM v9_upgrade_case.ai_generation_jobs WHERE generation_job_uuid=?",
+                Long.class, jobUuid)).isZero();
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*) FROM information_schema.tables
+                WHERE table_schema=? AND table_name='ai_generation_outputs'
+                """, Integer.class, schema)).isEqualTo(1);
+        assertThat(v9.info().pending()).isEmpty();
+    }
+
+    @Test
+    void canonicalV1ThroughV9ContentRemainsStable() throws Exception {
         assertThat(sha256("db/migration/V1__create_product_foundation.sql")).isEqualTo(V1_SHA256);
         assertThat(sha256("db/migration/V2__create_audit_foundation.sql")).isEqualTo(V2_SHA256);
         assertThat(sha256("db/migration/V3__add_product_master_fields.sql")).isEqualTo(V3_SHA256);
@@ -288,6 +342,7 @@ class MigrationCompatibilityTest {
         assertThat(sha256("db/migration/V6_1__add_sheet_import_header_presence.sql")).isEqualTo(V6_1_SHA256);
         assertThat(sha256("db/migration/V7__create_product_storage_folders.sql")).isEqualTo(V7_SHA256);
         assertThat(sha256("db/migration/V8__create_ai_generation_foundation.sql")).isEqualTo(V8_SHA256);
+        assertThat(sha256("db/migration/V9__create_ai_text_outputs.sql")).isEqualTo(V9_SHA256);
     }
 
     @Test
@@ -338,6 +393,12 @@ class MigrationCompatibilityTest {
     private JdbcTemplate jdbcTemplate() {
         return new JdbcTemplate(new DriverManagerDataSource(
                 postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword()));
+    }
+
+    private JdbcTemplate jdbcTemplate(String currentSchema) {
+        return new JdbcTemplate(new DriverManagerDataSource(
+                postgres.getJdbcUrl() + "&currentSchema=" + currentSchema,
+                postgres.getUsername(), postgres.getPassword()));
     }
 
     private String sha256(String resource) throws Exception {

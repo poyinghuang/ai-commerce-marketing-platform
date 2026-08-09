@@ -2,18 +2,32 @@
 
 ## Gate status
 
-- Status: Approved specification; implementation in progress
+- Status: Implementation complete; delivery gates pending
 - Branch: `codex/stage-03-text-generation`
 - Base Commit: `4386eed412f0c49f740e4fad17ba781e12afd078`
 - Prerequisite: Milestone 3A completed at `b90517a7c5cf9b37c894ceea8beef090a04b149d`
 - Prerequisite tag: `milestone-3a-complete`
-- Implementation: In progress
-- Local Verification: Pending
+- Implementation: Complete
+- Local Verification: Passed for Backend, Frontend, migration, Compose, smoke, Playwright, dependency audit, Gitleaks, and diff checks; local actionlint not verified
 - Remote CI: Pending
 - Manager Review: Pending
 - Manager Decision: Pending
 - Merge: Pending
 - Milestone 3C: Not started
+
+## Local implementation evidence
+
+- V9 is additive and creates only `ai_generation_outputs` plus the composite Job relationship key required by its foreign key. V1-V8 are unchanged.
+- Empty V1-V9, populated V8-V9, repeat migration, canonical checksums, Hibernate validation, direct JDBC constraints, immutable-field triggers, and delete rejection passed.
+- Backend full regression produced 62 Surefire reports and 262 tests with 0 failures, 0 errors, and 0 skipped. The known non-blocking Surefire fork shutdown-after-success warning remains.
+- Text integration proves default three variations, server-rendered immutable snapshots, Stub success, partial sibling failure, stale and duplicate execution rejection, archived Product blocking, truthful settlement, cost-invariant blocking, same-operation Audit, and persisted pending-review Output.
+- Frontend lint and typecheck passed; 22 Vitest files / 130 tests passed; production build passed; `npm audit --omit=dev` found 0 vulnerabilities.
+- Fixed-origin AI BFF tests prove exact path/query/header allowlists, body bounds, status/body preservation, and no Cookie, Authorization, or Browser actor forwarding.
+- Compose config passed. An isolated cold stack on host ports 18081/13001 became healthy, applied V9, used non-root UIDs 999/1000, and completed Product -> Creative Plan -> text Batch -> Job -> pending-review Output through the same-origin BFF with AI Audit rows.
+- All eight existing Stage 02 Playwright scenarios passed against the isolated stack. The ephemeral Compose volume was removed afterward.
+- Gitleaks 8.28.0 using the CI-pinned image digest scanned 75 commits and the worktree with no leaks. `git diff --check` passed.
+- Local actionlint is not installed and the policy-blocked download was not bypassed. No Workflow file changed; required actionlint evidence remains Pending Remote CI.
+- The first Compose start was blocked only because another local repository occupied host port 8080. Compose host ports are now configurable through `BACKEND_PORT` and `FRONTEND_PORT`, with existing defaults unchanged.
 
 ## Scope
 
@@ -129,4 +143,3 @@ Request bodies cannot contain raw prompt/template JSON, rendered prompt, snapsho
 - Budget rejection makes no provider call. Missing production provider/budget configuration fails closed.
 - Stale/missing/malformed ETag, archived Product/Plan, wrong ownership, duplicate execute, rollback, and cost-invariant cases pass.
 - Backend tests, Frontend lint/typecheck/tests/build, npm audit, actionlint, Gitleaks, Compose, existing Playwright regression, Remote CI, exact-head Manager Review, merge, and post-merge main CI pass.
-

@@ -124,6 +124,52 @@ public class GenerationJob extends MutableEntity {
         return true;
     }
 
+    public void submit(Instant at) {
+        if (status != GenerationJobStatus.CREATED) {
+            throw new IllegalStateException("Only a created job can be submitted");
+        }
+        status = GenerationJobStatus.SUBMITTED;
+        providerJobId = generationJobUuid.toString();
+        submittedAt = Objects.requireNonNull(at, "submittedAt is required");
+        attemptCount++;
+    }
+
+    public void start(Instant at) {
+        if (status != GenerationJobStatus.SUBMITTED) {
+            throw new IllegalStateException("Only a submitted job can start");
+        }
+        status = GenerationJobStatus.RUNNING;
+        startedAt = Objects.requireNonNull(at, "startedAt is required");
+    }
+
+    public void succeed(Instant at) {
+        if (status != GenerationJobStatus.RUNNING) {
+            throw new IllegalStateException("Only a running job can succeed");
+        }
+        status = GenerationJobStatus.SUCCEEDED;
+        completedAt = Objects.requireNonNull(at, "completedAt is required");
+        failureCode = null;
+        failureMessage = null;
+    }
+
+    public void fail(Instant at, String code, String message) {
+        if (status != GenerationJobStatus.SUBMITTED && status != GenerationJobStatus.RUNNING) {
+            throw new IllegalStateException("Only a submitted or running job can fail");
+        }
+        status = GenerationJobStatus.FAILED;
+        completedAt = Objects.requireNonNull(at, "completedAt is required");
+        failureCode = AiDomainRules.required(code, "failureCode", 64);
+        failureMessage = AiDomainRules.required(message, "failureMessage", 1000);
+    }
+
+    public void flagCostInvariantViolation() {
+        if (status != GenerationJobStatus.SUCCEEDED) {
+            throw new IllegalStateException("Only a succeeded job can flag a cost invariant violation");
+        }
+        failureCode = "AI_COST_INVARIANT_VIOLATION";
+        failureMessage = "Provider actual cost exceeded the reserved ceiling";
+    }
+
     public UUID getGenerationJobUuid() { return generationJobUuid; }
     public UUID getGenerationBatchUuid() { return generationBatchUuid; }
     public UUID getProductUuid() { return productUuid; }

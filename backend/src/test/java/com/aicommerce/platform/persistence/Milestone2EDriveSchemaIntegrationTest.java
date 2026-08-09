@@ -19,7 +19,7 @@ class Milestone2EDriveSchemaIntegrationTest {
     @Autowired JdbcTemplate jdbc; @Autowired Flyway flyway;
     @Test void v7CreatesOnlyApprovedDriveTablesAndHibernateValidates(){
         assertThat(List.of(flyway.info().applied()).stream().filter(i->i.getVersion()!=null).map(i->i.getVersion().getVersion()))
-                .containsExactly("1","2","3","4","5","6","6.1","7","8");
+                .containsExactly("1","2","3","4","5","6","6.1","7","8","9");
         assertThat(table("product_storage_folders")).isTrue();assertThat(table("product_storage_subfolders")).isTrue();
         assertThat(flyway.info().pending()).isEmpty();
     }
