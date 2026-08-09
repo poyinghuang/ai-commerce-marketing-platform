@@ -19,6 +19,7 @@
 - Merge: Passed — PR #46, Squash Commit `b90517a7c5cf9b37c894ceea8beef090a04b149d`
 - Post-merge CI: Passed — main Run `31332810286`
 - Completion Tag: `milestone-3a-complete`
+- Milestone 3B: In progress on `codex/stage-03-text-generation`; detailed contract in [Stage 03B — Text Generation Vertical Slice](stage-03b-text-generation.md)
 - Stage 04: Not started
 
 ## Human-approved decisions
