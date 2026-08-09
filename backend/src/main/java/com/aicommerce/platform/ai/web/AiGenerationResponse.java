@@ -38,7 +38,8 @@ public final class AiGenerationResponse {
             Instant startedAt, Instant completedAt, Instant createdAt, Instant updatedAt, long version,
             UUID outputUuid) {
         public static Job from(GenerationJob value, GenerationOutput output) {
-            String profile = switch (value.getModelKey()) {
+            String profile = value.getGenerationType() == com.aicommerce.platform.ai.domain.GenerationType.IMAGE
+                    ? "STANDARD_IMAGE" : switch (value.getModelKey()) {
                 case "stub-text-low" -> "LOW_COST";
                 case "stub-text-partial" -> "PARTIAL_FAILURE_FIXTURE";
                 case "stub-text-cost-invariant" -> "COST_INVARIANT_FIXTURE";
@@ -58,13 +59,25 @@ public final class AiGenerationResponse {
             UUID generationOutputUuid, UUID generationJobUuid, UUID generationBatchUuid, UUID productUuid,
             String generationType, String textContent, String modelLabel, long inputUnits, long outputUnits,
             BigDecimal actualCost, String currency, JsonNode safetyFindings, String reviewStatus,
-            Instant createdAt, Instant updatedAt, long version) {
+            Instant createdAt, Instant updatedAt, long version,
+            UUID sourceAssetUuid, UUID maskAssetUuid, UUID generatedAssetUuid,
+            String generationMode, String workflowKey, String workflowVersion,
+            Integer imageWidth, Integer imageHeight, String mediaType, Long sizeBytes,
+            String sourceChecksumSha256, String maskChecksumSha256, String outputChecksumSha256,
+            String protectedPixelsSha256, String preservationAlgorithm, String preservationStatus,
+            JsonNode preservationDetails) {
         public static Output from(GenerationOutput value, ObjectMapper mapper) {
             return new Output(value.getGenerationOutputUuid(), value.getGenerationJobUuid(),
                     value.getGenerationBatchUuid(), value.getProductUuid(), value.getGenerationType().name(),
                     value.getTextContent(), value.getModelLabel(), value.getInputUnits(), value.getOutputUnits(),
                     value.getActualCost(), value.getCurrency().strip(), mapper.readTree(value.getSafetyFindings()),
-                    value.getReviewStatus().name(), value.getCreatedAt(), value.getUpdatedAt(), value.getVersion());
+                    value.getReviewStatus().name(), value.getCreatedAt(), value.getUpdatedAt(), value.getVersion(),
+                    value.getSourceAssetUuid(), value.getMaskAssetUuid(), value.getGeneratedAssetUuid(),
+                    value.getGenerationMode(), value.getWorkflowKey(), value.getWorkflowVersion(),
+                    value.getImageWidth(), value.getImageHeight(), value.getMediaType(), value.getSizeBytes(),
+                    value.getSourceChecksumSha256(), value.getMaskChecksumSha256(), value.getOutputChecksumSha256(),
+                    value.getProtectedPixelsSha256(), value.getPreservationAlgorithm(), value.getPreservationStatus(),
+                    value.getPreservationDetails() == null ? null : mapper.readTree(value.getPreservationDetails()));
         }
     }
 }

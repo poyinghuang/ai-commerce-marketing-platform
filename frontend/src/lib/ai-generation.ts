@@ -1,5 +1,6 @@
 export type AiJob = {
   generationJobUuid: string;
+  generationType: "TEXT" | "IMAGE";
   status: string;
   modelProfile: string;
   estimatedCost: number;
@@ -29,7 +30,8 @@ export type AiBatch = {
 export type AiOutput = {
   generationOutputUuid: string;
   generationJobUuid: string;
-  textContent: string;
+  generationType: "TEXT" | "IMAGE";
+  textContent: string | null;
   modelLabel: string;
   inputUnits: number;
   outputUnits: number;
@@ -38,6 +40,23 @@ export type AiOutput = {
   safetyFindings: string[];
   reviewStatus: string;
   version: number;
+  sourceAssetUuid: string | null;
+  maskAssetUuid: string | null;
+  generatedAssetUuid: string | null;
+  generationMode: string | null;
+  workflowKey: string | null;
+  workflowVersion: string | null;
+  imageWidth: number | null;
+  imageHeight: number | null;
+  mediaType: string | null;
+  sizeBytes: number | null;
+  sourceChecksumSha256: string | null;
+  maskChecksumSha256: string | null;
+  outputChecksumSha256: string | null;
+  protectedPixelsSha256: string | null;
+  preservationAlgorithm: string | null;
+  preservationStatus: "PASSED" | "BLOCKED" | null;
+  preservationDetails: { changedPixelCount?: number; protectedPixelCount?: number } | null;
 };
 
 export type AiBudgetStatus = {
@@ -47,4 +66,7 @@ export type AiBudgetStatus = {
   maximumDailyCost: number;
   modelProfiles: string[];
   textTemplateKeys: string[];
+  imageModelProfiles: string[];
+  imageTemplateKeys: string[];
+  imageWorkflowKeys: string[];
 };

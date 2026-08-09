@@ -3,17 +3,24 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ApiError } from "@/lib/products";
 import type { CreativePlanPage } from "@/lib/creative-plans";
+import type { AssetPage } from "@/lib/assets";
 import type { AiBatch, AiBudgetStatus, AiOutput } from "@/lib/ai-generation";
+
+type Mode = "TEXT" | "IMAGE";
 
 export function CreativeFactoryTab({ productUuid, productArchived }: { productUuid: string; productArchived: boolean }) {
   const [batches, setBatches] = useState<AiBatch[]>([]);
   const [plans, setPlans] = useState<CreativePlanPage["content"]>([]);
+  const [assets, setAssets] = useState<AssetPage["content"]>([]);
   const [budget, setBudget] = useState<AiBudgetStatus | null>(null);
   const [outputs, setOutputs] = useState<Record<string, AiOutput>>({});
+  const [mode, setMode] = useState<Mode>("TEXT");
   const [planUuid, setPlanUuid] = useState("");
   const [templateKey, setTemplateKey] = useState("");
   const [modelProfile, setModelProfile] = useState("STANDARD");
   const [variationCount, setVariationCount] = useState(3);
+  const [sourceAssetUuid, setSourceAssetUuid] = useState("");
+  const [maskAssetUuid, setMaskAssetUuid] = useState("");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,23 +30,28 @@ export function CreativeFactoryTab({ productUuid, productArchived }: { productUu
     setLoading(true);
     setError(null);
     try {
-      const [batchResponse, planResponse, budgetResponse] = await Promise.all([
+      const [batchResponse, planResponse, budgetResponse, assetResponse] = await Promise.all([
         fetch(`/api/products/${productUuid}/ai-generation-batches`, { cache: "no-store" }),
         fetch(`/api/products/${productUuid}/creative-plans?status=ACTIVE&page=0&size=100&sort=updatedAt,desc`, { cache: "no-store" }),
         fetch("/api/ai-budget/status", { cache: "no-store" }),
+        fetch(`/api/products/${productUuid}/assets?status=ACTIVE&assetType=IMAGE&page=0&size=100&sort=updatedAt,desc`, { cache: "no-store" }),
       ]);
       const batchBody = await batchResponse.json() as AiBatch[] & ApiError;
       const planBody = await planResponse.json() as CreativePlanPage & ApiError;
       const budgetBody = await budgetResponse.json() as AiBudgetStatus & ApiError;
+      const assetBody = await assetResponse.json() as AssetPage & ApiError;
       if (!batchResponse.ok) throw new Error(batchBody.message ?? "Unable to load generation history");
       if (!planResponse.ok) throw new Error(planBody.message ?? "Unable to load Creative Plans");
       if (!budgetResponse.ok) throw new Error(budgetBody.message ?? "AI budget is unavailable");
+      if (!assetResponse.ok) throw new Error(assetBody.message ?? "Unable to load image Assets");
       setBatches(batchBody);
       setPlans(planBody.content);
       setBudget(budgetBody);
+      setAssets(assetBody.content);
       setPlanUuid((current) => current || planBody.content[0]?.creativePlanUuid || "");
       setTemplateKey((current) => current || budgetBody.textTemplateKeys[0] || "");
       setModelProfile((current) => budgetBody.modelProfiles.includes(current) ? current : budgetBody.modelProfiles[0] || "");
+      setSourceAssetUuid((current) => current || assetBody.content.find((asset) => asset.assetType === "IMAGE")?.assetUuid || "");
       const ids = batchBody.flatMap((batch) => batch.jobs.map((job) => job.outputUuid)).filter(Boolean) as string[];
       const loaded = await Promise.all(ids.map(async (id) => {
         const response = await fetch(`/api/ai-generation-outputs/${id}`, { cache: "no-store" });
@@ -58,27 +70,41 @@ export function CreativeFactoryTab({ productUuid, productArchived }: { productUu
     return () => window.clearTimeout(pending);
   }, [load]);
 
+  function selectMode(next: Mode) {
+    setMode(next);
+    setModelProfile(next === "IMAGE" ? budget?.imageModelProfiles[0] || "" : budget?.modelProfiles[0] || "");
+  }
+
   async function createBatch() {
-    if (!planUuid || !templateKey) { setError("An active Creative Plan and text template are required"); return; }
+    const selectedTemplate = mode === "IMAGE" ? budget?.imageTemplateKeys[0] || "" : templateKey;
+    if (!planUuid || !selectedTemplate || (mode === "IMAGE" && !sourceAssetUuid)) {
+      setError(mode === "IMAGE" ? "An active Creative Plan, image template and source Asset are required" : "An active Creative Plan and text template are required");
+      return;
+    }
     setBusy(true); setError(null); setConflict(false);
     try {
+      const payload = mode === "IMAGE" ? {
+        generationType: "IMAGE", creativePlanUuid: planUuid, templateKey: selectedTemplate,
+        workflowKey: budget?.imageWorkflowKeys[0], modelProfile: budget?.imageModelProfiles[0],
+        variationCount: 1, sourceAssetUuid, maskAssetUuid: maskAssetUuid || null,
+      } : { creativePlanUuid: planUuid, templateKey, modelProfile, variationCount };
       const response = await fetch(`/api/products/${productUuid}/ai-generation-batches`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ creativePlanUuid: planUuid, templateKey, modelProfile, variationCount }),
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
       });
       const body = await response.json() as AiBatch & ApiError;
       if ([409, 412, 428].includes(response.status)) { setConflict(true); return; }
-      if (!response.ok) throw new Error(body.message ?? "Unable to create text batch");
+      if (!response.ok) throw new Error(body.message ?? `Unable to create ${mode.toLowerCase()} batch`);
       await load();
-    } catch (failure) { setError(failure instanceof Error ? failure.message : "Unable to create text batch"); }
-    finally { setBusy(false); }
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : `Unable to create ${mode.toLowerCase()} batch`);
+    } finally { setBusy(false); }
   }
 
   async function execute(jobUuid: string, version: number) {
     setBusy(true); setError(null); setConflict(false);
     try {
       const response = await fetch(`/api/ai-generation-jobs/${jobUuid}/execute`, {
-        method: "POST", headers: { "If-Match": `W/"${version}"` },
+        method: "POST", headers: { "If-Match": `W/\"${version}\"` },
       });
       const body = await response.json() as AiOutput & ApiError;
       if ([409, 412, 428].includes(response.status)) { setConflict(true); return; }
@@ -89,26 +115,38 @@ export function CreativeFactoryTab({ productUuid, productArchived }: { productUu
   }
 
   return <section className="content-card creative-factory-tab">
-    <div className="card-heading"><div><h2>Creative Factory</h2><p className="summary">Text generation only · every result remains Pending review</p></div></div>
+    <div className="card-heading"><div><h2>Creative Factory</h2><p className="summary">Text and protected-product image generation; every result remains Pending review</p></div></div>
     {productArchived && <div className="state-card warning-state">Archived Products cannot start AI generation.</div>}
     {conflict && <div className="state-card warning-state" role="alert">Generation state changed. Reload the latest state before retrying. <button className="secondary-button" onClick={() => void load()}>Reload</button></div>}
     {error && <div className="state-card error-state" role="alert">{error}</div>}
     {!productArchived && <div className="form-grid">
+      <label>Generation mode<select value={mode} onChange={(event) => selectMode(event.target.value as Mode)}><option value="TEXT">Text</option><option value="IMAGE">Image background</option></select></label>
       <label>Creative Plan<select value={planUuid} onChange={(event) => setPlanUuid(event.target.value)}><option value="">Select a plan</option>{plans.map((plan) => <option key={plan.creativePlanUuid} value={plan.creativePlanUuid}>{plan.planName}</option>)}</select></label>
-      <label>Template<select value={templateKey} onChange={(event) => setTemplateKey(event.target.value)}><option value="">Select a template</option>{budget?.textTemplateKeys.map((key) => <option key={key}>{key}</option>)}</select></label>
-      <label>Model profile<select value={modelProfile} onChange={(event) => setModelProfile(event.target.value)}>{budget?.modelProfiles.map((profile) => <option key={profile}>{profile}</option>)}</select></label>
-      <label>Variations<select value={variationCount} onChange={(event) => setVariationCount(Number(event.target.value))}><option value={1}>1</option><option value={2}>2</option><option value={3}>3</option></select></label>
-      <button className="primary-button" disabled={busy || !planUuid || !templateKey} onClick={() => void createBatch()}>Create text batch</button>
+      {mode === "TEXT" ? <>
+        <label>Template<select value={templateKey} onChange={(event) => setTemplateKey(event.target.value)}><option value="">Select a template</option>{budget?.textTemplateKeys.map((key) => <option key={key}>{key}</option>)}</select></label>
+        <label>Model profile<select value={modelProfile} onChange={(event) => setModelProfile(event.target.value)}>{budget?.modelProfiles.map((profile) => <option key={profile}>{profile}</option>)}</select></label>
+        <label>Variations<select value={variationCount} onChange={(event) => setVariationCount(Number(event.target.value))}><option value={1}>1</option><option value={2}>2</option><option value={3}>3</option></select></label>
+      </> : <>
+        <label>Image template<select aria-label="Image template" value={budget?.imageTemplateKeys[0] || ""} disabled>{budget?.imageTemplateKeys.map((key) => <option key={key}>{key}</option>)}</select></label>
+        <label>Workflow<select value={budget?.imageWorkflowKeys[0] || ""} disabled>{budget?.imageWorkflowKeys.map((key) => <option key={key}>{key}</option>)}</select></label>
+        <label>Source image<select value={sourceAssetUuid} onChange={(event) => setSourceAssetUuid(event.target.value)}><option value="">Select a source image</option>{assets.filter((asset) => asset.assetType === "IMAGE").map((asset) => <option key={asset.assetUuid} value={asset.assetUuid}>{asset.originalFilename || asset.assetUuid.slice(0, 8)}</option>)}</select></label>
+        <label>Optional mask<select value={maskAssetUuid} onChange={(event) => setMaskAssetUuid(event.target.value)}><option value="">Use source alpha</option>{assets.filter((asset) => asset.assetType === "IMAGE" && asset.assetUuid !== sourceAssetUuid).map((asset) => <option key={asset.assetUuid} value={asset.assetUuid}>{asset.originalFilename || asset.assetUuid.slice(0, 8)}</option>)}</select></label>
+      </>}
+      <button className="primary-button" disabled={busy || !planUuid || (mode === "TEXT" ? !templateKey : !sourceAssetUuid || !budget?.imageTemplateKeys.length)} onClick={() => void createBatch()}>Create {mode === "IMAGE" ? "image" : "text"} batch</button>
     </div>}
     {loading ? <div className="state-card" role="status">Loading generation history…</div>
-      : batches.length === 0 ? <div className="state-card">No text generation batches yet.</div>
+      : batches.length === 0 ? <div className="state-card">No generation batches yet.</div>
         : <div className="page-stack">{batches.map((batch) => <article className="state-card" key={batch.generationBatchUuid}>
           <strong>Batch {batch.generationBatchUuid.slice(0, 8)}</strong> <span className="status-badge">{batch.status}</span>
           <p>{batch.succeededJobCount} succeeded · {batch.failedJobCount} failed · {batch.rejectedJobCount} rejected</p>
           {batch.jobs.map((job) => { const output = job.outputUuid ? outputs[job.outputUuid] : undefined; return <div className="content-card" key={job.generationJobUuid}>
-            <div className="card-heading"><div><strong>Variation · {job.status}</strong><p className="summary">Reserved {job.reservedCost} {job.currency}</p></div>{job.status === "CREATED" && <button className="primary-button" disabled={busy} onClick={() => void execute(job.generationJobUuid, job.version)}>Execute</button>}</div>
+            <div className="card-heading"><div><strong>{job.generationType === "IMAGE" ? "Image" : "Variation"} · {job.status}</strong><p className="summary">Reserved {job.reservedCost} {job.currency}</p></div>{job.status === "CREATED" && <button className="primary-button" disabled={busy} onClick={() => void execute(job.generationJobUuid, job.version)}>Execute</button>}</div>
             {job.failureCode && <div className="state-card error-state">{job.failureCode}: {job.failureMessage}</div>}
-            {output && <div><p>{output.textContent}</p><p className="summary">{output.modelLabel} · {output.inputUnits}/{output.outputUnits} units · {output.actualCost} {output.currency} · {output.reviewStatus}</p></div>}
+            {output && <div>{output.generationType === "TEXT" ? <p>{output.textContent}</p> : <div className={`state-card ${output.preservationStatus === "BLOCKED" ? "error-state" : ""}`}>
+              <strong>Protected pixels: {output.preservationStatus}</strong>
+              <p className="summary">{output.imageWidth}×{output.imageHeight} · {output.mediaType} · generated Asset {output.generatedAssetUuid?.slice(0, 8)} · Pending review</p>
+              {output.preservationDetails && <p>{output.preservationDetails.changedPixelCount ?? 0} changed of {output.preservationDetails.protectedPixelCount ?? 0} protected pixels</p>}
+            </div>}<p className="summary">{output.modelLabel} · {output.actualCost} {output.currency} · {output.reviewStatus}</p></div>}
           </div>; })}
         </article>)}</div>}
   </section>;

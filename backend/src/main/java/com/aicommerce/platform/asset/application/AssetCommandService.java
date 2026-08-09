@@ -52,7 +52,11 @@ public class AssetCommandService {
 
     @Transactional
     public Asset create(UUID productUuid, CreateAssetCommand command, String requestId) {
-        AuditOperationContext context=context(requestId);
+        return createGenerated(productUuid, command, context(requestId));
+    }
+
+    @Transactional
+    public Asset createGenerated(UUID productUuid, CreateAssetCommand command, AuditOperationContext context) {
         requireActiveProduct(productUuid);
         validateReferences(productUuid, command.creativePlanUuid(), command.campaignUuid());
         Asset asset;

@@ -9,6 +9,7 @@ import com.aicommerce.platform.ai.domain.GenerationBatch;
 import com.aicommerce.platform.ai.domain.GenerationJob;
 import com.aicommerce.platform.ai.domain.GenerationJobStatus;
 import com.aicommerce.platform.ai.domain.GenerationOutput;
+import com.aicommerce.platform.ai.domain.GenerationType;
 import com.aicommerce.platform.ai.infrastructure.persistence.GenerationBatchJpaRepository;
 import com.aicommerce.platform.ai.infrastructure.persistence.GenerationJobJpaRepository;
 import com.aicommerce.platform.ai.infrastructure.persistence.GenerationOutputJpaRepository;
@@ -43,11 +44,15 @@ public class TextGenerationExecutionTransactions {
     }
 
     @Transactional
-    public PreparedJob prepare(UUID jobUuid, long expectedVersion, AuditOperationContext context) {
+    public PreparedJob prepare(UUID jobUuid, long expectedVersion, GenerationType expectedType,
+            AuditOperationContext context) {
         GenerationJob job = jobs.findByIdForUpdate(jobUuid)
                 .orElseThrow(() -> new AiGenerationException("AI_GENERATION_JOB_NOT_FOUND", "Generation job not found"));
         if (job.getVersion() != expectedVersion) {
             throw new AiGenerationException("AI_GENERATION_PRECONDITION_FAILED", "Generation job version is stale");
+        }
+        if (job.getGenerationType() != expectedType) {
+            throw new AiGenerationException("AI_GENERATION_STATE_CONFLICT", "Generation job type is invalid");
         }
         if (jobs.findByGenerationBatchUuidOrderByCreatedAt(job.getGenerationBatchUuid()).stream()
                 .anyMatch(candidate -> "AI_COST_INVARIANT_VIOLATION".equals(candidate.getFailureCode()))) {
@@ -65,7 +70,43 @@ public class TextGenerationExecutionTransactions {
                 List.of(change("status", "CREATED", "RUNNING", AuditValueType.ENUM, 0),
                         change("attemptCount", "0", Integer.toString(job.getAttemptCount()), AuditValueType.INTEGER, 1)));
         return new PreparedJob(job.getGenerationJobUuid(), job.getGenerationBatchUuid(), job.getProductUuid(),
-                job.getRenderedPrompt(), job.getModelKey(), job.getCurrency());
+                job.getRenderedPrompt(), job.getModelKey(), job.getCurrency(), job.getInputSnapshot(),
+                job.getCreativePlanUuid());
+    }
+
+    @Transactional
+    public PreparedJob prepareImage(UUID jobUuid, long expectedVersion, AuditOperationContext context) {
+        GenerationJob job = jobs.findByIdForUpdate(jobUuid)
+                .orElseThrow(() -> new AiGenerationException("AI_GENERATION_JOB_NOT_FOUND", "Generation job not found"));
+        if (job.getVersion() != expectedVersion) {
+            throw new AiGenerationException("AI_GENERATION_PRECONDITION_FAILED", "Generation job version is stale");
+        }
+        if (job.getGenerationType() != GenerationType.IMAGE) {
+            throw new AiGenerationException("AI_GENERATION_STATE_CONFLICT", "Generation job type is invalid");
+        }
+        if (jobs.findByGenerationBatchUuidOrderByCreatedAt(job.getGenerationBatchUuid()).stream()
+                .anyMatch(candidate -> "AI_COST_INVARIANT_VIOLATION".equals(candidate.getFailureCode()))) {
+            throw new AiGenerationException("AI_COST_INVARIANT_VIOLATION",
+                    "Batch execution is blocked by a cost invariant violation");
+        }
+        if (job.getStatus() == GenerationJobStatus.CREATED) {
+            Instant now = Instant.now(clock);
+            job.submit(now);
+            job.start(now);
+            jobs.saveAndFlush(job);
+            append(context, AuditAction.UPDATE, "AI_GENERATION_JOB", job.getGenerationJobUuid(), job.getProductUuid(),
+                    List.of(change("status", "CREATED", "RUNNING", AuditValueType.ENUM, 0),
+                            change("attemptCount", "0", Integer.toString(job.getAttemptCount()), AuditValueType.INTEGER, 1)));
+        } else if (job.getStatus() != GenerationJobStatus.RUNNING) {
+            throw new AiGenerationException("AI_GENERATION_STATE_CONFLICT", "Image generation job cannot be resumed");
+        }
+        return prepared(job);
+    }
+
+    private PreparedJob prepared(GenerationJob job) {
+        return new PreparedJob(job.getGenerationJobUuid(), job.getGenerationBatchUuid(), job.getProductUuid(),
+                job.getRenderedPrompt(), job.getModelKey(), job.getCurrency(), job.getInputSnapshot(),
+                job.getCreativePlanUuid());
     }
 
     @Transactional
@@ -146,6 +187,6 @@ public class TextGenerationExecutionTransactions {
     }
 
     public record PreparedJob(UUID jobUuid, UUID batchUuid, UUID productUuid,
-            String prompt, String modelKey, String currency) {
+            String prompt, String modelKey, String currency, String inputSnapshot, UUID creativePlanUuid) {
     }
 }

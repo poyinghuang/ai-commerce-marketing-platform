@@ -1,0 +1,13 @@
+{
+  "1": {
+    "class_type": "Stage03BackgroundComposite",
+    "inputs": {
+      "prompt": "",
+      "source_png_base64": "",
+      "mask_png_base64": "",
+      "width": 1,
+      "height": 1,
+      "filename_prefix": "stage03"
+    }
+  }
+}

@@ -1,12 +1,16 @@
 package com.aicommerce.platform.ai.application;
 
 import java.time.Duration;
+import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 public interface ImageGenerationProvider {
 
     ImageSubmission submit(ImageRequest request);
+
+    ImageResult await(ImageRequest request, ImageSubmission submission);
 
     record ImageRequest(
             UUID generationJobUuid,
@@ -15,6 +19,8 @@ public interface ImageGenerationProvider {
             Map<String, String> workflowInputs,
             String sourceHandle,
             String maskHandle,
+            byte[] sourceBytes,
+            byte[] maskBytes,
             int width,
             int height,
             String format,
@@ -22,5 +28,9 @@ public interface ImageGenerationProvider {
     }
 
     record ImageSubmission(String providerJobId, String modelLabel, Map<String, String> metadata) {
+    }
+
+    record ImageResult(byte[] bytes, String mediaType, String modelLabel, BigDecimal actualCost,
+            List<String> safetyFindings, Map<String, String> metadata) {
     }
 }

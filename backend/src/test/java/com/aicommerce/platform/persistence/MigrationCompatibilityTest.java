@@ -34,19 +34,20 @@ class MigrationCompatibilityTest {
     private static final String V7_SHA256 = "74a0fc97fb1315a98336f54f7391e18011d53daffcace7b83805a910461d4cac";
     private static final String V8_SHA256 = "046d604295d83e94fba93fb54943fc832b3944ced5ebcc989ca475bb8bcef9f4";
     private static final String V9_SHA256 = "7c7e14faae71394182ecca06010dd8b97f42598480530abfeb13ccacefca7367";
+    private static final String V10_SHA256 = "8d67fd339eb4cc0189e71394feb903a02bf51897fc0287bb2da1d8f78365f7d8";
 
     @Container
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17.6-alpine3.22");
 
     @Test
-    void emptyDatabaseRunsV1ThroughV9AndRepeatMigrationHasNoPendingWork() {
+    void emptyDatabaseRunsV1ThroughV10AndRepeatMigrationHasNoPendingWork() {
         Flyway flyway = flyway("empty_case", null);
 
-        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(10);
+        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(11);
         assertThat(List.of(flyway.info().applied()).stream()
                 .filter(info -> info.getVersion() != null)
                 .map(info -> info.getVersion().getVersion()))
-                .containsExactly("1", "2", "3", "4", "5", "6", "6.1", "7", "8", "9");
+                .containsExactly("1", "2", "3", "4", "5", "6", "6.1", "7", "8", "9", "10");
         assertThat(flyway.info().pending()).isEmpty();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
     }
@@ -279,7 +280,7 @@ class MigrationCompatibilityTest {
     }
 
     @Test
-    void populatedV8DataSurvivesUpgradeToV9() {
+    void populatedV8DataAndTextOutputSurviveUpgradeThroughV10() {
         String schema = "v9_upgrade_case";
         Flyway v8 = flyway(schema, MigrationVersion.fromVersion("8"));
         assertThat(v8.migrate().migrationsExecuted).isEqualTo(9);
@@ -328,11 +329,25 @@ class MigrationCompatibilityTest {
                 SELECT COUNT(*) FROM information_schema.tables
                 WHERE table_schema=? AND table_name='ai_generation_outputs'
                 """, Integer.class, schema)).isEqualTo(1);
-        assertThat(v9.info().pending()).isEmpty();
+        UUID outputUuid = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO v9_upgrade_case.ai_generation_outputs
+                    (generation_output_uuid, generation_job_uuid, generation_batch_uuid, product_uuid,
+                     generation_type, text_content, model_label, input_units, output_units,
+                     actual_cost, currency)
+                VALUES (?, ?, ?, ?, 'TEXT', 'Existing text', 'stub', 1, 2, 0, 'USD')
+                """, outputUuid, jobUuid, batchUuid, productUuid);
+
+        Flyway v10 = flyway(schema, MigrationVersion.fromVersion("10"));
+        assertThat(v10.migrate().migrationsExecuted).isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                "SELECT text_content FROM v9_upgrade_case.ai_generation_outputs WHERE generation_output_uuid=?",
+                String.class, outputUuid)).isEqualTo("Existing text");
+        assertThat(v10.info().pending()).isEmpty();
     }
 
     @Test
-    void canonicalV1ThroughV9ContentRemainsStable() throws Exception {
+    void canonicalV1ThroughV10ContentRemainsStable() throws Exception {
         assertThat(sha256("db/migration/V1__create_product_foundation.sql")).isEqualTo(V1_SHA256);
         assertThat(sha256("db/migration/V2__create_audit_foundation.sql")).isEqualTo(V2_SHA256);
         assertThat(sha256("db/migration/V3__add_product_master_fields.sql")).isEqualTo(V3_SHA256);
@@ -343,6 +358,7 @@ class MigrationCompatibilityTest {
         assertThat(sha256("db/migration/V7__create_product_storage_folders.sql")).isEqualTo(V7_SHA256);
         assertThat(sha256("db/migration/V8__create_ai_generation_foundation.sql")).isEqualTo(V8_SHA256);
         assertThat(sha256("db/migration/V9__create_ai_text_outputs.sql")).isEqualTo(V9_SHA256);
+        assertThat(sha256("db/migration/V10__add_ai_image_outputs.sql")).isEqualTo(V10_SHA256);
     }
 
     @Test

@@ -1,6 +1,6 @@
 # AI Commerce Marketing Platform
 
-以 AI 為核心的電商素材、廣告投放、成效分析與決策平台。本 Repository 已完成 Stage 01 與完整 Stage 02 Product Knowledge Center，包括 Product Master、Knowledge／Plans／Campaigns／Assets、Quality Workflow，以及 Google Sheets／Drive Connector；Stage 03 AI Creative Factory、廣告平台、Dashboard 與 Decision Engine 尚未開始。
+以 AI 為核心的電商素材、廣告投放、成效分析與決策平台。本 Repository 已完成 Stage 01、完整 Stage 02 Product Knowledge Center，以及 Stage 03 的生成基礎與文字生成；Stage 03 圖片生成正在交付中。廣告平台、Dashboard 與 Decision Engine 尚未開始。
 
 ## Stage 01 技術基線
 
@@ -147,6 +147,15 @@ is fail-closed until `AI_BUDGET_CURRENCY`, `AI_MAX_JOB_COST`, `AI_MAX_BATCH_COST
 `AI_MAX_DAILY_COST` are explicitly supplied as server-side environment configuration. The local/test
 profile uses a deterministic Stub and a local default prompt template. Default/production profiles expose
 no usable model profile and normal CI receives no production credentials.
+
+## Stage 03 protected-product image generation
+
+Milestone 3C extends the same Creative Factory with provider-neutral background image generation. The
+local/test flow uses deterministic source pixels and a process-local binary store; the ComfyUI adapter is
+restricted to a fixed server origin and a repository-owned workflow. The Product region is verified by an
+exact RGBA mask comparison before generated Asset metadata and output evidence are committed. Default and
+production profiles remain fail closed, and this milestone contains no approval, publication, redraw, video,
+Ads, or Decision Engine behavior.
 
 ## Stage Gate governance
 
