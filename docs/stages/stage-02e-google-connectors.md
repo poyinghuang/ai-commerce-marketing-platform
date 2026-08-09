@@ -50,7 +50,7 @@ No dependent slice starts until the preceding slice is merged and its post-merge
 - 2E-2 Sheets preview and execute：Completed — PR #36, Squash Commit `7dd925af3c4f79abd26c522d646a45c2ee7649f3`; post-merge main Run `31294372079` passed.
 - 2E-3 Drive StorageProvider：Completed — PR #38, Squash Commit `6e0efaabd3d1595e17899b9f9ff459f4298896d2`; post-merge main Run `31303057300` passed.
 - 2E-4 Connector UI：Completed — PR #40, Squash Commit `2145764f5dd353a760d74e31972c5874bef5b6a3`; post-merge main Run `31305543856` passed.
-- 2E-5 E2E and Stage 02 acceptance：Manager `APPROVE` at implementation Commit `a67cd052d5ad98f7df0124c33e096143de5486d2`; merge, final closeout, post-merge main verification, and tags pending.
+- 2E-5 E2E and Stage 02 acceptance：Delivered — PR #42, Squash Commit `3b49205f2bb32c5472dd39ee170ad3476d535590`; post-merge main Run `31308196281` passed. Final closeout main CI and tags pending.
 
 ## 2E-1 — V6 Sheets persistence contract
 

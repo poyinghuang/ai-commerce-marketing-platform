@@ -9,7 +9,7 @@
 - Commit / Push / Remote CI: Passed — implementation Commit `a67cd052d5ad98f7df0124c33e096143de5486d2`; Push Run `31307627650`; PR Run `31307633427`
 - Manager Review / Decision: Passed — `APPROVE`
 - Human Review Required: No
-- Merge: Pending
+- Merge: Passed — PR #42, Squash Commit `3b49205f2bb32c5472dd39ee170ad3476d535590`
 - Stage 03: Not started
 
 ## Approved scope
@@ -36,7 +36,7 @@
 - [x] V1–V7 cold/populated/repeat/checksum/Hibernate tests and all Backend/Frontend regressions pass.
 - [x] npm production audit, Gitleaks, actionlint, Docker Compose config/cold start, smoke, Push CI, and PR CI pass.
 - [x] Exact-head Manager Decision is `APPROVE`.
-- [ ] Merge and post-merge main CI pass.
+- [x] Merge and post-merge main CI pass (Run `31308196281`).
 - [ ] `milestone-2e-complete` and `stage-02-complete` tags point to the verified final main Commit.
 
 ## Known limitations
