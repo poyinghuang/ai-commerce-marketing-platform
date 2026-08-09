@@ -13,8 +13,9 @@
 - Manager Decision: `APPROVE`
 - Approved Implementation Commit: `4391456af314a894bc3db0c70a2ca29af3393534`
 - Human Review Required: No
-- Merge: Pending
-- 2E-3: Not started
+- Merge: Passed — PR #36, Squash Commit `7dd925af3c4f79abd26c522d646a45c2ee7649f3`
+- Post-merge CI: Passed — main Run `31294372079`
+- 2E-3: Allowed after this documentation closeout is merged and its post-merge main CI passes
 
 ## Approved scope delivered
 
@@ -86,4 +87,4 @@
 
 ## Manager Gate
 
-Exact-head local verification and both Push/PR CI runs passed. Manager Decision is `APPROVE`; the resolved bounded-range MAJOR finding and full evidence are recorded in [the Manager Review report](../management/reviews/stage-02e-2-manager-review.md). PR #36 may merge only after this approval-record Head passes required CI. 2E-3 cannot start before merge and post-merge `main` CI pass.
+Exact-head local verification and both Push/PR CI runs passed. Manager Decision is `APPROVE`; the resolved bounded-range MAJOR finding and full evidence are recorded in [the Manager Review report](../management/reviews/stage-02e-2-manager-review.md). PR #36 was squash-merged as `7dd925af3c4f79abd26c522d646a45c2ee7649f3`, and post-merge main Run `31294372079` passed all required jobs. Milestone 2E-2 is complete after this documentation closeout is merged and verified on `main`.

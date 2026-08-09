@@ -105,3 +105,11 @@ No open CRITICAL, BLOCKING, or necessary MAJOR finding remains at the reviewed H
 - Commands actually executed：Git status/diff/log; full Backend and focused Testcontainers suites; exact-runtime Frontend lint/typecheck/tests/build/audit; Compose config/cold start/smoke; Playwright; Gitleaks; actionlint; exact-head GitHub CI inspection.
 - Merge allowed：Yes, after the approval-record Head passes required CI.
 - Next Stage allowed：Only after merge and post-merge verification.
+
+## Delivery completion
+
+- PR #36：Merged
+- Squash Commit：`7dd925af3c4f79abd26c522d646a45c2ee7649f3`
+- Post-merge main Run `31294372079`：`quality-and-compose` and `secret-scan` passed
+- Milestone 2E-2：Completed after this documentation closeout is merged and verified
+- Milestone 2E-3：Allowed only after the documentation closeout post-merge main CI passes
