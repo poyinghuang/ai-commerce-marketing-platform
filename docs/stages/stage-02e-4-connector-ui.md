@@ -6,8 +6,8 @@
 - Base Commit：`42b61411edb10c9f52a3c41adc5b345bb5d1d504`
 - Implementation：Complete
 - Local Verification：Passed
-- Commit／Push／Remote CI：Pending
-- Manager Review／Decision：Pending
+- Commit／Push／Remote CI：Passed — implementation Commit `0cc18426b9ff9bfe451dcd3443c5d8e8449f8293`; Push Run `31304974207`; PR Run `31304976416`
+- Manager Review／Decision：Passed — `APPROVE`
 - Human Review Required：No
 - Merge：Pending
 - 2E-5：Not started
@@ -35,8 +35,9 @@
 - [x] Execute forwards the current ETag, renders partial/final results, and provides 409/412/428 recovery.
 - [x] Provider configuration, permission, quota, timeout, empty Sheet, invalid header, and row failures have actionable UI states.
 - [x] Drive state handles absent, connected, create/reuse, archived read-only, and retry states and renders all six folder roles.
-- [ ] Frontend lint, typecheck, tests, production build, npm audit, Backend regression, Compose, Smoke, existing Playwright, Gitleaks, and actionlint pass locally/remotely (local passed; Remote CI pending).
-- [ ] Exact-head Manager Decision is `APPROVE`, merge and post-merge main CI pass before 2E-5.
+- [x] Frontend lint, typecheck, tests, production build, npm audit, Backend regression, Compose, Smoke, existing Playwright, Gitleaks, and actionlint pass locally/remotely.
+- [x] Exact-head Manager Decision is `APPROVE`.
+- [ ] Merge and post-merge main CI pass before 2E-5.
 
 ## Known limitations
 
@@ -51,4 +52,4 @@
 - Compose：isolated `aimcp2e4` production-image build and cold start completed healthy in 220 seconds.
 - Smoke：Connector page/template 200; Preview 201 with one valid Stub row; Execute 200 and `COMPLETED` with one Product created; Drive ensure returned 201 then 200, GET 200, and six role IDs.
 - Playwright：all seven existing Chromium regression scenarios passed against the real Compose stack.
-- Remote CI and exact-head Manager Gate remain pending until Commit and Push.
+- Exact-head Manager Gate passed. Merge and post-merge main verification remain pending.
