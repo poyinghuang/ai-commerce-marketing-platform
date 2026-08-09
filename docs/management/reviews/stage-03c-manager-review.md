@@ -17,7 +17,7 @@
 - Local Verification: Passed
 - Remote CI: Passed
 - Human Review Required: No
-- Merge: Pending
+- Merge: Passed — PR #50, Squash Commit `fded67da3c539dbeef59f5e5d3a62a35e9041c30`
 
 ## Scope reviewed
 
@@ -84,7 +84,7 @@ No CRITICAL, BLOCKING, or required MAJOR findings remain.
 
 - Decision: `APPROVE`
 - Decision rationale: The approved additive scope, exact-head local/remote verification, migration compatibility, pixel/data/security boundaries, and fail-closed production behavior pass; no escalation trigger remains.
-- Required next action: Run approval-record CI, merge PR #50 only if it remains green and mergeable, verify post-merge `main`, tag `milestone-3c-complete`, then close out documentation before Milestone 3D starts.
+- Required next action: Completed. Approval-record CI passed, PR #50 was squash merged, post-merge `main` CI passed, and the completion tag was published. Milestone 3D may start after this closeout record merges.
 - Human approval required: No.
 
 ## Approval record
@@ -93,8 +93,8 @@ No CRITICAL, BLOCKING, or required MAJOR findings remain.
 - Manager Decision: `APPROVE`
 - Approved Commit: `2d6c9c39be66b0e9809dbfdc0dc055fde35c280a`
 - Approved CI Runs: Push `31341109478`; Pull Request `31341120208`
-- Approval-record CI Runs: Pending
-- Merge: Pending
-- Post-merge CI: Pending
-- Completion Tag: Pending
-- Next Stage allowed: No, until merge and post-merge verification complete
+- Approval-record CI Runs: Push `31341453075`; Pull Request `31341455749`
+- Merge: Passed — PR #50, Squash Commit `fded67da3c539dbeef59f5e5d3a62a35e9041c30`
+- Post-merge CI: Passed — main Run `31341738821`
+- Completion Tag: `milestone-3c-complete`
+- Next Stage allowed: Yes, after this documentation-only closeout merges
