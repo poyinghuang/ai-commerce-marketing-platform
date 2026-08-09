@@ -47,7 +47,7 @@ No dependent slice starts until the preceding slice is merged and its post-merge
 ### Delivery status
 
 - 2E-1 Sheets persistence and ports：Completed — PR #34, Squash Commit `d776111d24fdec00eff871a62f6472f18a520b91`; post-merge main Run `31228371345` passed.
-- 2E-2 Sheets preview and execute：Implementation complete; acceptance gate in progress on `codex/2e-2-sheets-preview-execute`.
+- 2E-2 Sheets preview and execute：Manager `APPROVE` at implementation Commit `4391456af314a894bc3db0c70a2ca29af3393534`; approval-record CI and merge pending on PR #36.
 - 2E-3 Drive StorageProvider：Not started.
 - 2E-4 Connector UI：Not started.
 - 2E-5 E2E and Stage 02 acceptance：Not started.
