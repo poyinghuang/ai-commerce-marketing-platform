@@ -89,7 +89,7 @@ No open CRITICAL, BLOCKING, or required MAJOR findings remain.
 
 - Decision: `APPROVE`
 - Decision rationale: The approved additive scope and all required local/remote gates pass at the exact reviewed Head; the blocking prompt-boundary finding is resolved; no escalation trigger remains.
-- Required next action: Run approval-record CI, then mark PR #48 Ready, squash merge, verify `main`, and tag `milestone-3b-complete` before starting 3C.
+- Required next action: Completed. Approval-record CI passed, PR #48 was squash merged, post-merge `main` CI passed, and the completion tag was published. Milestone 3C may start after this closeout record merges.
 - Human approval required: No.
 
 ## Approval record
@@ -98,8 +98,8 @@ No open CRITICAL, BLOCKING, or required MAJOR findings remain.
 - Manager Decision: `APPROVE`
 - Approved Commit: `5696c68d8c07bb4188c7c4e26a8cf9f20b181941`
 - Approved CI Runs: Push `31336947018`; Pull Request `31336949428`
-- Approval-record CI Runs: Pending
-- Merge: Pending
-- Post-merge CI: Pending
-- Completion Tag: Pending
-- Next Stage allowed: Only after merge and post-merge verification
+- Approval-record CI Runs: Push `31337265810`; Pull Request `31337267918`
+- Merge: Passed — PR #48, Squash Commit `c1659cf0508e961860d95b13f52db72bfa4dc0c7`
+- Post-merge CI: Passed — main Run `31337531564`
+- Completion Tag: `milestone-3b-complete`
+- Next Stage allowed: Yes, after this documentation-only closeout merges
