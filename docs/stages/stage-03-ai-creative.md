@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status: Milestone 3A implementation complete; local verification passed, pending delivery
+- Status: Milestone 3A Manager approved; pending approval-record CI and merge
 - Branch: `codex/stage-03-ai-foundation`
 - Base Commit: `718b60c3a4a2507716089f38fc77dacde731a769`
 - Stage 02 prerequisite: Passed — `stage-02-complete` at `73f20fe75ef64da8add771087a2035a773d905af`
@@ -10,9 +10,10 @@
 - Implementation: Passed locally for Milestone 3A
 - Migration: V8 created; V1–V7 unchanged
 - Local Verification: Passed — Backend, migration, schema, transaction, Frontend regression, Compose, actionlint, Gitleaks, and dependency audit
-- Remote CI: Pending
-- Manager Review: Pending exact-head delivery and Remote CI
-- Manager Decision: Pending
+- Remote CI: Passed — Push Run `31332189080`; PR Run `31332190955`
+- Manager Review: Passed for implementation Head `99b4cfc6a15c077aab2b1da956d519d0519fb6f6`
+- Manager Decision: `APPROVE`
+- Approved CI Runs: Push `31332189080`; Pull Request `31332190955`
 - Human Review Required: No; required only if an escalation boundary below is crossed
 - Merge: Pending for Milestone 3A
 - Stage 04: Not started
