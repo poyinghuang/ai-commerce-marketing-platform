@@ -6,8 +6,11 @@
 - Base Commit：`bd9a6472c3463a42cd56ca7e186b5393e10fd5ac`
 - Implementation：Complete
 - Local Verification：Passed
-- Commit／Push／Remote CI：Pending
-- Manager Review／Decision：Pending
+- Commit／Push／Remote CI：Passed
+- Manager Review：Passed
+- Manager Decision：APPROVE
+- Approved Implementation Commit：`7016ab76236f16033dda3df240208cdaa6874590`
+- Approved CI Runs：Push `31302252213`; PR `31302254329`
 - Human Review Required：No
 - Merge：Pending
 - 2E-4：Not started
@@ -59,8 +62,8 @@ GET returns 404 `STORAGE_FOLDER_NOT_FOUND` when absent. POST returns 201 plus `L
 - [x] Active Product creates one Product folder plus exact six subfolders; repeat ensure reuses IDs and emits no additional Audit.
 - [x] Archived/missing Product, Audit rollback, database race recovery, and partial external completion recovery are covered.
 - [x] GET/POST status, Location, ETag, standard errors, Request ID, trusted actor, and no Browser credential/URL control pass.
-- [ ] Full Backend, Frontend, Compose, Smoke, existing Playwright, dependency audit, Gitleaks, and actionlint pass locally/remotely (local evidence passed; Remote CI pending).
-- [ ] Exact-head Manager Decision is `APPROVE`, merge and post-merge main CI pass before 2E-4.
+- [x] Full Backend, Frontend, Compose, Smoke, existing Playwright, dependency audit, Gitleaks, and actionlint pass locally/remotely.
+- [ ] Exact-head Manager Decision is `APPROVE`; merge and post-merge main CI remain required before 2E-4.
 
 ## Known limitations
 
@@ -76,4 +79,4 @@ GET returns 404 `STORAGE_FOLDER_NOT_FOUND` when absent. POST returns 201 plus `L
 - Compose: isolated `aimcp2e3` build and cold start completed healthy in 149 seconds; Backend and same-origin health proxy returned `UP`.
 - Smoke: first folder ensure returned 201, repeat returned 200, GET returned 200, and PostgreSQL contained one Product folder, six subfolders, one storage Audit, and Flyway version 7.
 - Playwright: all seven existing Chromium scenarios passed against the isolated Compose stack.
-- Remote CI and exact-head Manager Gate remain pending until Commit and Push.
+- Exact-head Manager Gate passed. Approval-record CI, merge, and post-merge `main` verification remain pending.
