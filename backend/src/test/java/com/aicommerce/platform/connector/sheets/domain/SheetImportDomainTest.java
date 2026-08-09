@@ -54,15 +54,25 @@ class SheetImportDomainTest {
 
     @Test
     void sourceAcceptsBoundedA1RangesAndRejectsUrlOrPathInjection() {
-        assertThat(new SheetSource("sheet_123", "Products", "'Products'!A:M").range())
-                .isEqualTo("'Products'!A:M");
-        assertThat(new SheetSource("sheet_123", "Sheet 1", "'Sheet 1'!A2:M1001").range())
-                .isEqualTo("'Sheet 1'!A2:M1001");
+        assertThat(new SheetSource("sheet_123", "Products", "'Products'!A1:M1001").range())
+                .isEqualTo("'Products'!A1:M1001");
+        assertThat(new SheetSource("sheet_123", "Sheet 1", "'Sheet 1'!A1:M1001").range())
+                .isEqualTo("'Sheet 1'!A1:M1001");
+        assertThat(new SheetSource("sheet_123", "O'Brien", "'O''Brien'!B1:N1001").range())
+                .isEqualTo("'O''Brien'!B1:N1001");
+        assertThatThrownBy(() -> new SheetSource("sheet_123", "Products", "Products!A2:M1001"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new SheetSource("sheet_123", "Products", "Products!A1:M1002"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new SheetSource("sheet_123", "Products", "Products!A1:N1001"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new SheetSource("sheet_123", "Products", "Other!A1:M1001"))
+                .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new SheetSource("sheet_123", "Products", "https://evil.example/x"))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new SheetSource("sheet_123", "Products", "Products!A:M/../../token"))
+        assertThatThrownBy(() -> new SheetSource("sheet_123", "Products", "Products!A1:M1001/../../token"))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new SheetSource("https://evil.example", "Products", "Products!A:M"))
+        assertThatThrownBy(() -> new SheetSource("https://evil.example", "Products", "Products!A1:M1001"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

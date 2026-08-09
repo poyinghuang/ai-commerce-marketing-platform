@@ -4,7 +4,7 @@ public record PreviewSheetImportCommand(String spreadsheetId, String sheetName, 
 
     public SheetSource source() {
         String actualRange = range == null || range.isBlank()
-                ? "'" + sheetName.replace("'", "''") + "'!A:M"
+                ? "'" + sheetName.replace("'", "''") + "'!A1:M1001"
                 : range;
         return new SheetSource(spreadsheetId, sheetName, actualRange);
     }

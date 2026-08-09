@@ -39,7 +39,7 @@ class GoogleSheetValuesProviderTest {
                         MediaType.APPLICATION_JSON));
         GoogleSheetValuesProvider provider = new GoogleSheetValuesProvider(builder.build(), this::credentials);
 
-        var result = provider.read(new SheetSource("sheet_123", "Products", "'Products'!A:M"));
+        var result = provider.read(new SheetSource("sheet_123", "Products", "'Products'!A1:M1001"));
 
         assertThat(result.values()).hasSize(2);
         assertThat(result.values().get(1)).containsExactly("", "", "One");
@@ -58,7 +58,7 @@ class GoogleSheetValuesProviderTest {
                         .body("secret provider details").contentType(MediaType.TEXT_PLAIN));
         GoogleSheetValuesProvider provider = new GoogleSheetValuesProvider(builder.build(), this::credentials);
 
-        assertThatThrownBy(() -> provider.read(new SheetSource("sheet_123", "Products", "'Products'!A:M")))
+        assertThatThrownBy(() -> provider.read(new SheetSource("sheet_123", "Products", "'Products'!A1:M1001")))
                 .isInstanceOfSatisfying(SheetProviderException.class, exception -> {
                     assertThat(exception.getCode()).isEqualTo("GOOGLE_RATE_LIMITED");
                     assertThat(exception.getMessage()).doesNotContain("secret provider details");
@@ -75,7 +75,7 @@ class GoogleSheetValuesProviderTest {
                         .body("credential payload").contentType(MediaType.TEXT_PLAIN));
         GoogleSheetValuesProvider provider = new GoogleSheetValuesProvider(builder.build(), this::credentials);
 
-        assertThatThrownBy(() -> provider.read(new SheetSource("sheet_123", "Products", "'Products'!A:M")))
+        assertThatThrownBy(() -> provider.read(new SheetSource("sheet_123", "Products", "'Products'!A1:M1001")))
                 .isInstanceOfSatisfying(SheetProviderException.class, exception -> {
                     assertThat(exception.getCode()).isEqualTo("GOOGLE_PERMISSION_DENIED");
                     assertThat(exception.getMessage()).doesNotContain("credential payload");
@@ -87,7 +87,7 @@ class GoogleSheetValuesProviderTest {
     void missingCredentialsFailClosedWithSanitizedAuthError() {
         GoogleSheetValuesProvider provider = new GoogleSheetValuesProvider(RestClient.create(),
                 () -> { throw new java.io.IOException("credential file location"); });
-        assertThatThrownBy(() -> provider.read(new SheetSource("sheet_123", "Products", "'Products'!A:M")))
+        assertThatThrownBy(() -> provider.read(new SheetSource("sheet_123", "Products", "'Products'!A1:M1001")))
                 .isInstanceOfSatisfying(SheetProviderException.class, exception -> {
                     assertThat(exception.getCode()).isEqualTo("GOOGLE_AUTH_UNAVAILABLE");
                     assertThat(exception.getMessage()).doesNotContain("credential file location");

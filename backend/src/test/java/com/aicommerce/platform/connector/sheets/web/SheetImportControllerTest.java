@@ -86,7 +86,7 @@ class SheetImportControllerTest {
     private SheetImportView view(long version, String status) {
         Instant now = Instant.parse("2026-08-09T00:00:00Z");
         return new SheetImportView(JOB_UUID, "GOOGLE_SHEETS", "stub-products", "Products",
-                "'Products'!A:M", "a".repeat(64), 8191, status, 1, 1, 0,
+                "'Products'!A1:M1001", "a".repeat(64), 8191, status, 1, 1, 0,
                 "COMPLETED".equals(status) ? 1 : 0, 0, 0, null, null, now, now, version, List.of());
     }
 }
