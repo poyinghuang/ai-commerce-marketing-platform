@@ -19,8 +19,9 @@
 
 - V9 is additive and creates only `ai_generation_outputs` plus the composite Job relationship key required by its foreign key. V1-V8 are unchanged.
 - Empty V1-V9, populated V8-V9, repeat migration, canonical checksums, Hibernate validation, direct JDBC constraints, immutable-field triggers, and delete rejection passed.
-- Backend full regression produced 62 Surefire reports and 262 tests with 0 failures, 0 errors, and 0 skipped. The known non-blocking Surefire fork shutdown-after-success warning remains.
+- Backend full regression produced 62 Surefire reports and 263 tests with 0 failures, 0 errors, and 0 skipped. The known non-blocking Surefire fork shutdown-after-success warning remains.
 - Text integration proves default three variations, server-rendered immutable snapshots, Stub success, partial sibling failure, stale and duplicate execution rejection, archived Product blocking, truthful settlement, cost-invariant blocking, same-operation Audit, and persisted pending-review Output.
+- Untrusted Product context escapes markup delimiters before prompt embedding, and a regression test proves stored content cannot close the server-owned prompt boundary.
 - Frontend lint and typecheck passed; 22 Vitest files / 130 tests passed; production build passed; `npm audit --omit=dev` found 0 vulnerabilities.
 - Fixed-origin AI BFF tests prove exact path/query/header allowlists, body bounds, status/body preservation, and no Cookie, Authorization, or Browser actor forwarding.
 - Compose config passed. An isolated cold stack on host ports 18081/13001 became healthy, applied V9, used non-root UIDs 999/1000, and completed Product -> Creative Plan -> text Batch -> Job -> pending-review Output through the same-origin BFF with AI Audit rows.

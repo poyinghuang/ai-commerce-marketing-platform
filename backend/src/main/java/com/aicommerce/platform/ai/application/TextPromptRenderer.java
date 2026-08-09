@@ -39,7 +39,7 @@ public class TextPromptRenderer {
             for (var entry : projection.entrySet()) {
                 if (allowedSource.has(entry.getKey())) allowed.put(entry.getKey(), entry.getValue());
             }
-            String snapshot = objectMapper.writeValueAsString(allowed);
+            String snapshot = escapeMarkupDelimiters(objectMapper.writeValueAsString(allowed));
             String rendered = version.getTemplateText()
                     + "\n\n<untrusted-product-context>\n"
                     + snapshot
@@ -54,6 +54,12 @@ public class TextPromptRenderer {
         } catch (RuntimeException exception) {
             throw new AiGenerationException("AI_PROMPT_INPUT_INVALID", "Prompt projection could not be rendered", exception);
         }
+    }
+
+    private String escapeMarkupDelimiters(String json) {
+        return json.replace("&", "\\u0026")
+                .replace("<", "\\u003c")
+                .replace(">", "\\u003e");
     }
 
     private Map<String, Object> productProjection(Product value) {
