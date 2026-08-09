@@ -2,8 +2,8 @@
 
 ## Gate status
 
-- Status: Milestone 3A Manager approved; pending approval-record CI and merge
-- Branch: `codex/stage-03-ai-foundation`
+- Status: Milestone 3A completed; Milestone 3B may start after this closeout merges
+- Branch: Merged from `codex/stage-03-ai-foundation`
 - Base Commit: `718b60c3a4a2507716089f38fc77dacde731a769`
 - Stage 02 prerequisite: Passed — `stage-02-complete` at `73f20fe75ef64da8add771087a2035a773d905af`
 - Specification: Merged — `718b60c3a4a2507716089f38fc77dacde731a769`
@@ -14,8 +14,11 @@
 - Manager Review: Passed for implementation Head `99b4cfc6a15c077aab2b1da956d519d0519fb6f6`
 - Manager Decision: `APPROVE`
 - Approved CI Runs: Push `31332189080`; Pull Request `31332190955`
+- Approval-record CI Runs: Push `31332554161`; Pull Request `31332556216`
 - Human Review Required: No; required only if an escalation boundary below is crossed
-- Merge: Pending for Milestone 3A
+- Merge: Passed — PR #46, Squash Commit `b90517a7c5cf9b37c894ceea8beef090a04b149d`
+- Post-merge CI: Passed — main Run `31332810286`
+- Completion Tag: `milestone-3a-complete`
 - Stage 04: Not started
 
 ## Human-approved decisions

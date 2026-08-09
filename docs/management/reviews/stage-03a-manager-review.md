@@ -89,7 +89,7 @@ No open CRITICAL, BLOCKING, or required MAJOR findings remain.
 
 - Decision: `APPROVE`
 - Decision rationale: All approved 3A requirements and verification gates pass at the exact reviewed Head; findings are resolved; no escalation trigger is present.
-- Required next action: Commit this approval record, rerun exact-head CI, then mark PR Ready and squash merge. Verify post-merge `main` before starting Milestone 3B.
+- Required next action: Completed. Approval-record CI passed, PR #46 was squash merged, and post-merge `main` CI passed. Milestone 3B may start after the closeout record merges.
 - Human approval required: No.
 
 ## Approval record
@@ -98,5 +98,8 @@ No open CRITICAL, BLOCKING, or required MAJOR findings remain.
 - Manager Decision: `APPROVE`
 - Approved Commit: `99b4cfc6a15c077aab2b1da956d519d0519fb6f6`
 - Approved CI Runs: Push `31332189080`; Pull Request `31332190955`
-- Merge allowed: Yes, after the documentation-only approval Head passes Remote CI
-- Next Stage allowed: Only after merge and post-merge `main` verification
+- Approval-record CI Runs: Push `31332554161`; Pull Request `31332556216`
+- Merge: Passed — `b90517a7c5cf9b37c894ceea8beef090a04b149d`
+- Post-merge CI: Passed — main Run `31332810286`
+- Completion Tag: `milestone-3a-complete`
+- Next Stage allowed: Yes, after this documentation-only closeout merges
