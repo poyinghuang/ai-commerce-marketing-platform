@@ -166,8 +166,8 @@ The ledger is database-protected append-only. A job can reserve once, then commi
 - Required server configuration: `AI_BUDGET_CURRENCY`, `AI_MAX_JOB_COST`, `AI_MAX_BATCH_COST`, `AI_MAX_DAILY_COST`.
 - Missing, malformed, zero/negative, mixed-currency, or internally inconsistent values fail closed for generation mutations.
 - No REST/BFF mutation can change limits. A human-controlled configuration change and process restart are required.
-- The application validates per-job and per-batch estimates before persistence, then serializes the UTC-day reservation decision in PostgreSQL so concurrent requests cannot overspend the daily limit.
-- Daily usage is `committed actual cost + active reservations`. Released amounts no longer consume the limit. Actual cost above reservation is committed only if the additional atomic daily-budget check succeeds; otherwise the job is blocked for manual operational review and no further provider call is made.
+- Before persistence, the application derives a deterministic worst-case cost ceiling from the allowlisted provider/model rate, bounded token/image count, dimensions, steps, and other provider-neutral request limits. Each job reserves that ceiling, the batch reserves the sum of its job ceilings, and PostgreSQL serializes the UTC-day reservation decision so concurrent requests cannot exceed any configured limit before a provider call.
+- Provider adapters must enforce the same request bounds used by the reservation calculation. Daily usage is `committed actual cost + active reservations`; released amounts no longer consume the limit, and normal actual cost must be less than or equal to the reservation. A provider-reported cost above the reserved ceiling is `AI_COST_INVARIANT_VIOLATION`: truthful reported cost is retained for reconciliation, the job is blocked for human operational review, and no further job in that batch is submitted automatically. It is never handled by silently increasing a limit or making an unreserved follow-up call.
 - Rejected jobs/batches produce a bounded error and Audit record but no provider call. Budget values and usage are observable; credentials and provider payloads are not.
 - Stage 03 never auto-increases a budget, changes currency, or retries past a budget rejection.
 
@@ -285,7 +285,7 @@ Errors retain the Repository `code`, `message`, `requestId`, `timestamp`, `path`
 ### Backend/domain
 
 - State machine valid/invalid transitions, optimistic locking, Product/Plan/Asset ownership/lifecycle, prompt snapshot determinism, data allowlist and injection delimiting.
-- Per-job/batch/day budget accept/reject, concurrency, reservation/commit/release, actual-cost delta, rollback, idempotency, and config fail-closed profiles.
+- Per-job/batch/day worst-case ceiling accept/reject, bounded provider-request parity, concurrency, reservation/commit/release, actual-cost reconciliation/invariant violation, rollback, idempotency, and config fail-closed profiles.
 - Provider profile matrix, fixed-origin ComfyUI requests, workflow manifest injection, bounded polling/retry, response/path validation, sanitized errors, and no credential logging.
 - Pixel-preservation exact match, changed pixel, alpha/mask, dimensions, decompression limits, media type/checksum, binary-store rollback/recovery, and generated Asset linkage.
 - Trusted actor/request ID, Audit same-transaction rollback, no-op behavior, partial batch isolation, recovery, and approval blockers.
