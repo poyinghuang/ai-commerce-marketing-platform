@@ -2,15 +2,18 @@
 
 ## Gate status
 
-- Status: Human architecture decision approved; detailed specification in progress
+- Status: Detailed specification complete; Manager approved, pending merge
 - Branch: `codex/stage-03-ai-creative-spec`
 - Base Commit: `d039478d477c97e0f7cd658bd46cca2719b4cc33`
 - Stage 02 prerequisite: Passed — `stage-02-complete` at `73f20fe75ef64da8add771087a2035a773d905af`
 - Implementation: Not started
 - Migration: Not created
-- Local Verification: Pending
-- Remote CI: Pending
-- Manager Review / Decision: Pending
+- Local Verification: Passed — documentation scope, diff, history, and Stage 02 lineage verified
+- Remote CI: Passed — Push Run `31325958691`; PR Run `31325960958`
+- Manager Review: Passed
+- Manager Decision: `APPROVE`
+- Approved Specification Commit: `f3990a72b8fea967f67280b132e1840e005d9c1e`
+- Approved CI Runs: Push `31325958691`; Pull Request `31325960958`
 - Human Review Required: No for the approved specification; Yes only if an escalation boundary below is crossed
 - Merge: Pending
 - Stage 04: Not started
