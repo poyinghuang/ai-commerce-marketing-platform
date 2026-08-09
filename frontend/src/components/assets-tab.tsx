@@ -2,6 +2,7 @@
 import {useCallback,useEffect,useState} from "react";
 import type {ApiError} from "@/lib/products";
 import {assetPayload,emptyAsset,toAssetInput,type Asset,type AssetInput,type AssetPage,type AssetType} from "@/lib/assets";
+import {StorageFolderPanel} from "@/components/storage-folder-panel";
 
 export function AssetsTab({productUuid,productArchived}:{productUuid:string;productArchived:boolean}){
  const [page,setPage]=useState<AssetPage|null>(null),[status,setStatus]=useState("ACTIVE"),[assetType,setAssetType]=useState(""),[pageNo,setPageNo]=useState(0);
@@ -16,6 +17,7 @@ export function AssetsTab({productUuid,productArchived}:{productUuid:string;prod
  const set=<K extends keyof AssetInput>(key:K,value:AssetInput[K])=>setInput(current=>({...current,[key]:value}));
  return <section className="content-card assets-tab">
   <div className="card-heading"><div><h2>Assets</h2><span className="summary">{page?.totalElements??0} records</span></div>{!productArchived&&<button className="primary-button" onClick={fresh}>New asset</button>}</div>
+  <StorageFolderPanel productUuid={productUuid} productArchived={productArchived}/>
   {productArchived&&<div className="state-card warning-state">This product is archived. Asset metadata is read-only.</div>}
   <div className="creative-toolbar"><label>Status <select value={status} onChange={e=>{setStatus(e.target.value);setPageNo(0)}}><option>ACTIVE</option><option>ARCHIVED</option><option>ALL</option></select></label><label>Type <select value={assetType} onChange={e=>{setAssetType(e.target.value);setPageNo(0)}}><option value="">All types</option>{["IMAGE","VIDEO","DOCUMENT","OTHER"].map(v=><option key={v}>{v}</option>)}</select></label></div>
   {loading?<div className="state-card" role="status">Loading assets...</div>:error&&!page?<div className="state-card error-state" role="alert">{error}</div>:page?.content.length===0?<div className="state-card">No assets found.</div>:<div className="creative-list">{page?.content.map(a=><article key={a.assetUuid} className="creative-item"><button className="creative-select" onClick={()=>void choose(a)}><strong>{a.originalFilename??a.purpose??a.assetType}</strong><span className={`status-badge ${a.lifecycleStatus.toLowerCase()}`}>{a.lifecycleStatus}</span></button>{a.fileUrl&&<a href={a.fileUrl} target="_blank" rel="noopener noreferrer">Open file</a>}{!productArchived&&<button className={a.lifecycleStatus==="ACTIVE"?"danger-button":"secondary-button"} disabled={saving} onClick={()=>void lifecycle(a)}>{a.lifecycleStatus==="ACTIVE"?"Archive":"Restore"}</button>}</article>)}</div>}

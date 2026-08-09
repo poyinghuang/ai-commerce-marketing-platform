@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { forwardAssetRequest, forwardCampaignRequest, forwardCreativePlanRequest, forwardKnowledgeRequest, forwardProductAggregateRequest, forwardProductQualityRequest, forwardProductRequest } from "./backend-proxy";
+import { forwardAssetRequest, forwardCampaignRequest, forwardCreativePlanRequest, forwardKnowledgeRequest, forwardProductAggregateRequest, forwardProductQualityRequest, forwardProductRequest, forwardSheetConnectorRequest, forwardStorageFolderRequest } from "./backend-proxy";
 
 describe("product backend proxy", () => {
   afterEach(() => {
@@ -454,5 +454,32 @@ describe("product backend proxy", () => {
     );
     expect(oversized.status).toBe(413);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps Google connector targets fixed and strips Browser credentials", async () => {
+    process.env.BACKEND_INTERNAL_URL = "http://backend:8080";
+    const job = "79be8758-1f0d-4ca5-bad6-f51aa923cdb9";
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200, headers: { ETag: 'W/"2"', "X-Request-ID": "safe", "X-Internal": "hidden" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    const request = new NextRequest(`http://localhost/api/connectors/google-sheets/imports/${job}/execute?target=http://evil`, { method: "POST", headers: { "If-Match": 'W/"1"', Cookie: "secret", Authorization: "Bearer secret", "X-Actor-ID": "evil" } });
+    const response = await forwardSheetConnectorRequest(request, `/api/connectors/google-sheets/imports/${job}/execute`, { method: "POST" });
+    const [target, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(target.toString()).toBe(`http://backend:8080/api/connectors/google-sheets/imports/${job}/execute`);
+    const headers = new Headers(init.headers); expect(headers.get("If-Match")).toBe('W/"1"'); expect(headers.has("Cookie")).toBe(false); expect(headers.has("Authorization")).toBe(false); expect(headers.has("X-Actor-ID")).toBe(false);
+    expect(response.headers.get("ETag")).toBe('W/"2"'); expect(response.headers.has("X-Internal")).toBe(false);
+    expect((await forwardSheetConnectorRequest(request, "http://evil.test", { method: "POST" })).status).toBe(400);
+  });
+
+  it("allowlists only exact Product storage-folder routes", async () => {
+    process.env.BACKEND_INTERNAL_URL = "http://backend:8080";
+    const product = "d4476a19-30ed-48d9-a518-f9b111bd0911";
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 201, headers: { Location: `/api/products/${product}/storage-folder` } }));
+    vi.stubGlobal("fetch", fetchMock);
+    const request = new NextRequest(`http://localhost/api/products/${product}/storage-folder?target=http://evil`, { method: "POST", headers: { Cookie: "secret", Authorization: "Bearer secret", "X-Actor-ID": "evil" } });
+    const response = await forwardStorageFolderRequest(request, `/api/products/${product}/storage-folder`, { method: "POST" });
+    expect((fetchMock.mock.calls[0][0] as URL).toString()).toBe(`http://backend:8080/api/products/${product}/storage-folder`);
+    const headers = new Headers((fetchMock.mock.calls[0][1] as RequestInit).headers); expect(headers.has("Cookie")).toBe(false); expect(headers.has("Authorization")).toBe(false); expect(headers.has("X-Actor-ID")).toBe(false);
+    expect(response.status).toBe(201); expect(response.headers.get("Location")).toBe(`/api/products/${product}/storage-folder`);
+    expect((await forwardStorageFolderRequest(request, `/api/products/${product}/storage-folder/delete`, { method: "POST" })).status).toBe(400);
   });
 });
