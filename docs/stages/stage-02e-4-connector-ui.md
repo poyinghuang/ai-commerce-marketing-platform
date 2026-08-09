@@ -9,7 +9,7 @@
 - Commit／Push／Remote CI：Passed — implementation Commit `0cc18426b9ff9bfe451dcd3443c5d8e8449f8293`; Push Run `31304974207`; PR Run `31304976416`
 - Manager Review／Decision：Passed — `APPROVE`
 - Human Review Required：No
-- Merge：Pending
+- Merge：Passed — PR #40, Squash Commit `2145764f5dd353a760d74e31972c5874bef5b6a3`
 - 2E-5：Not started
 
 ## Approved scope
@@ -37,7 +37,7 @@
 - [x] Drive state handles absent, connected, create/reuse, archived read-only, and retry states and renders all six folder roles.
 - [x] Frontend lint, typecheck, tests, production build, npm audit, Backend regression, Compose, Smoke, existing Playwright, Gitleaks, and actionlint pass locally/remotely.
 - [x] Exact-head Manager Decision is `APPROVE`.
-- [ ] Merge and post-merge main CI pass before 2E-5.
+- [x] Merge and post-merge main CI pass before 2E-5 (Run `31305543856`).
 
 ## Known limitations
 
@@ -52,4 +52,4 @@
 - Compose：isolated `aimcp2e4` production-image build and cold start completed healthy in 220 seconds.
 - Smoke：Connector page/template 200; Preview 201 with one valid Stub row; Execute 200 and `COMPLETED` with one Product created; Drive ensure returned 201 then 200, GET 200, and six role IDs.
 - Playwright：all seven existing Chromium regression scenarios passed against the real Compose stack.
-- Exact-head Manager Gate passed. Merge and post-merge main verification remain pending.
+- Exact-head Manager Gate, merge, and post-merge main verification passed. Milestone 2E-4 is complete after this closeout is merged and verified.
