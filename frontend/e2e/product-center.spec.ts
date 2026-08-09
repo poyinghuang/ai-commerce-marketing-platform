@@ -115,6 +115,7 @@ function auditActions(knowledgeUuid: string): Record<string, number> {
   expect(process.env.PLAYWRIGHT_AUDIT_DB_ASSERTION).toBe("1");
   expect(knowledgeUuid).toMatch(/^[0-9a-f-]{36}$/i);
   const composeFile = resolve(process.cwd(), "../docker-compose.yml");
+  const composeProjectDirectory = resolve(process.cwd(), "..");
   const sql = [
     "SELECT action || ':' || COUNT(*)",
     "FROM audit_logs",
@@ -122,11 +123,47 @@ function auditActions(knowledgeUuid: string): Record<string, number> {
     `AND entity_uuid = '${knowledgeUuid}'::uuid`,
     "GROUP BY action ORDER BY action;",
   ].join(" ");
-  const output = execFileSync(
-    "docker",
-    ["compose", "-f", composeFile, "exec", "-T", "postgres", "psql", "-U", "ai_commerce", "-d", "ai_commerce", "-tA", "-c", sql],
-    { encoding: "utf8" },
-  );
+  const postgresCommand = [
+    ...(process.env.PLAYWRIGHT_DOCKER_HOST
+      ? ["--host", process.env.PLAYWRIGHT_DOCKER_HOST]
+      : []),
+    ...(process.env.PLAYWRIGHT_POSTGRES_CONTAINER
+      ? ["exec", process.env.PLAYWRIGHT_POSTGRES_CONTAINER]
+      : [
+          "compose",
+          "--project-directory",
+          composeProjectDirectory,
+          ...(process.env.PLAYWRIGHT_COMPOSE_PROJECT_NAME
+            ? ["-p", process.env.PLAYWRIGHT_COMPOSE_PROJECT_NAME]
+            : []),
+          "-f",
+          composeFile,
+          "exec",
+          "-T",
+          "postgres",
+        ]),
+    "psql",
+    "-U",
+    "ai_commerce",
+    "-d",
+    "ai_commerce",
+    "-tA",
+    "-c",
+    sql,
+  ];
+  let output = "";
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      output = execFileSync(process.platform === "win32" ? "docker.exe" : "docker", postgresCommand, { encoding: "utf8" });
+      lastError = undefined;
+      break;
+    } catch (error) {
+      lastError = error;
+      if (attempt < 3) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500);
+    }
+  }
+  if (lastError) throw lastError;
   return Object.fromEntries(output.trim().split(/\r?\n/).filter(Boolean).map((line) => {
     const [action, count] = line.split(":");
     return [action, Number(count)];

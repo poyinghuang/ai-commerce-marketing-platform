@@ -45,15 +45,13 @@ class Milestone2ESheetsSchemaIntegrationTest {
     @Autowired SheetImportRowJpaRepository rows;
 
     @Test
-    void v6CreatesOnlySheetsTablesAndJpaMappingsValidate() {
+    void sheetsSchemaAndJpaMappingsRemainValidAfterV7() {
         assertThat(List.of(flyway.info().applied()).stream()
                 .filter(info -> info.getVersion() != null)
                 .map(info -> info.getVersion().getVersion()))
-                .containsExactly("1", "2", "3", "4", "5", "6", "6.1");
+                .containsExactly("1", "2", "3", "4", "5", "6", "6.1", "7");
         assertThat(flyway.info().pending()).isEmpty();
         assertThat(List.of("sheet_import_jobs", "sheet_import_rows")).allMatch(this::tableExists);
-        assertThat(List.of("product_storage_folders", "product_storage_subfolders"))
-                .noneMatch(this::tableExists);
         assertThat(List.of(jobs, rows)).doesNotContainNull();
     }
 
