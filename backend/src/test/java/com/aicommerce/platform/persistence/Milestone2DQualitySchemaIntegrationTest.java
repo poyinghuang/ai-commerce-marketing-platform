@@ -47,7 +47,7 @@ class Milestone2DQualitySchemaIntegrationTest {
         assertThat(List.of(flyway.info().applied()).stream()
                 .filter(info -> info.getVersion() != null)
                 .map(info -> info.getVersion().getVersion()))
-                .containsExactly("1", "2", "3", "4", "5", "6", "6.1");
+                .containsExactly("1", "2", "3", "4", "5", "6", "6.1", "7");
         assertThat(flyway.info().pending()).isEmpty();
         assertThat(List.of("quality_scores", "quality_score_blockers", "workflow_status"))
                 .allMatch(this::tableExists);

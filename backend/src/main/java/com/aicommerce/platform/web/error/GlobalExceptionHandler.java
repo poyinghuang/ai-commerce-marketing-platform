@@ -7,6 +7,8 @@ import com.aicommerce.platform.connector.sheets.application.SheetImportPrecondit
 import com.aicommerce.platform.connector.sheets.application.SheetImportStateConflictException;
 import com.aicommerce.platform.connector.sheets.application.SheetImportValidationException;
 import com.aicommerce.platform.connector.sheets.application.SheetProviderException;
+import com.aicommerce.platform.connector.drive.application.StorageFolderNotFoundException;
+import com.aicommerce.platform.connector.drive.application.StorageProviderException;
 import com.aicommerce.platform.creativeplan.application.CreativePlanArchivedException;
 import com.aicommerce.platform.creativeplan.application.CreativePlanNotFoundException;
 import com.aicommerce.platform.creativeplan.application.CreativePlanPreconditionFailedException;
@@ -46,6 +48,23 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 public class GlobalExceptionHandler {
 
   private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+  @ExceptionHandler(StorageFolderNotFoundException.class)
+  ResponseEntity<ApiError> handleStorageFolderNotFound(HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .body(error("STORAGE_FOLDER_NOT_FOUND", "Product storage folder not found", request, null));
+  }
+
+  @ExceptionHandler(StorageProviderException.class)
+  ResponseEntity<ApiError> handleStorageProvider(StorageProviderException exception, HttpServletRequest request) {
+    HttpStatus status = switch (exception.getCode()) {
+      case "GOOGLE_PERMISSION_DENIED" -> HttpStatus.FORBIDDEN;
+      case "GOOGLE_RATE_LIMITED" -> HttpStatus.TOO_MANY_REQUESTS;
+      case "STORAGE_FOLDER_STATE_CONFLICT" -> HttpStatus.CONFLICT;
+      default -> HttpStatus.SERVICE_UNAVAILABLE;
+    };
+    return ResponseEntity.status(status).body(error(exception.getCode(), exception.getMessage(), request, null));
+  }
 
   @ExceptionHandler(SheetImportValidationException.class)
   ResponseEntity<ApiError> handleSheetImportValidation(SheetImportValidationException exception,
