@@ -50,7 +50,7 @@ No dependent slice starts until the preceding slice is merged and its post-merge
 - 2E-2 Sheets preview and execute：Completed — PR #36, Squash Commit `7dd925af3c4f79abd26c522d646a45c2ee7649f3`; post-merge main Run `31294372079` passed.
 - 2E-3 Drive StorageProvider：Completed — PR #38, Squash Commit `6e0efaabd3d1595e17899b9f9ff459f4298896d2`; post-merge main Run `31303057300` passed.
 - 2E-4 Connector UI：Completed — PR #40, Squash Commit `2145764f5dd353a760d74e31972c5874bef5b6a3`; post-merge main Run `31305543856` passed.
-- 2E-5 E2E and Stage 02 acceptance：Implementation and local verification complete on `codex/2e-5-stage-02-acceptance`; Commit, Remote CI, and Manager Gate pending.
+- 2E-5 E2E and Stage 02 acceptance：Manager `APPROVE` at implementation Commit `a67cd052d5ad98f7df0124c33e096143de5486d2`; merge, final closeout, post-merge main verification, and tags pending.
 
 ## 2E-1 — V6 Sheets persistence contract
 
@@ -266,12 +266,12 @@ All errors retain the standard `code`, `message`, `requestId`, `timestamp`, `pat
 
 ## Stage 2E acceptance
 
-- [ ] V6/V7 migrate empty and populated databases without changing V1–V5.
-- [ ] Sheet mapping/template, Preview, validation, UUID/Product ID matching, create/update, partial error report, idempotency, stale protection, Audit, and Quality recalculation pass.
-- [ ] Drive folder creation persists root/Product/six subfolder IDs and is idempotent for My Drive and Shared Drive semantics.
-- [ ] Production fails closed without trusted actor/provider configuration; CI uses no real Google credential or network call.
-- [ ] Fixed BFF/UI flows and Connector E2E pass with Stub providers.
-- [ ] All Stage 02 Backend, Frontend, migration, Compose, smoke, Playwright, audit, dependency, secret, and workflow checks pass locally and remotely.
-- [ ] No Sheets polling/two-way sync, file upload/delete, live export write-back, AI, Meta Ads, Dashboard, Decision Engine, or Stage 03 scope is introduced.
-- [ ] Every slice receives exact-head Manager `APPROVE`, merge, and post-merge verification before the next slice starts.
+- [x] V6/V7 migrate empty and populated databases without changing V1–V5.
+- [x] Sheet mapping/template, Preview, validation, UUID/Product ID matching, create/update, partial error report, idempotency, stale protection, Audit, and Quality recalculation pass.
+- [x] Drive folder creation persists root/Product/six subfolder IDs and is idempotent for My Drive and Shared Drive semantics.
+- [x] Production fails closed without trusted actor/provider configuration; CI uses no real Google credential or network call.
+- [x] Fixed BFF/UI flows and Connector E2E pass with Stub providers.
+- [x] All Stage 02 Backend, Frontend, migration, Compose, smoke, Playwright, audit, dependency, secret, and workflow checks pass locally and remotely.
+- [x] No Sheets polling/two-way sync, file upload/delete, live export write-back, AI, Meta Ads, Dashboard, Decision Engine, or Stage 03 scope is introduced.
+- [x] Every completed slice received exact-head Manager `APPROVE`, merge, and post-merge verification before the next slice started.
 - [ ] Final Stage 02 acceptance is merged, post-merge main CI passes, and `milestone-2e-complete` plus `stage-02-complete` tags are created.

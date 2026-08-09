@@ -6,8 +6,8 @@
 - Base Commit: `4e12c9f72a9ed7810ee95b96143b51f8c3a31906`
 - Implementation: Complete
 - Local Verification: Passed
-- Commit / Push / Remote CI: Pending
-- Manager Review / Decision: Pending
+- Commit / Push / Remote CI: Passed — implementation Commit `a67cd052d5ad98f7df0124c33e096143de5486d2`; Push Run `31307627650`; PR Run `31307633427`
+- Manager Review / Decision: Passed — `APPROVE`
 - Human Review Required: No
 - Merge: Pending
 - Stage 03: Not started
@@ -34,8 +34,9 @@
 - [x] Drive folder ensure returns 201 then idempotent 200 and the UI persists exactly six folder roles across reload.
 - [x] All seven existing Playwright scenarios and the new Connector scenario pass against the real Compose stack.
 - [x] V1–V7 cold/populated/repeat/checksum/Hibernate tests and all Backend/Frontend regressions pass.
-- [ ] npm production audit, Gitleaks, actionlint, Docker Compose config/cold start, smoke, Push CI, and PR CI pass (local passed; Remote CI pending).
-- [ ] Exact-head Manager Decision is `APPROVE`; merge and post-merge main CI pass.
+- [x] npm production audit, Gitleaks, actionlint, Docker Compose config/cold start, smoke, Push CI, and PR CI pass.
+- [x] Exact-head Manager Decision is `APPROVE`.
+- [ ] Merge and post-merge main CI pass.
 - [ ] `milestone-2e-complete` and `stage-02-complete` tags point to the verified final main Commit.
 
 ## Known limitations
