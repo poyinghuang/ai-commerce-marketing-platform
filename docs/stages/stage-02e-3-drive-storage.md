@@ -12,8 +12,10 @@
 - Approved Implementation Commit：`7016ab76236f16033dda3df240208cdaa6874590`
 - Approved CI Runs：Push `31302252213`; PR `31302254329`
 - Human Review Required：No
-- Merge：Pending
-- 2E-4：Not started
+- Merge：Passed — Squash Commit `6e0efaabd3d1595e17899b9f9ff459f4298896d2`
+- Post-merge CI：Passed — main Run `31303057300`
+- Milestone 2E-3：Completed
+- 2E-4：Allowed; not started
 
 ## Approved scope
 
@@ -63,7 +65,7 @@ GET returns 404 `STORAGE_FOLDER_NOT_FOUND` when absent. POST returns 201 plus `L
 - [x] Archived/missing Product, Audit rollback, database race recovery, and partial external completion recovery are covered.
 - [x] GET/POST status, Location, ETag, standard errors, Request ID, trusted actor, and no Browser credential/URL control pass.
 - [x] Full Backend, Frontend, Compose, Smoke, existing Playwright, dependency audit, Gitleaks, and actionlint pass locally/remotely.
-- [ ] Exact-head Manager Decision is `APPROVE`; merge and post-merge main CI remain required before 2E-4.
+- [x] Exact-head Manager Decision is `APPROVE`; merge and post-merge main CI passed before 2E-4.
 
 ## Known limitations
 
@@ -79,4 +81,14 @@ GET returns 404 `STORAGE_FOLDER_NOT_FOUND` when absent. POST returns 201 plus `L
 - Compose: isolated `aimcp2e3` build and cold start completed healthy in 149 seconds; Backend and same-origin health proxy returned `UP`.
 - Smoke: first folder ensure returned 201, repeat returned 200, GET returned 200, and PostgreSQL contained one Product folder, six subfolders, one storage Audit, and Flyway version 7.
 - Playwright: all seven existing Chromium scenarios passed against the isolated Compose stack.
-- Exact-head Manager Gate passed. Approval-record CI, merge, and post-merge `main` verification remain pending.
+- Exact-head Manager Gate, approval-record CI, Squash merge, and post-merge `main` verification passed.
+
+## Delivery completion
+
+- PR #38：Merged
+- Squash Commit：`6e0efaabd3d1595e17899b9f9ff459f4298896d2`
+- Approval-record Push Run：`31302808821` — Passed
+- Approval-record PR Run：`31302810904` — Passed
+- Post-merge main Run：`31303057300` — `quality-and-compose` and `secret-scan` Passed
+- Milestone 2E-3：Completed
+- Milestone 2E-4：Allowed after this closeout is merged and its post-merge CI passes
