@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status: Implementation complete; local verification passed; delivery pending
+- Status: Completed
 - Branch: `codex/stage-03-human-review`
 - Base Commit: `ae244dfd7b41c6cea13896ae4dfff54159516802`
 - Prerequisite: Milestone 3C completed at `fded67da3c539dbeef59f5e5d3a62a35e9041c30`
@@ -14,7 +14,10 @@
 - Manager Review: Passed for implementation Head `8b6c1fb4a9ef4328465b19ecf232742808840911`
 - Manager Decision: `APPROVE`
 - Human Review Required: No
-- Merge: Not started
+- Approval-record CI: Passed — Push Run `31350263644`; Pull Request Run `31350265943`
+- Merge: Passed — PR #52, Squash Commit `965508f146e42b33d98e60abaffe15e65a182717`
+- Post-merge CI: Passed — main Run `31350567158`
+- Completion Tag: `milestone-3d-complete`
 - Milestone 3E: Not started
 
 ## Approved scope
@@ -131,7 +134,7 @@ Next.js adds exact UUID routes for `/approve` and `/reject` to the existing fixe
 - [x] Same-origin BFF and UI provide bounded review actions, blocker explanations, history, and conflict recovery.
 - [x] No publish/platform/Ads/video/redraw/Decision Engine/Stage 04 scope exists.
 - [x] Local and Remote Backend, Frontend, migration, Compose, Playwright regression, Gitleaks, dependency audit, and actionlint pass.
-- [ ] Exact-head Manager Review is `APPROVE`, merge/main CI pass, and `milestone-3d-complete` is published before 3E.
+- [x] Exact-head Manager Review is `APPROVE`, merge/main CI pass, and `milestone-3d-complete` is published before 3E.
 
 ## Local verification evidence
 
