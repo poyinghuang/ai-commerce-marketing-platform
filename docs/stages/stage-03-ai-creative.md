@@ -22,6 +22,7 @@
 - Milestone 3B: Completed — PR #48, Squash Commit `c1659cf0508e961860d95b13f52db72bfa4dc0c7`, post-merge Run `31337531564`, tag `milestone-3b-complete`. Detailed contract: [Stage 03B — Text Generation Vertical Slice](stage-03b-text-generation.md)
 - Milestone 3C: Completed — PR #50, Squash Commit `fded67da3c539dbeef59f5e5d3a62a35e9041c30`, post-merge Run `31341738821`, tag `milestone-3c-complete`. Detailed contract: [Stage 03C — ComfyUI Background Image Generation](stage-03c-image-generation.md)
 - Milestone 3D: Completed — PR #52, Squash Commit `965508f146e42b33d98e60abaffe15e65a182717`, post-merge Run `31350567158`, tag `milestone-3d-complete`. Detailed contract: [Stage 03D — Human Review and Approval Workflow](stage-03d-human-review.md)
+- Milestone 3E: Approved for implementation from closeout base `1a2e78d6cfecf6862d54d69243ee8db3f8efd036`. Detailed contract: [Stage 03E — Final Acceptance](stage-03e-final-acceptance.md)
 - Stage 04: Not started
 
 ## Human-approved decisions
