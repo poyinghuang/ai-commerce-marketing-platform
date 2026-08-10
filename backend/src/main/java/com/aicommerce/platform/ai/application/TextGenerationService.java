@@ -39,7 +39,8 @@ public class TextGenerationService {
             "STANDARD", new ModelSelection("stub", "stub-text"),
             "LOW_COST", new ModelSelection("stub", "stub-text-low"),
             "PARTIAL_FAILURE_FIXTURE", new ModelSelection("stub", "stub-text-partial"),
-            "COST_INVARIANT_FIXTURE", new ModelSelection("stub", "stub-text-cost-invariant"));
+            "COST_INVARIANT_FIXTURE", new ModelSelection("stub", "stub-text-cost-invariant"),
+            "OVER_JOB_BUDGET_FIXTURE", new ModelSelection("stub", "stub-text-over-job"));
 
     private static final List<String> FORBIDDEN_METADATA_KEYS = List.of(
             "credential", "secret", "token", "url", "apikey", "password", "authorization",
@@ -214,7 +215,8 @@ public class TextGenerationService {
 
     public List<String> availableModelProfiles() {
         if (!environment.acceptsProfiles(Profiles.of("(local | test) & !production"))) return List.of();
-        return List.of("STANDARD", "LOW_COST", "PARTIAL_FAILURE_FIXTURE", "COST_INVARIANT_FIXTURE");
+        return List.of("STANDARD", "LOW_COST", "PARTIAL_FAILURE_FIXTURE", "COST_INVARIANT_FIXTURE",
+                "OVER_JOB_BUDGET_FIXTURE");
     }
 
     private ValidatedResult validate(TextGenerationProvider.TextResult result) {

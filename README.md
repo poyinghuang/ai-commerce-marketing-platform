@@ -118,6 +118,10 @@ Browser E2E uses the real Docker Compose Frontend, Backend, and PostgreSQL stack
 The committed suite covers the Product Center graph, lifecycle/concurrency/Audit behavior, and deterministic Quality progression, blocker invariance, adjustment persistence, stale ETag recovery, and archive/restore recovery.
 
 ```powershell
+$env:AI_BUDGET_CURRENCY="USD"
+$env:AI_MAX_JOB_COST="5.000000"
+$env:AI_MAX_BATCH_COST="20.000000"
+$env:AI_MAX_DAILY_COST="100.000000"
 docker compose up --detach --build --wait --wait-timeout 180
 cd frontend
 npx playwright install chromium

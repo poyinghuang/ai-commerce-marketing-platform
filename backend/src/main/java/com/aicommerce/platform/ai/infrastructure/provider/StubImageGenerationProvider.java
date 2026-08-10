@@ -22,7 +22,10 @@ public class StubImageGenerationProvider implements ImageGenerationProvider {
 
     @Override
     public ImageResult await(ImageRequest request, ImageSubmission submission) {
-        return new ImageResult(request.sourceBytes().clone(), "image/png", submission.modelLabel(),
+        byte[] result = StubAssetBinaryStore.CHANGED_PIXEL_SOURCE_HANDLE.equals(request.sourceHandle())
+                ? StubAssetBinaryStore.changedPixelFixture()
+                : request.sourceBytes().clone();
+        return new ImageResult(result, "image/png", submission.modelLabel(),
                 BigDecimal.ZERO, List.of(), submission.metadata());
     }
 }
