@@ -10,9 +10,9 @@
 - Implementation: Passed
 - Migration: V11 created; V1-V10 unchanged
 - Local Verification: Passed
-- Remote CI: Not started
-- Manager Review: Not started
-- Manager Decision: Pending
+- Remote CI: Passed — Push Run `31349895731`; Pull Request Run `31349911642`
+- Manager Review: Passed for implementation Head `8b6c1fb4a9ef4328465b19ecf232742808840911`
+- Manager Decision: `APPROVE`
 - Human Review Required: No
 - Merge: Not started
 - Milestone 3E: Not started
@@ -130,7 +130,7 @@ Next.js adds exact UUID routes for `/approve` and `/reject` to the existing fixe
 - [x] Text and IMAGE review work; regeneration never overwrites a prior output/decision.
 - [x] Same-origin BFF and UI provide bounded review actions, blocker explanations, history, and conflict recovery.
 - [x] No publish/platform/Ads/video/redraw/Decision Engine/Stage 04 scope exists.
-- [ ] Local and Remote Backend, Frontend, migration, Compose, Playwright regression, Gitleaks, dependency audit, and actionlint pass.
+- [x] Local and Remote Backend, Frontend, migration, Compose, Playwright regression, Gitleaks, dependency audit, and actionlint pass.
 - [ ] Exact-head Manager Review is `APPROVE`, merge/main CI pass, and `milestone-3d-complete` is published before 3E.
 
 ## Local verification evidence
