@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status: Milestones 3A, 3B, and 3C completed; Milestone 3D implemented and locally verified, delivery pending
+- Status: Milestones 3A, 3B, 3C, and 3D completed; Milestone 3E not started
 - Branch: Merged from `codex/stage-03-ai-foundation`
 - Base Commit: `718b60c3a4a2507716089f38fc77dacde731a769`
 - Stage 02 prerequisite: Passed — `stage-02-complete` at `73f20fe75ef64da8add771087a2035a773d905af`
@@ -21,7 +21,7 @@
 - Completion Tag: `milestone-3a-complete`
 - Milestone 3B: Completed — PR #48, Squash Commit `c1659cf0508e961860d95b13f52db72bfa4dc0c7`, post-merge Run `31337531564`, tag `milestone-3b-complete`. Detailed contract: [Stage 03B — Text Generation Vertical Slice](stage-03b-text-generation.md)
 - Milestone 3C: Completed — PR #50, Squash Commit `fded67da3c539dbeef59f5e5d3a62a35e9041c30`, post-merge Run `31341738821`, tag `milestone-3c-complete`. Detailed contract: [Stage 03C — ComfyUI Background Image Generation](stage-03c-image-generation.md)
-- Milestone 3D: Implementation, local/Remote verification, and Manager Review passed for `8b6c1fb4a9ef4328465b19ecf232742808840911`; approval-record CI, merge, and post-merge verification are pending. Detailed contract: [Stage 03D — Human Review and Approval Workflow](stage-03d-human-review.md)
+- Milestone 3D: Completed — PR #52, Squash Commit `965508f146e42b33d98e60abaffe15e65a182717`, post-merge Run `31350567158`, tag `milestone-3d-complete`. Detailed contract: [Stage 03D — Human Review and Approval Workflow](stage-03d-human-review.md)
 - Stage 04: Not started
 
 ## Human-approved decisions
