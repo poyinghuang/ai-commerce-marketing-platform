@@ -35,14 +35,15 @@ class Milestone3BSchemaIntegrationTest {
         assertThat(List.of(flyway.info().applied()).stream()
                 .filter(info -> info.getVersion() != null)
                 .map(info -> info.getVersion().getVersion()))
-                .containsExactly("1", "2", "3", "4", "5", "6", "6.1", "7", "8", "9", "10");
+                .containsExactly("1", "2", "3", "4", "5", "6", "6.1", "7", "8", "9", "10", "11");
         assertThat(aiTables()).containsExactly(
                 "ai_budget_ledger",
                 "ai_generation_batches",
                 "ai_generation_jobs",
                 "ai_generation_outputs",
                 "ai_prompt_template_versions",
-                "ai_prompt_templates");
+                "ai_prompt_templates",
+                "ai_review_decisions");
         assertThat(flyway.info().pending()).isEmpty();
     }
 

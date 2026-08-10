@@ -8,6 +8,7 @@ import java.util.UUID;
 import com.aicommerce.platform.ai.domain.GenerationBatch;
 import com.aicommerce.platform.ai.domain.GenerationJob;
 import com.aicommerce.platform.ai.domain.GenerationOutput;
+import com.aicommerce.platform.ai.domain.ReviewDecision;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -32,7 +33,8 @@ public final class AiGenerationResponse {
 
     public record Job(
             UUID generationJobUuid, UUID generationBatchUuid, UUID productUuid, UUID creativePlanUuid,
-            UUID promptTemplateVersionUuid, String generationType, String modelProfile, String status,
+            UUID promptTemplateVersionUuid, String generationType, String providerKey, String modelKey,
+            String modelProfile, String status,
             BigDecimal estimatedCost, BigDecimal reservedCost, BigDecimal actualCost, String currency,
             String failureCode, String failureMessage, int attemptCount, Instant submittedAt,
             Instant startedAt, Instant completedAt, Instant createdAt, Instant updatedAt, long version,
@@ -47,7 +49,8 @@ public final class AiGenerationResponse {
             };
             return new Job(value.getGenerationJobUuid(), value.getGenerationBatchUuid(), value.getProductUuid(),
                     value.getCreativePlanUuid(), value.getPromptTemplateVersionUuid(), value.getGenerationType().name(),
-                    profile, value.getStatus().name(), value.getEstimatedCost(), value.getReservedCost(),
+                    value.getProviderKey(), value.getModelKey(), profile, value.getStatus().name(),
+                    value.getEstimatedCost(), value.getReservedCost(),
                     value.getActualCost(), value.getCurrency().strip(), value.getFailureCode(), value.getFailureMessage(),
                     value.getAttemptCount(), value.getSubmittedAt(), value.getStartedAt(), value.getCompletedAt(),
                     value.getCreatedAt(), value.getUpdatedAt(), value.getVersion(),
@@ -65,8 +68,13 @@ public final class AiGenerationResponse {
             Integer imageWidth, Integer imageHeight, String mediaType, Long sizeBytes,
             String sourceChecksumSha256, String maskChecksumSha256, String outputChecksumSha256,
             String protectedPixelsSha256, String preservationAlgorithm, String preservationStatus,
-            JsonNode preservationDetails) {
+            JsonNode preservationDetails, List<String> reviewBlockers, List<Decision> reviewDecisions) {
         public static Output from(GenerationOutput value, ObjectMapper mapper) {
+            return from(value, mapper, List.of(), null);
+        }
+
+        public static Output from(GenerationOutput value, ObjectMapper mapper, List<String> blockers,
+                ReviewDecision decision) {
             return new Output(value.getGenerationOutputUuid(), value.getGenerationJobUuid(),
                     value.getGenerationBatchUuid(), value.getProductUuid(), value.getGenerationType().name(),
                     value.getTextContent(), value.getModelLabel(), value.getInputUnits(), value.getOutputUnits(),
@@ -77,7 +85,17 @@ public final class AiGenerationResponse {
                     value.getImageWidth(), value.getImageHeight(), value.getMediaType(), value.getSizeBytes(),
                     value.getSourceChecksumSha256(), value.getMaskChecksumSha256(), value.getOutputChecksumSha256(),
                     value.getProtectedPixelsSha256(), value.getPreservationAlgorithm(), value.getPreservationStatus(),
-                    value.getPreservationDetails() == null ? null : mapper.readTree(value.getPreservationDetails()));
+                    value.getPreservationDetails() == null ? null : mapper.readTree(value.getPreservationDetails()),
+                    blockers, decision == null ? List.of() : List.of(Decision.from(decision)));
+        }
+    }
+
+    public record Decision(UUID reviewDecisionUuid, String decision, String reason, String reviewerType,
+            String reviewerId, long reviewedOutputVersion, Instant decidedAt) {
+        static Decision from(ReviewDecision value) {
+            return new Decision(value.getReviewDecisionUuid(), value.getDecision().name(), value.getReason(),
+                    value.getReviewerType().name(), value.getReviewerId(), value.getReviewedOutputVersion(),
+                    value.getDecidedAt());
         }
     }
 }

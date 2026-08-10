@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,11 +22,15 @@ import com.aicommerce.platform.ai.application.CreateTextGenerationBatchCommand;
 import com.aicommerce.platform.ai.application.GenerationFoundationResult;
 import com.aicommerce.platform.ai.application.TextGenerationService;
 import com.aicommerce.platform.ai.application.ImageGenerationService;
+import com.aicommerce.platform.ai.application.ReviewDecisionService;
 import com.aicommerce.platform.ai.application.CreateImageGenerationBatchCommand;
 import com.aicommerce.platform.ai.domain.GenerationBatch;
 import com.aicommerce.platform.ai.domain.GenerationJob;
 import com.aicommerce.platform.ai.domain.GenerationOutput;
 import com.aicommerce.platform.ai.domain.GenerationType;
+import com.aicommerce.platform.ai.domain.ReviewDecision;
+import com.aicommerce.platform.ai.domain.ReviewDecisionType;
+import com.aicommerce.platform.audit.domain.AuditActor;
 import com.aicommerce.platform.web.RequestIdFilter;
 import com.aicommerce.platform.web.error.GlobalExceptionHandler;
 import org.junit.jupiter.api.Test;
@@ -53,6 +58,7 @@ class AiGenerationControllerTest {
     @MockitoBean TextGenerationService service;
     @MockitoBean ImageGenerationService images;
     @MockitoBean AiBudgetPolicyProvider budgetPolicies;
+    @MockitoBean ReviewDecisionService reviews;
 
     @Test
     void createDefaultsToThreeVariationsAndReturnsLocationAndEtag() throws Exception {
@@ -94,12 +100,50 @@ class AiGenerationControllerTest {
                 "stub-text", 1, 2, BigDecimal.ZERO, "USD", "[]", "{}");
         when(service.execute(eq(JOB), eq(2L), anyString())).thenReturn(output);
         when(service.getJob(JOB)).thenReturn(job(JOB));
+        when(reviews.details(output)).thenReturn(new ReviewDecisionService.ReviewDetails(output, null, List.of()));
         mvc.perform(post("/api/ai-generation-jobs/{jobUuid}/execute", JOB)
                         .header(HttpHeaders.IF_MATCH, "W/\"2\""))
                 .andExpect(status().isOk())
                 .andExpect(header().string(HttpHeaders.ETAG, "W/\"0\""))
                 .andExpect(jsonPath("$.generationOutputUuid").value(OUTPUT.toString()))
                 .andExpect(jsonPath("$.reviewStatus").value("PENDING_REVIEW"));
+    }
+
+    @Test
+    void approveRequiresEtagAndReturnsDecisionHistory() throws Exception {
+        GenerationOutput output = GenerationOutput.createText(OUTPUT, JOB, BATCH, PRODUCT, "Generated copy",
+                "stub-text", 1, 2, BigDecimal.ZERO, "USD", "[]", "{}");
+        ReviewDecision decision = ReviewDecision.create(UUID.randomUUID(), OUTPUT, ReviewDecisionType.APPROVED,
+                null, AuditActor.localAdmin(), "review-controller", 0, Instant.parse("2026-08-01T10:00:00Z"));
+        output.approve();
+        when(reviews.approve(eq(OUTPUT), eq(0L), anyString())).thenReturn(
+                new ReviewDecisionService.ReviewDetails(output, decision, List.of()));
+
+        mvc.perform(post("/api/ai-generation-outputs/{outputUuid}/approve", OUTPUT)
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isPreconditionRequired());
+        mvc.perform(post("/api/ai-generation-outputs/{outputUuid}/approve", OUTPUT)
+                        .header(HttpHeaders.IF_MATCH, "W/\"0\"")
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reviewStatus").value("APPROVED"))
+                .andExpect(jsonPath("$.reviewDecisions[0].reviewerId").value("local-admin"));
+    }
+
+    @Test
+    void rejectRequiresOnlyBoundedReasonAndMapsBlockerToConflict() throws Exception {
+        mvc.perform(post("/api/ai-generation-outputs/{outputUuid}/reject", OUTPUT)
+                        .header(HttpHeaders.IF_MATCH, "W/\"0\"")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"\",\"actor\":\"browser\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("AI_REVIEW_REASON_REQUIRED"));
+        when(reviews.approve(eq(OUTPUT), eq(0L), anyString())).thenThrow(
+                new AiGenerationException("AI_REVIEW_BLOCKED", "Approval is blocked: SAFETY_FINDINGS"));
+        mvc.perform(post("/api/ai-generation-outputs/{outputUuid}/approve", OUTPUT)
+                        .header(HttpHeaders.IF_MATCH, "W/\"0\"")
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("AI_REVIEW_BLOCKED"));
     }
 
     @Test

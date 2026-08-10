@@ -40,14 +40,14 @@ class MigrationCompatibilityTest {
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17.6-alpine3.22");
 
     @Test
-    void emptyDatabaseRunsV1ThroughV10AndRepeatMigrationHasNoPendingWork() {
+    void emptyDatabaseRunsV1ThroughV11AndRepeatMigrationHasNoPendingWork() {
         Flyway flyway = flyway("empty_case", null);
 
-        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(11);
+        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(12);
         assertThat(List.of(flyway.info().applied()).stream()
                 .filter(info -> info.getVersion() != null)
                 .map(info -> info.getVersion().getVersion()))
-                .containsExactly("1", "2", "3", "4", "5", "6", "6.1", "7", "8", "9", "10");
+                .containsExactly("1", "2", "3", "4", "5", "6", "6.1", "7", "8", "9", "10", "11");
         assertThat(flyway.info().pending()).isEmpty();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
     }
@@ -280,7 +280,7 @@ class MigrationCompatibilityTest {
     }
 
     @Test
-    void populatedV8DataAndTextOutputSurviveUpgradeThroughV10() {
+    void populatedV8DataAndTextOutputSurviveUpgradeThroughV11() {
         String schema = "v9_upgrade_case";
         Flyway v8 = flyway(schema, MigrationVersion.fromVersion("8"));
         assertThat(v8.migrate().migrationsExecuted).isEqualTo(9);
@@ -343,7 +343,16 @@ class MigrationCompatibilityTest {
         assertThat(jdbc.queryForObject(
                 "SELECT text_content FROM v9_upgrade_case.ai_generation_outputs WHERE generation_output_uuid=?",
                 String.class, outputUuid)).isEqualTo("Existing text");
-        assertThat(v10.info().pending()).isEmpty();
+        Flyway v11 = flyway(schema, MigrationVersion.fromVersion("11"));
+        assertThat(v11.migrate().migrationsExecuted).isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                "SELECT review_status FROM v9_upgrade_case.ai_generation_outputs WHERE generation_output_uuid=?",
+                String.class, outputUuid)).isEqualTo("PENDING_REVIEW");
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*) FROM information_schema.tables
+                WHERE table_schema=? AND table_name='ai_review_decisions'
+                """, Integer.class, schema)).isEqualTo(1);
+        assertThat(v11.info().pending()).isEmpty();
     }
 
     @Test

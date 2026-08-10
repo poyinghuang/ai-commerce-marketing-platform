@@ -10,6 +10,7 @@ import com.aicommerce.platform.ai.application.CreateTextGenerationBatchCommand;
 import com.aicommerce.platform.ai.application.GenerationFoundationResult;
 import com.aicommerce.platform.ai.application.TextGenerationService;
 import com.aicommerce.platform.ai.application.ImageGenerationService;
+import com.aicommerce.platform.ai.application.ReviewDecisionService;
 import com.aicommerce.platform.ai.application.CreateImageGenerationBatchCommand;
 import com.aicommerce.platform.ai.domain.GenerationType;
 import com.aicommerce.platform.ai.domain.GenerationJob;
@@ -36,14 +37,16 @@ public class AiGenerationController {
     private final TextGenerationService service;
     private final ImageGenerationService images;
     private final AiBudgetPolicyProvider budgetPolicies;
+    private final ReviewDecisionService reviews;
     private final ObjectMapper objectMapper;
 
     public AiGenerationController(TextGenerationService service, ImageGenerationService images,
-            AiBudgetPolicyProvider budgetPolicies,
+            AiBudgetPolicyProvider budgetPolicies, ReviewDecisionService reviews,
             ObjectMapper objectMapper) {
         this.service = service;
         this.images = images;
         this.budgetPolicies = budgetPolicies;
+        this.reviews = reviews;
         this.objectMapper = objectMapper;
     }
 
@@ -98,15 +101,42 @@ public class AiGenerationController {
         GenerationOutput output = job.getGenerationType() == GenerationType.IMAGE
                 ? images.execute(jobUuid, expectedVersion, requestId(servletRequest))
                 : service.execute(jobUuid, expectedVersion, requestId(servletRequest));
-        return ResponseEntity.ok().eTag(ProductEtag.fromVersion(output.getVersion()))
-                .body(AiGenerationResponse.Output.from(output, objectMapper));
+        return outputResponse(reviews.details(output));
     }
 
     @GetMapping("/ai-generation-outputs/{outputUuid}")
     public ResponseEntity<AiGenerationResponse.Output> output(@PathVariable UUID outputUuid) {
         GenerationOutput output = service.getOutput(outputUuid);
+        return outputResponse(reviews.details(output));
+    }
+
+    @PostMapping("/ai-generation-outputs/{outputUuid}/approve")
+    public ResponseEntity<AiGenerationResponse.Output> approve(@PathVariable UUID outputUuid,
+            @RequestHeader(value = HttpHeaders.IF_MATCH, required = false) String ifMatch,
+            @RequestBody(required = false) tools.jackson.databind.JsonNode body, HttpServletRequest request) {
+        if (body != null && (!body.isObject() || !body.isEmpty())) {
+            throw new com.aicommerce.platform.ai.application.AiGenerationException(
+                    "AI_PROMPT_INPUT_INVALID", "Approval body must be an empty object");
+        }
+        return outputResponse(reviews.approve(outputUuid, ProductEtag.requireVersion(ifMatch), requestId(request)));
+    }
+
+    @PostMapping("/ai-generation-outputs/{outputUuid}/reject")
+    public ResponseEntity<AiGenerationResponse.Output> reject(@PathVariable UUID outputUuid,
+            @RequestHeader(value = HttpHeaders.IF_MATCH, required = false) String ifMatch,
+            @RequestBody tools.jackson.databind.JsonNode body, HttpServletRequest request) {
+        if (!body.isObject() || body.size() != 1 || !body.has("reason") || !body.get("reason").isString()) {
+            throw new com.aicommerce.platform.ai.application.AiGenerationException(
+                    "AI_REVIEW_REASON_REQUIRED", "Rejection requires only a textual reason");
+        }
+        String reason = body.get("reason").asText();
+        return outputResponse(reviews.reject(outputUuid, ProductEtag.requireVersion(ifMatch), reason, requestId(request)));
+    }
+
+    private ResponseEntity<AiGenerationResponse.Output> outputResponse(ReviewDecisionService.ReviewDetails details) {
+        GenerationOutput output = details.output();
         return ResponseEntity.ok().eTag(ProductEtag.fromVersion(output.getVersion()))
-                .body(AiGenerationResponse.Output.from(output, objectMapper));
+                .body(AiGenerationResponse.Output.from(output, objectMapper, details.blockers(), details.decision()));
     }
 
     @GetMapping("/ai-budget/status")

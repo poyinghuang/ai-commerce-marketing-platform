@@ -2,14 +2,14 @@
 
 ## Gate status
 
-- Status: Approved for implementation
+- Status: Implementation complete; local verification passed; delivery pending
 - Branch: `codex/stage-03-human-review`
 - Base Commit: `ae244dfd7b41c6cea13896ae4dfff54159516802`
 - Prerequisite: Milestone 3C completed at `fded67da3c539dbeef59f5e5d3a62a35e9041c30`
 - Prerequisite tag: `milestone-3c-complete`
-- Implementation: Not started
-- Migration: Not created
-- Local Verification: Not started
+- Implementation: Passed
+- Migration: V11 created; V1-V10 unchanged
+- Local Verification: Passed
 - Remote CI: Not started
 - Manager Review: Not started
 - Manager Decision: Pending
@@ -123,15 +123,26 @@ Next.js adds exact UUID routes for `/approve` and `/reject` to the existing fixe
 
 ## Acceptance checklist
 
-- [ ] V11 is additive; V1–V10 are unchanged and migration compatibility passes.
-- [ ] One immutable human decision and a coherent terminal output state are database-enforced.
-- [ ] Approve/reject use `If-Match`, trusted human actor, one transaction, and exact Audit.
-- [ ] Safety, preservation, budget/provider/data, and archive blockers cannot be approved.
-- [ ] Text and IMAGE review work; regeneration never overwrites a prior output/decision.
-- [ ] Same-origin BFF and UI provide bounded review actions, blocker explanations, history, and conflict recovery.
-- [ ] No publish/platform/Ads/video/redraw/Decision Engine/Stage 04 scope exists.
+- [x] V11 is additive; V1–V10 are unchanged and migration compatibility passes.
+- [x] One immutable human decision and a coherent terminal output state are database-enforced.
+- [x] Approve/reject use `If-Match`, trusted human actor, one transaction, and exact Audit.
+- [x] Safety, preservation, budget/provider/data, and archive blockers cannot be approved.
+- [x] Text and IMAGE review work; regeneration never overwrites a prior output/decision.
+- [x] Same-origin BFF and UI provide bounded review actions, blocker explanations, history, and conflict recovery.
+- [x] No publish/platform/Ads/video/redraw/Decision Engine/Stage 04 scope exists.
 - [ ] Local and Remote Backend, Frontend, migration, Compose, Playwright regression, Gitleaks, dependency audit, and actionlint pass.
 - [ ] Exact-head Manager Review is `APPROVE`, merge/main CI pass, and `milestone-3d-complete` is published before 3E.
+
+## Local verification evidence
+
+- Backend: `./mvnw test` — 287 tests, 0 failures, 0 errors; Hibernate validation and migration suites passed.
+- Frontend: lint, typecheck, 22 Vitest files / 134 tests, and Next.js production build passed.
+- Migration: cold V1-V11, populated V10-to-V11 upgrade, repeat migration, canonical V1-V10 checksums, and direct SQL protection passed.
+- Compose: isolated cold build/start passed; PostgreSQL, Backend, and Frontend were healthy; latest successful Flyway migration was V11.
+- Smoke: Backend Actuator and Frontend same-origin health proxy returned only `{"status":"UP"}`; runtime UIDs were Backend 999 and Frontend 1000.
+- Browser regression: Playwright 8/8 passed against the real isolated Compose stack.
+- Security/tooling: Gitleaks history/worktree, npm production audit, actionlint, and `git diff --check` passed.
+- Non-blocking warnings: Byte Buddy dynamic-agent future deprecation and Surefire's delayed fork-JVM shutdown message remain existing test-runtime warnings.
 
 ## Escalation boundaries
 
