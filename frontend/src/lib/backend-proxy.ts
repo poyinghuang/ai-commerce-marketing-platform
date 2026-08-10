@@ -28,7 +28,7 @@ const SAFE_STORAGE_FOLDER_PATH = new RegExp(
   `^/api/products/${PRODUCT_UUID_PATH}/storage-folder$`, "i",
 );
 const SAFE_AI_GENERATION_PATH = new RegExp(
-  `^/api/(?:products/${PRODUCT_UUID_PATH}/ai-generation-batches|ai-generation-batches/${PRODUCT_UUID_PATH}|ai-generation-jobs/${PRODUCT_UUID_PATH}(?:/execute)?|ai-generation-outputs/${PRODUCT_UUID_PATH}|ai-budget/status)$`, "i",
+  `^/api/(?:products/${PRODUCT_UUID_PATH}/ai-generation-batches|ai-generation-batches/${PRODUCT_UUID_PATH}|ai-generation-jobs/${PRODUCT_UUID_PATH}(?:/execute)?|ai-generation-outputs/${PRODUCT_UUID_PATH}(?:/approve|/reject)?|ai-budget/status)$`, "i",
 );
 
 type ProxyOptions = {

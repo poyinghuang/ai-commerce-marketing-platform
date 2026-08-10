@@ -14,6 +14,8 @@ export function CreativeFactoryTab({ productUuid, productArchived }: { productUu
   const [assets, setAssets] = useState<AssetPage["content"]>([]);
   const [budget, setBudget] = useState<AiBudgetStatus | null>(null);
   const [outputs, setOutputs] = useState<Record<string, AiOutput>>({});
+  const [outputEtags, setOutputEtags] = useState<Record<string, string>>({});
+  const [rejectionReasons, setRejectionReasons] = useState<Record<string, string>>({});
   const [mode, setMode] = useState<Mode>("TEXT");
   const [planUuid, setPlanUuid] = useState("");
   const [templateKey, setTemplateKey] = useState("");
@@ -24,7 +26,7 @@ export function CreativeFactoryTab({ productUuid, productArchived }: { productUu
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [conflict, setConflict] = useState(false);
+  const [conflict, setConflict] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -55,9 +57,11 @@ export function CreativeFactoryTab({ productUuid, productArchived }: { productUu
       const ids = batchBody.flatMap((batch) => batch.jobs.map((job) => job.outputUuid)).filter(Boolean) as string[];
       const loaded = await Promise.all(ids.map(async (id) => {
         const response = await fetch(`/api/ai-generation-outputs/${id}`, { cache: "no-store" });
-        return response.ok ? [id, await response.json() as AiOutput] as const : null;
+        return response.ok ? [id, await response.json() as AiOutput, response.headers.get("ETag") || ""] as const : null;
       }));
-      setOutputs(Object.fromEntries(loaded.filter(Boolean) as (readonly [string, AiOutput])[]));
+      const present = loaded.filter(Boolean) as (readonly [string, AiOutput, string])[];
+      setOutputs(Object.fromEntries(present.map(([id, output]) => [id, output])));
+      setOutputEtags(Object.fromEntries(present.map(([id, , etag]) => [id, etag])));
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "Unable to load Creative Factory");
     } finally {
@@ -81,7 +85,7 @@ export function CreativeFactoryTab({ productUuid, productArchived }: { productUu
       setError(mode === "IMAGE" ? "An active Creative Plan, image template and source Asset are required" : "An active Creative Plan and text template are required");
       return;
     }
-    setBusy(true); setError(null); setConflict(false);
+    setBusy(true); setError(null); setConflict(null);
     try {
       const payload = mode === "IMAGE" ? {
         generationType: "IMAGE", creativePlanUuid: planUuid, templateKey: selectedTemplate,
@@ -92,7 +96,7 @@ export function CreativeFactoryTab({ productUuid, productArchived }: { productUu
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
       });
       const body = await response.json() as AiBatch & ApiError;
-      if ([409, 412, 428].includes(response.status)) { setConflict(true); return; }
+      if ([409, 412, 428].includes(response.status)) { setConflict("Generation state changed. Reload the latest state before retrying."); return; }
       if (!response.ok) throw new Error(body.message ?? `Unable to create ${mode.toLowerCase()} batch`);
       await load();
     } catch (failure) {
@@ -101,23 +105,45 @@ export function CreativeFactoryTab({ productUuid, productArchived }: { productUu
   }
 
   async function execute(jobUuid: string, version: number) {
-    setBusy(true); setError(null); setConflict(false);
+    setBusy(true); setError(null); setConflict(null);
     try {
       const response = await fetch(`/api/ai-generation-jobs/${jobUuid}/execute`, {
         method: "POST", headers: { "If-Match": `W/\"${version}\"` },
       });
       const body = await response.json() as AiOutput & ApiError;
-      if ([409, 412, 428].includes(response.status)) { setConflict(true); return; }
+      if ([409, 412, 428].includes(response.status)) { setConflict("Generation state changed. Reload the latest state before retrying."); return; }
       if (!response.ok) throw new Error(body.message ?? "Unable to execute generation job");
       await load();
     } catch (failure) { setError(failure instanceof Error ? failure.message : "Unable to execute generation job"); }
     finally { setBusy(false); }
   }
 
+  async function review(outputUuid: string, action: "approve" | "reject") {
+    const etag = outputEtags[outputUuid];
+    const reason = rejectionReasons[outputUuid]?.trim() || "";
+    if (!etag) { setConflict("The review version is missing. Reload before retrying."); return; }
+    if (action === "reject" && !reason) { setError("A rejection reason is required."); return; }
+    setBusy(true); setError(null); setConflict(null);
+    try {
+      const response = await fetch(`/api/ai-generation-outputs/${outputUuid}/${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "If-Match": etag },
+        body: JSON.stringify(action === "approve" ? {} : { reason }),
+      });
+      const body = await response.json() as AiOutput & ApiError;
+      if (response.status === 412) { setConflict("This output changed. Reload the latest result before reviewing it."); return; }
+      if (response.status === 428) { setConflict("The review version is missing. Reload before retrying."); return; }
+      if (response.status === 409) { setConflict(body.message ?? "This output cannot be reviewed in its current state."); return; }
+      if (!response.ok) throw new Error(body.message ?? `Unable to ${action} output`);
+      await load();
+    } catch (failure) { setError(failure instanceof Error ? failure.message : `Unable to ${action} output`); }
+    finally { setBusy(false); }
+  }
+
   return <section className="content-card creative-factory-tab">
-    <div className="card-heading"><div><h2>Creative Factory</h2><p className="summary">Text and protected-product image generation; every result remains Pending review</p></div></div>
+    <div className="card-heading"><div><h2>Creative Factory</h2><p className="summary">Generate text and protected-product images, then record an explicit human decision.</p></div></div>
     {productArchived && <div className="state-card warning-state">Archived Products cannot start AI generation.</div>}
-    {conflict && <div className="state-card warning-state" role="alert">Generation state changed. Reload the latest state before retrying. <button className="secondary-button" onClick={() => void load()}>Reload</button></div>}
+    {conflict && <div className="state-card warning-state" role="alert">{conflict} <button className="secondary-button" onClick={() => void load()}>Reload</button></div>}
     {error && <div className="state-card error-state" role="alert">{error}</div>}
     {!productArchived && <div className="form-grid">
       <label>Generation mode<select value={mode} onChange={(event) => selectMode(event.target.value as Mode)}><option value="TEXT">Text</option><option value="IMAGE">Image background</option></select></label>
@@ -140,13 +166,23 @@ export function CreativeFactoryTab({ productUuid, productArchived }: { productUu
           <strong>Batch {batch.generationBatchUuid.slice(0, 8)}</strong> <span className="status-badge">{batch.status}</span>
           <p>{batch.succeededJobCount} succeeded · {batch.failedJobCount} failed · {batch.rejectedJobCount} rejected</p>
           {batch.jobs.map((job) => { const output = job.outputUuid ? outputs[job.outputUuid] : undefined; return <div className="content-card" key={job.generationJobUuid}>
-            <div className="card-heading"><div><strong>{job.generationType === "IMAGE" ? "Image" : "Variation"} · {job.status}</strong><p className="summary">Reserved {job.reservedCost} {job.currency}</p></div>{job.status === "CREATED" && <button className="primary-button" disabled={busy} onClick={() => void execute(job.generationJobUuid, job.version)}>Execute</button>}</div>
+            <div className="card-heading"><div><strong>{job.generationType === "IMAGE" ? "Image" : "Variation"} · {job.status}</strong><p className="summary">Reserved {job.reservedCost} {job.currency} · {job.providerKey || "provider"}/{job.modelKey || job.modelProfile}</p><p className="summary">Prompt version {job.promptTemplateVersionUuid?.slice(0, 8) || "unavailable"}</p></div>{job.status === "CREATED" && <button className="primary-button" disabled={busy} onClick={() => void execute(job.generationJobUuid, job.version)}>Execute</button>}</div>
             {job.failureCode && <div className="state-card error-state">{job.failureCode}: {job.failureMessage}</div>}
             {output && <div>{output.generationType === "TEXT" ? <p>{output.textContent}</p> : <div className={`state-card ${output.preservationStatus === "BLOCKED" ? "error-state" : ""}`}>
               <strong>Protected pixels: {output.preservationStatus}</strong>
               <p className="summary">{output.imageWidth}×{output.imageHeight} · {output.mediaType} · generated Asset {output.generatedAssetUuid?.slice(0, 8)} · Pending review</p>
+              <p className="summary">Source {output.sourceAssetUuid?.slice(0, 8)}{output.maskAssetUuid ? ` · mask ${output.maskAssetUuid.slice(0, 8)}` : " · source alpha mask"}</p>
               {output.preservationDetails && <p>{output.preservationDetails.changedPixelCount ?? 0} changed of {output.preservationDetails.protectedPixelCount ?? 0} protected pixels</p>}
-            </div>}<p className="summary">{output.modelLabel} · {output.actualCost} {output.currency} · {output.reviewStatus}</p></div>}
+            </div>}<p className="summary">{output.modelLabel} · {output.actualCost} {output.currency} · {output.reviewStatus}</p>
+              {output.safetyFindings?.length > 0 && <div className="state-card warning-state"><strong>Safety findings</strong><ul>{output.safetyFindings.map((finding) => <li key={finding}>{finding}</li>)}</ul></div>}
+              {output.reviewBlockers?.length > 0 && <div className="state-card warning-state"><strong>Approval blocked</strong><ul>{output.reviewBlockers.map((blocker) => <li key={blocker}>{blocker}</li>)}</ul></div>}
+              {output.reviewStatus === "PENDING_REVIEW" && <div className="form-grid">
+                <button className="primary-button" disabled={busy || productArchived || output.reviewBlockers?.length > 0} onClick={() => void review(output.generationOutputUuid, "approve")}>Approve output</button>
+                <label>Rejection reason<input maxLength={2000} value={rejectionReasons[output.generationOutputUuid] || ""} onChange={(event) => setRejectionReasons((current) => ({ ...current, [output.generationOutputUuid]: event.target.value }))} /></label>
+                <button className="secondary-button" disabled={busy || !(rejectionReasons[output.generationOutputUuid]?.trim())} onClick={() => void review(output.generationOutputUuid, "reject")}>Reject output</button>
+              </div>}
+              {output.reviewDecisions?.map((decision) => <div className="state-card" key={decision.reviewDecisionUuid}><strong>{decision.decision}</strong><p>Reviewed by {decision.reviewerId} · {new Date(decision.decidedAt).toLocaleString()}</p>{decision.reason && <p>{decision.reason}</p>}</div>)}
+            </div>}
           </div>; })}
         </article>)}</div>}
   </section>;

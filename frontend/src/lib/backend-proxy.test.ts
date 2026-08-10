@@ -507,4 +507,26 @@ describe("product backend proxy", () => {
     expect((await forwardAiGenerationRequest(request, "http://evil.test", { method: "POST" })).status).toBe(400);
     expect((await forwardAiGenerationRequest(request, `/api/products/${product}/ai-generation-batches/extra`, { method: "POST" })).status).toBe(400);
   });
+
+  it("allowlists review actions without forwarding actor, credentials, or arbitrary targets", async () => {
+    process.env.BACKEND_INTERNAL_URL = "http://backend:8080";
+    const output = "a54e5b68-8cd7-43ef-8ee0-95bbba6c3190";
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ reviewStatus: "APPROVED" }), {
+      status: 200, headers: { ETag: 'W/"1"', "Content-Type": "application/json" },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const request = new NextRequest(`http://localhost/api/ai-generation-outputs/${output}/approve?target=http://evil`, {
+      method: "POST", body: "{}",
+      headers: { "Content-Type": "application/json", "If-Match": 'W/"0"', Cookie: "secret", Authorization: "Bearer secret", "X-Actor-ID": "browser" },
+    });
+    const response = await forwardAiGenerationRequest(request, `/api/ai-generation-outputs/${output}/approve`, { method: "POST", contentType: "application/json" });
+    expect((fetchMock.mock.calls[0][0] as URL).toString()).toBe(`http://backend:8080/api/ai-generation-outputs/${output}/approve`);
+    const headers = new Headers((fetchMock.mock.calls[0][1] as RequestInit).headers);
+    expect(headers.get("If-Match")).toBe('W/"0"');
+    expect(headers.has("Cookie")).toBe(false);
+    expect(headers.has("Authorization")).toBe(false);
+    expect(headers.has("X-Actor-ID")).toBe(false);
+    expect(response.status).toBe(200);
+    expect((await forwardAiGenerationRequest(request, `/api/ai-generation-outputs/${output}/publish`, { method: "POST" })).status).toBe(400);
+  });
 });

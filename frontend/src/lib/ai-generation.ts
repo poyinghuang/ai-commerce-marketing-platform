@@ -1,6 +1,9 @@
 export type AiJob = {
   generationJobUuid: string;
   generationType: "TEXT" | "IMAGE";
+  promptTemplateVersionUuid: string;
+  providerKey: string;
+  modelKey: string;
   status: string;
   modelProfile: string;
   estimatedCost: number;
@@ -57,6 +60,18 @@ export type AiOutput = {
   preservationAlgorithm: string | null;
   preservationStatus: "PASSED" | "BLOCKED" | null;
   preservationDetails: { changedPixelCount?: number; protectedPixelCount?: number } | null;
+  reviewBlockers: string[];
+  reviewDecisions: AiReviewDecision[];
+};
+
+export type AiReviewDecision = {
+  reviewDecisionUuid: string;
+  decision: "APPROVED" | "REJECTED";
+  reason: string | null;
+  reviewerType: "LOCAL_ADMIN" | "TRUSTED_ACTOR";
+  reviewerId: string;
+  reviewedOutputVersion: number;
+  decidedAt: string;
 };
 
 export type AiBudgetStatus = {

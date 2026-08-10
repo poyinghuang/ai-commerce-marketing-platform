@@ -167,6 +167,21 @@ public class GenerationOutput extends MutableEntity {
         return normalized;
     }
 
+    public void approve() {
+        decide(GenerationOutputReviewStatus.APPROVED);
+    }
+
+    public void reject() {
+        decide(GenerationOutputReviewStatus.REJECTED);
+    }
+
+    private void decide(GenerationOutputReviewStatus target) {
+        if (reviewStatus != GenerationOutputReviewStatus.PENDING_REVIEW) {
+            throw new IllegalStateException("Generation output is already decided");
+        }
+        reviewStatus = Objects.requireNonNull(target, "target is required");
+    }
+
     public UUID getGenerationOutputUuid() { return generationOutputUuid; }
     public UUID getGenerationJobUuid() { return generationJobUuid; }
     public UUID getGenerationBatchUuid() { return generationBatchUuid; }
