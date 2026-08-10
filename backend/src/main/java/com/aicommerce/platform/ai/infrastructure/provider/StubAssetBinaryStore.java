@@ -21,11 +21,13 @@ import org.springframework.stereotype.Component;
 public class StubAssetBinaryStore implements AssetBinaryStore {
 
     public static final String SOURCE_HANDLE = "stub-alpha-source-v1";
+    public static final String CHANGED_PIXEL_SOURCE_HANDLE = "stub-alpha-source-changed-pixel-v1";
     private final Map<UUID, StoredBinary> generated = new ConcurrentHashMap<>();
 
     @Override
     public BinaryObject read(SourceReference reference) {
-        if (!SOURCE_HANDLE.equals(reference.providerFileId())) {
+        if (!SOURCE_HANDLE.equals(reference.providerFileId())
+                && !CHANGED_PIXEL_SOURCE_HANDLE.equals(reference.providerFileId())) {
             throw new AiGenerationException("AI_SOURCE_ASSET_INVALID", "Stub source handle is invalid");
         }
         byte[] bytes = fixture();
@@ -64,6 +66,18 @@ public class StubAssetBinaryStore implements AssetBinaryStore {
             return output.toByteArray();
         } catch (Exception exception) {
             throw new IllegalStateException("Could not create deterministic image fixture", exception);
+        }
+    }
+
+    public static byte[] changedPixelFixture() {
+        try {
+            BufferedImage image = ImageIO.read(new java.io.ByteArrayInputStream(fixture()));
+            image.setRGB(1, 1, new Color(30, 144, 255, 255).getRGB());
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            ImageIO.write(image, "png", output);
+            return output.toByteArray();
+        } catch (Exception exception) {
+            throw new IllegalStateException("Could not create changed-pixel image fixture", exception);
         }
     }
 

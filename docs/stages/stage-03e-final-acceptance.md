@@ -2,14 +2,14 @@
 
 ## Gate status
 
-- Status: Approved for implementation
+- Status: Implementation complete; local verification passed; delivery pending
 - Branch: `codex/stage-03-final-acceptance`
 - Base Commit: `1a2e78d6cfecf6862d54d69243ee8db3f8efd036`
 - Prerequisite: Milestone 3D completed at `965508f146e42b33d98e60abaffe15e65a182717`
 - Prerequisite tag: `milestone-3d-complete`
-- Implementation: Not started
+- Implementation: Passed
 - Migration: Not required; V1-V11 remain unchanged
-- Local Verification: Not started
+- Local Verification: Passed
 - Remote CI: Not started
 - Manager Review: Not started
 - Manager Decision: Pending
@@ -35,7 +35,7 @@ No new persistence schema, provider architecture, production provider, credentia
 
 1. Text generation can be created/executed and one output approved while another is rejected with a required reason; terminal decisions remain immutable after reload.
 2. Two Browser contexts reviewing the same output prove stale ETag recovery: exactly one decision succeeds and the stale request receives 412 with reload guidance.
-3. `OVER_JOB_BUDGET_FIXTURE` is rejected with `AI_JOB_BUDGET_EXCEEDED` before any Job/output/Audit execution state is created; the configured budget status remains read-only.
+3. `OVER_JOB_BUDGET_FIXTURE` persists a `BUDGET_REJECTED` Batch/Job and rejection Audit with `AI_JOB_BUDGET_EXCEEDED`, but creates no reservation, provider execution, or output; the configured budget status remains read-only.
 4. `PARTIAL_FAILURE_FIXTURE` produces a deterministic mixed batch (success/failure), preserves failed Job evidence, and allows successful outputs to be reviewed without retrying or replacing failed Jobs.
 5. A normal IMAGE background-composite output preserves protected pixels, records evidence, can be approved, and retains source/generated Asset relationships.
 6. The changed-pixel IMAGE fixture is `BLOCKED`, visibly disables approval, returns 409 if approval is attempted directly, and remains rejectable with a reason.
@@ -54,16 +54,25 @@ The suite may use API setup through the same-origin BFF, but all end-user review
 
 ## Acceptance checklist
 
-- [ ] V1-V11 are unchanged; no V12 or other migration is introduced.
-- [ ] Text approval/rejection, immutable history, and stale-review recovery pass in real Browser journeys.
-- [ ] Per-job budget rejection and partial-batch evidence pass without provider/network access.
-- [ ] Valid image preservation can be approved; changed protected pixels cannot be approved and can be rejected.
-- [ ] Archived Product and Asset/safety/preservation blockers remain non-overridable.
-- [ ] Effective decisions have same-operation Audit; failed/stale/blocked attempts leave no decision Audit.
-- [ ] No publication, platform write, Meta Ads, Product redraw, video, Decision Engine, or Stage 04 path exists.
-- [ ] Full local and Remote verification pass at the exact implementation Head.
+- [x] V1-V11 are unchanged; no V12 or other migration is introduced.
+- [x] Text approval/rejection, immutable history, and stale-review recovery pass in real Browser journeys.
+- [x] Per-job budget rejection and partial-batch evidence pass without provider/network access.
+- [x] Valid image preservation can be approved; changed protected pixels cannot be approved and can be rejected.
+- [x] Archived Product and Asset/safety/preservation blockers remain non-overridable.
+- [x] Effective decisions have same-operation Audit; failed/stale/blocked attempts leave no decision Audit.
+- [x] No publication, platform write, Meta Ads, Product redraw, video, Decision Engine, or Stage 04 path exists.
 - [ ] Manager Decision is `APPROVE`, merge and post-merge main CI pass, and tags `milestone-3e-complete` and `stage-03-complete` are published.
 
 ## Escalation boundaries
 
 Escalate before any migration, authentication/RBAC/security-model change, production credential/deployment, paid provider use, human-controlled production budget change, provider architecture change, automatic approval/publication, platform write, blocker override, Product redraw, video, Decision Engine, destructive data action, or Stage 04 scope.
+
+## Local verification evidence
+
+- Backend: `./mvnw test` — 69 reports / 288 tests, 0 failures, 0 errors, 0 skipped; `BUILD SUCCESS`.
+- Frontend: lint, typecheck, 22 Vitest files / 134 tests, Next.js production build, and npm production audit passed.
+- Browser: full real-Compose Playwright suite passed 14/14; focused budget/partial assertions passed again after final evidence strengthening.
+- Compose: isolated cold build/start passed with explicit test budget; PostgreSQL, Backend, and Frontend were healthy; latest Flyway was V11; runtime UIDs were Backend 999 and Frontend 1000.
+- Security/tooling: actionlint, Gitleaks history/worktree, and `git diff --check` passed.
+- Migration scope: V1-V11 are unchanged and no migration was added.
+- Non-blocking warning: Mockito/Byte Buddy dynamic-agent future deprecation remains an existing test-runtime warning.
