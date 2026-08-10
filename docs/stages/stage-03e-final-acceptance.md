@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status: Implementation complete; local verification passed; delivery pending
+- Status: Manager approved; approval-record CI and delivery pending
 - Branch: `codex/stage-03-final-acceptance`
 - Base Commit: `1a2e78d6cfecf6862d54d69243ee8db3f8efd036`
 - Prerequisite: Milestone 3D completed at `965508f146e42b33d98e60abaffe15e65a182717`
@@ -10,11 +10,11 @@
 - Implementation: Passed
 - Migration: Not required; V1-V11 remain unchanged
 - Local Verification: Passed
-- Remote CI: Not started
-- Manager Review: Not started
-- Manager Decision: Pending
+- Remote CI: Passed — Push Run `31353862464`; Pull Request Run `31353873559`
+- Manager Review: Passed for implementation Head `3e39846008e9300e4e36102f09af40a927d0d815`
+- Manager Decision: `APPROVE`
 - Human Review Required: No
-- Merge: Not started
+- Merge: Pending
 - Stage 04: Not started
 
 ## Approved scope
