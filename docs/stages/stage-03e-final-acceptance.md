@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status: Manager approved; approval-record CI and delivery pending
+- Status: Completed
 - Branch: `codex/stage-03-final-acceptance`
 - Base Commit: `1a2e78d6cfecf6862d54d69243ee8db3f8efd036`
 - Prerequisite: Milestone 3D completed at `965508f146e42b33d98e60abaffe15e65a182717`
@@ -14,7 +14,10 @@
 - Manager Review: Passed for implementation Head `3e39846008e9300e4e36102f09af40a927d0d815`
 - Manager Decision: `APPROVE`
 - Human Review Required: No
-- Merge: Pending
+- Approval-record CI: Passed — Push Run `31354242533`; Pull Request Run `31354244661`
+- Merge: Passed — PR #54, Squash Commit `4eaddaff95c0d3ce9739c2ca2628908a41b69c31`
+- Post-merge CI: Passed — main Run `31354573824`
+- Completion Tags: `milestone-3e-complete`; `stage-03-complete`
 - Stage 04: Not started
 
 ## Approved scope
@@ -61,7 +64,7 @@ The suite may use API setup through the same-origin BFF, but all end-user review
 - [x] Archived Product and Asset/safety/preservation blockers remain non-overridable.
 - [x] Effective decisions have same-operation Audit; failed/stale/blocked attempts leave no decision Audit.
 - [x] No publication, platform write, Meta Ads, Product redraw, video, Decision Engine, or Stage 04 path exists.
-- [ ] Manager Decision is `APPROVE`, merge and post-merge main CI pass, and tags `milestone-3e-complete` and `stage-03-complete` are published.
+- [x] Manager Decision is `APPROVE`, merge and post-merge main CI pass, and tags `milestone-3e-complete` and `stage-03-complete` are published.
 
 ## Escalation boundaries
 
