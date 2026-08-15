@@ -1,6 +1,6 @@
 # AI Commerce Marketing Platform
 
-以 AI 為核心的電商素材、廣告投放、成效分析與決策平台。本 Repository 已完成 Stage 01、完整 Stage 02 Product Knowledge Center，以及 Stage 03 的生成基礎與文字生成；Stage 03 圖片生成正在交付中。廣告平台、Dashboard 與 Decision Engine 尚未開始。
+以 AI 為核心的電商素材、廣告投放、成效分析與決策平台。本 Repository 已完成 Stage 01、完整 Stage 02 Product Knowledge Center，以及完整 Stage 03 AI Creative Factory；Stage 04 Meta Ads Adapter 目前進入規格階段，功能實作尚未開始。Dashboard 與 Decision Engine 尚未開始。
 
 ## Stage 01 技術基線
 
