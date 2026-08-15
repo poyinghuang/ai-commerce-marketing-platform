@@ -5,3 +5,17 @@ target
 *.log
 .idea
 .vscode
+.secrets
+**/.secrets
+application_default_credentials.json
+**/application_default_credentials.json
+*service-account*.json
+**/*service-account*.json
+client_secret*.json
+**/client_secret*.json
+*credentials*.json
+**/*credentials*.json
+*.pem
+*.key
+*.p12
+*.pfx

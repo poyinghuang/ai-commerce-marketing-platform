@@ -9,6 +9,24 @@
 - PostgreSQL 17.6
 - Docker Compose
 
+## Development Setup
+
+新電腦先安裝 Git、Node.js `24.18.0`、npm `11.16.0`、Temurin JDK `21.0.9+10` 與 Docker，再從 Repository 根目錄執行：
+
+```powershell
+.\scripts\bootstrap.ps1
+.\scripts\verify-env.ps1
+```
+
+Linux／WSL 使用：
+
+```shell
+sh ./scripts/bootstrap.sh
+sh ./scripts/verify-env.sh
+```
+
+Bootstrap 可重複執行，不會建立 Secret、修改系統設定或刪除資料。完整版本需求、新機步驟與故障排除見 [Development Setup](docs/development-setup.md)；憑證移轉邊界見 [Development Secrets Checklist](docs/development-secrets-checklist.md) 與 [Development Environment Migration](docs/development-environment-migration.md)。
+
 ## 使用 Docker Compose 啟動
 
 需求：Docker 與 Docker Compose。
