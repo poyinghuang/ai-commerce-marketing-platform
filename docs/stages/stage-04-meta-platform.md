@@ -2,19 +2,19 @@
 
 ## Gate status
 
-- Status: Specification human decisions approved; independent Manager Review pending; implementation not started
+- Status: Specification Manager Review approved for reviewed Head; approval-record exact-head CI pending; implementation not started
 - Branch: `codex/stage-04-meta-ads-specification`
 - Base Commit: `e01f32bcea099c234444a28a880ed5a1c0c9f04c`
 - Stage 03 prerequisite: Passed — tag `stage-03-complete` at `4eaddaff95c0d3ce9739c2ca2628908a41b69c31`
-- Specification: Human-approved on 2026-08-15; independent Manager Review pending
+- Specification: Human-approved on 2026-08-15; independent Manager Review passed on 2026-08-16
 - Implementation: Not started
 - Migration: Not started; V1–V11 must remain byte-for-byte unchanged
 - Local Verification: Passed — worktree Gitleaks and `git diff --check`
-- Remote CI: Not started
-- Manager Review: Not started
-- Manager Decision: Pending
+- Remote CI: Passed for reviewed Head — Push Run `31899070398`; PR Run `31899071983`
+- Manager Review: Passed for reviewed Head `3faa114301dc097149d2e33849e8450595c48a66`; approval-record exact-head confirmation pending
+- Manager Decision: APPROVE
 - Human Review Required: Defaults approved on 2026-08-15; new approval remains mandatory before real credentials, spend, production access, or live delivery
-- Merge: Not started
+- Merge: Pending approval-record exact-head CI and final exact-head confirmation
 - Stage 05: Locked
 
 ## Objective
