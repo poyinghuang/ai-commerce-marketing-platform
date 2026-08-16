@@ -77,12 +77,15 @@ class PlatformOperationIntegrationTest {
         var context = contexts.forCurrentActor("platform-success-" + operationUuid);
         var created = service.create(command(operationUuid, UUID.randomUUID(), "{\"name\":\"campaign\"}"), context);
         assertThat(created.getStatus()).isEqualTo(PlatformOperationStatus.CREATED);
+        assertThat(auditCount(operationUuid)).isEqualTo(1);
+        assertStableAuditIdentity(operationUuid, context);
 
         var completed = service.execute(operationUuid, created.getVersion(), context);
         assertThat(completed.getStatus()).isEqualTo(PlatformOperationStatus.SUCCEEDED);
         assertThat(completed.getExternalId()).isEqualTo("fake-" + operationUuid);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM audit_logs WHERE entity_type='PLATFORM_OPERATION' AND entity_uuid=?",
                 Integer.class, operationUuid)).isEqualTo(3);
+        assertStableAuditIdentity(operationUuid, context);
     }
 
     @Test
@@ -131,6 +134,7 @@ class PlatformOperationIntegrationTest {
         fake.setScenario(operationUuid, DeterministicFakePlatformAdapter.Scenario.SUCCESS);
         assertThat(service.execute(operationUuid, retryable.getVersion(), context).getStatus())
                 .isEqualTo(PlatformOperationStatus.SUCCEEDED);
+        assertStableAuditIdentity(operationUuid, context);
     }
 
     @Test
@@ -154,6 +158,7 @@ class PlatformOperationIntegrationTest {
                 .isInstanceOf(PlatformOperationConflictException.class);
         fake.setScenario(operationUuid, DeterministicFakePlatformAdapter.Scenario.TIMEOUT_RECONCILE_SUCCESS);
         assertThat(service.reconcile(operationUuid, context).getStatus()).isEqualTo(PlatformOperationStatus.SUCCEEDED);
+        assertStableAuditIdentity(operationUuid, context);
     }
 
     @Test
@@ -167,6 +172,7 @@ class PlatformOperationIntegrationTest {
         assertThatThrownBy(() -> service.execute(operationUuid, unknown.getVersion(), context))
                 .isInstanceOf(PlatformOperationConflictException.class);
         assertThat(service.reconcile(operationUuid, context).getStatus()).isEqualTo(PlatformOperationStatus.SUCCEEDED);
+        assertStableAuditIdentity(operationUuid, context);
     }
 
     @Test
@@ -227,6 +233,7 @@ class PlatformOperationIntegrationTest {
         assertThat(failed.getNormalizedErrorCode()).isEqualTo("FAKE_RECONCILED_FAILURE");
         assertThat(jdbc.queryForObject("SELECT status FROM platform_operations WHERE operation_uuid=?",
                 String.class, failureUuid)).isEqualTo("FAILED_TERMINAL");
+        assertStableAuditIdentity(failureUuid, failureContext);
     }
 
     @Test
@@ -288,6 +295,24 @@ class PlatformOperationIntegrationTest {
         return jdbc.queryForObject(
                 "SELECT COUNT(*) FROM audit_logs WHERE entity_type='PLATFORM_OPERATION' AND entity_uuid=?",
                 Integer.class, operationUuid);
+    }
+
+    private void assertStableAuditIdentity(UUID operationUuid,
+            com.aicommerce.platform.audit.domain.AuditOperationContext trustedContext) {
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*) FROM audit_logs
+                WHERE entity_type='PLATFORM_OPERATION' AND entity_uuid=? AND operation_uuid<>?
+                """, Integer.class, operationUuid, operationUuid)).isZero();
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*) FROM audit_logs
+                WHERE entity_type='PLATFORM_OPERATION' AND entity_uuid=?
+                  AND (actor_type<>? OR actor_id<>? OR request_id<>? OR source<>?)
+                """, Integer.class, operationUuid, trustedContext.actor().type().name(),
+                trustedContext.actor().id(), trustedContext.requestId(), trustedContext.source().name())).isZero();
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(DISTINCT operation_uuid) FROM audit_logs
+                WHERE entity_type='PLATFORM_OPERATION' AND entity_uuid=?
+                """, Integer.class, operationUuid)).isEqualTo(1);
     }
 
     private CreatePlatformOperationCommand command(UUID operationUuid, UUID requestUuid, String json) {

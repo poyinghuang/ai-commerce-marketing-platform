@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import com.aicommerce.platform.audit.application.AuditOperationContextFactory;
 import com.aicommerce.platform.audit.application.AuditWriter;
 import com.aicommerce.platform.audit.domain.AuditAction;
 import com.aicommerce.platform.audit.domain.AuditChange;
@@ -29,13 +30,15 @@ public class PlatformOperationTransactions {
     private final PlatformOperationJpaRepository operations;
     private final JdbcTemplate jdbc;
     private final AuditWriter audit;
+    private final AuditOperationContextFactory auditContexts;
     private final Clock clock;
 
     public PlatformOperationTransactions(PlatformOperationJpaRepository operations, JdbcTemplate jdbc,
-            AuditWriter audit, Clock clock) {
+            AuditWriter audit, AuditOperationContextFactory auditContexts, Clock clock) {
         this.operations = operations;
         this.jdbc = jdbc;
         this.audit = audit;
+        this.auditContexts = auditContexts;
         this.clock = clock;
     }
 
@@ -210,7 +213,9 @@ public class PlatformOperationTransactions {
 
     private void append(AuditOperationContext context, AuditAction action, PlatformOperation operation,
             List<AuditChange> changes) {
-        audit.append(new AuditEvent(UUID.randomUUID(), context, action, "PLATFORM_OPERATION",
+        AuditOperationContext operationContext = auditContexts.forStableOperation(
+                operation.getOperationUuid(), context);
+        audit.append(new AuditEvent(UUID.randomUUID(), operationContext, action, "PLATFORM_OPERATION",
                 operation.getOperationUuid(), null, Instant.now(clock), changes));
     }
 
