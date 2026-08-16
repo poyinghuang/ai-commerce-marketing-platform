@@ -1,0 +1,1 @@
+package com.aicommerce.platform.delivery.application.port; import java.util.UUID; public interface PlatformCredentialProvider { CredentialHandle resolve(UUID accountUuid); record CredentialHandle(String opaqueReference) { public CredentialHandle { if(opaqueReference==null||opaqueReference.isBlank()) throw new IllegalArgumentException("opaqueReference is required"); } } }

@@ -35,7 +35,7 @@ class Milestone3ASchemaIntegrationTest {
         assertThat(List.of(flyway.info().applied()).stream()
                 .filter(info -> info.getVersion() != null)
                 .map(info -> info.getVersion().getVersion()))
-                .containsExactly("1", "2", "3", "4", "5", "6", "6.1", "7", "8", "9", "10", "11");
+                .containsExactly("1", "2", "3", "4", "5", "6", "6.1", "7", "8", "9", "10", "11", "12");
         assertThat(aiTables()).contains(
                 "ai_budget_ledger",
                 "ai_generation_batches",

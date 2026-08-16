@@ -1,0 +1,1 @@
+package com.aicommerce.platform.delivery.application.port; import java.time.Instant; import java.util.UUID; import com.aicommerce.platform.delivery.domain.PlatformEntityType; public record PlatformMetricsQuery(UUID accountUuid,PlatformEntityType entityType,UUID entityUuid,Instant windowStart,Instant windowEnd) {}
