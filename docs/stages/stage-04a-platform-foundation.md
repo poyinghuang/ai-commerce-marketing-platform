@@ -2,17 +2,17 @@
 
 ## Gate status
 
-- Status: Technical specification drafted; implementation not started
+- Status: Technical specification revised after `REQUEST_CHANGES`; implementation not started
 - Branch: `codex/stage-04a-platform-foundation-specification`
 - Base Commit: `a90f6e0bb20d23da10edb66712d85261dafe14e8`
 - Prerequisite: Stage 04 specification merged by PR #56; post-merge main CI Run `31921389709` passed
-- Specification: Pending Independent Manager Review
+- Specification: `REQUEST_CHANGES` findings resolved by specification revision; pending new exact-head Independent Manager re-review
 - Implementation: Not started
 - Migration: Not started; the approved implementation may add only `V12__create_platform_operation_foundation.sql`
-- Local Verification: Passed — documentation scope/whitespace review, `git diff --check`, and Gitleaks history/worktree scans
+- Local Verification: Passed — specification-only scope, Markdown table sanity, `git diff --check`, and Gitleaks 8.28.0 history/worktree scans
 - Remote CI: Pending
-- Manager Review: Pending
-- Manager Decision: Pending
+- Manager Review: Re-review required on the revised exact Head
+- Manager Decision: `REQUEST_CHANGES` on reviewed Head `d129df447f670a9f5b1faab230a06a64c8240438`; revised Head pending decision
 - Human Review Required: No for the deterministic, local/test-only foundation described here; mandatory before any separately gated security or external-access scope
 - Merge: Pending
 - Milestone 4B and later: Locked
@@ -145,8 +145,8 @@ Constraints and indexes:
 | `platform_ad_set_uuid` | `UUID` | NOT NULL | Primary key; immutable |
 | `platform_campaign_uuid` | `UUID` | NOT NULL | Parent Campaign; immutable |
 | `platform_account_uuid` | `UUID` | NOT NULL | Same account as parent; immutable |
-| `budget_type` | `VARCHAR(16)` | NOT NULL | `DAILY` or `LIFETIME`; immutable after creation |
-| `budget_amount` | `NUMERIC(19,6)` | NOT NULL | Positive; mutable only through a later approved budget command |
+| `budget_type` | `VARCHAR(16)` | NOT NULL | `DAILY` or `LIFETIME`; immutable policy identity after creation |
+| `budget_amount` | `NUMERIC(19,6)` | NOT NULL | Positive mutable value; may change only through the exact bounded `UPDATE_BUDGET` operation below |
 | `currency` | `CHAR(3)` | NOT NULL | Account currency; immutable |
 | `schedule_start`, `schedule_end` | `TIMESTAMPTZ` | NULL | Immutable; valid increasing range |
 | `account_timezone` | `VARCHAR(64)` | NOT NULL | Immutable; `Asia/Taipei` in 4A |
@@ -156,6 +156,7 @@ Constraints and indexes:
 | `desired_state` | `VARCHAR(16)` | NOT NULL DEFAULT `PAUSED` | Desired lifecycle |
 | `observed_state` | `VARCHAR(24)` | NULL | Normalized observation |
 | `external_id` | `VARCHAR(128)` | NULL | Write-once external evidence |
+| `last_budget_operation_uuid` | `UUID` | NULL | Latest successful `UPDATE_BUDGET` provenance; NULL at creation and changes only with an effective budget revision |
 | `created_at`, `updated_at` | `TIMESTAMPTZ` | NOT NULL, current timestamp | Standard timestamps |
 | `version` | `BIGINT` | NOT NULL DEFAULT `0` | Optimistic version |
 
@@ -165,9 +166,14 @@ Constraints and indexes:
 - Unique `(platform_ad_set_uuid, platform_account_uuid)`.
 - Partial unique `(platform_account_uuid, external_id)` where non-null.
 - Checks for budget type/positive amount, currency, schedule, exact profile keys, nonblank goal/timezone/external ID, states, version.
+- After `platform_operations` exists, V12 adds a deferred FK from `last_budget_operation_uuid` to `platform_operations(operation_uuid) ON DELETE RESTRICT`; no other operation may be referenced.
 - Index `(platform_campaign_uuid, platform_account_uuid)`.
 
 No raw targeting, placement JSON, audience identifier, or Browser-supplied provider field is stored.
+
+`budget_type`, currency, schedule, timezone, optimization goal, targeting profile, placement profile, parent, and account form immutable policy identity/configuration. `budget_amount` is not policy identity: it is the one mutable budget value. An effective change must atomically set a different `last_budget_operation_uuid`, increment the Ad Set version exactly once, and write same-transaction Audit. V12 defines `verify_platform_budget_operation_coherence()` and two `DEFERRABLE INITIALLY DEFERRED` constraint triggers: one after UPDATE OF `budget_amount`, `last_budget_operation_uuid`, or `version` on `platform_ad_sets`, and the reciprocal trigger after UPDATE OF `status` on an `UPDATE_BUDGET` operation. At commit they enforce both directions: a changed amount references the same account/Ad Set operation in `SUCCEEDED`, and every newly succeeded budget operation is the Ad Set's new provenance pointer with its new amount applied. The canonical payload must contain the OLD amount, NEW amount, immutable budget type/currency, and exactly `OLD.version`; `NEW.version` must equal `OLD.version + 1`. Initial creation must have `last_budget_operation_uuid IS NULL`; changing the pointer without changing the amount, reusing an earlier operation, marking the operation successful without the entity change, changing the amount without a newly successful operation, or changing any immutable policy field fails with SQLSTATE `23514`.
+
+The internal 4A fixture is fail-closed and TWD-only: `DAILY` permits `0 < newBudgetAmount <= 100.000000`; `LIFETIME` permits `0 < newBudgetAmount <= 300.000000`; one operation batch may not exceed TWD `300.000000`; and accepted operations attributed to one account/business date may not exceed TWD `1000.000000`. These are server-owned validation ceilings inherited from the approved Stage 04 specification, not Browser input or authority to spend. A different currency, missing policy, stale expected version, ceiling violation, or inactive account fails before adapter dispatch with a stable local error and produces no budget mutation. A real account, external write, delivery, or change in budget authority remains a mandatory later human gate.
 
 ### `platform_ads`
 
@@ -199,7 +205,15 @@ Constraints and indexes:
 - SHA-256 and nonblank mapping/external ID checks; state and version checks.
 - Indexes on parent/account and each evidence FK pair.
 
-Application validation in the same transaction must also prove: Product and Asset are active; output `review_status = APPROVED`; decision is `APPROVED`; generated Asset matches the output; preservation is `PASSED`; and current Asset checksum equals `approved_checksum_sha256`. The immutable FK/checksum snapshot prevents later evidence substitution. Direct-SQL integration tests must cover each rejection.
+V12 must enforce the full evidence chain in PostgreSQL, not only in application validation. It creates a narrowly named `verify_platform_ad_evidence_coherence()` function and a `DEFERRABLE INITIALLY DEFERRED` constraint trigger after INSERT or UPDATE OF `product_uuid`, `asset_uuid`, `generation_output_uuid`, `review_decision_uuid`, or `approved_checksum_sha256` on `platform_ads`. At deferred execution the function locks the referenced Product, Asset, generation output, and decision rows with `FOR SHARE` and rejects unless all of the following are true at the transaction boundary:
+
+1. The Product exists and `lifecycle_status = 'ACTIVE'`.
+2. The Asset exists, belongs to that Product, has `asset_type = 'IMAGE'`, has `lifecycle_status = 'ACTIVE'`, and has a non-null lowercase SHA-256 checksum.
+3. The generation output exists, belongs to that Product, has `generation_type = 'IMAGE'`, references exactly that Asset as `generated_asset_uuid`, has `review_status = 'APPROVED'`, has `preservation_status = 'PASSED'`, and has `output_checksum_sha256` equal to both the current Asset checksum and `platform_ads.approved_checksum_sha256`.
+4. The review decision exists for exactly that generation output and has `decision = 'APPROVED'`. V11's existing deferred review-coherence trigger remains authoritative for decision/output version coherence.
+5. The immutable Ad evidence columns and checksum snapshot cannot be updated after insert.
+
+The trigger raises SQLSTATE `23514` for semantic evidence incoherence; missing/mismatched composite references continue to fail with SQLSTATE `23503`. Application validation repeats the same checks in Transaction A for early errors, but it is defense in depth and never replaces database enforcement. Later archival of already-referenced Product/Asset evidence may remain allowed only when it occurs in a separate committed transaction; it does not rewrite the immutable Ad evidence snapshot and it blocks any new Ad creation. Direct-SQL tests must independently reject: a mismatched Asset/output pair, a TEXT output, PENDING_REVIEW and REJECTED output/decision combinations, BLOCKED preservation, inactive Product, inactive Asset, null/different Asset checksum, different output checksum, different Ad snapshot checksum, and any post-insert evidence substitution.
 
 ### `platform_operations`
 
@@ -242,13 +256,74 @@ Constraints and indexes:
 - Unique `(platform_account_uuid, idempotency_key)`.
 - Exact-one-entity coherence check matching `entity_type`.
 - Operation/entity coherence: `CREATE_CAMPAIGN` requires `CAMPAIGN`, `CREATE_AD_SET` requires `AD_SET`, `CREATE_AD` requires `AD`, `UPDATE_BUDGET` requires `AD_SET`, and `PAUSE`/`RESUME` permit any one typed entity.
-- SHA-256, JSON type/size, actor/request ID, attempt bounds, evidence type/size, error/trace/external-ID nonblank-when-present, state/timestamp coherence, and nonnegative version checks.
+- SHA-256, JSON type/size, actor/request ID, attempt bounds, evidence type/size/exact-key schema, stable error allowlist, error/outcome/status coherence, trace/external-ID nonblank-when-present, state/timestamp coherence, and nonnegative version checks.
 - Claim queue index `(platform_account_uuid, status, next_attempt_at, created_at)`.
 - Partial entity/account indexes for each entity FK.
 
-`request_payload` is a versioned canonical application DTO, never a provider payload. Allowed keys are selected by `operation_type`, strings are Unicode-normalized, object keys are lexically sorted, numbers use plain decimal without insignificant zeroes, and absent optional values are omitted. Arrays preserve declared semantic order. Unknown keys, URLs, credentials, raw account IDs, provider fields, and secret-marker keys are rejected before persistence.
+`request_payload` is a versioned canonical application DTO, never a provider payload. Every payload is a JSON object with exactly the required keys below and only the stated optional keys. UUIDs are lowercase canonical strings; enums are uppercase; Instants are UTC RFC 3339 with zero to six fractional digits and no insignificant trailing zero; strings are Unicode NFC normalized; decimals are JSON numbers in plain notation with scale at most six and no insignificant trailing zero; optional absence is represented by an omitted key, never JSON null. Object keys are lexically sorted by Unicode code point before UTF-8 serialization. Unknown keys, arrays, URLs, credentials, raw account IDs, provider fields, non-finite numbers, and secret-marker keys are rejected. The exact UTF-8 bytes must not exceed 16 KiB.
 
-`idempotency_key = SHA-256("platform-operation-v1\n" + platformAccountUuid + "\n" + actorType + "\n" + actorId + "\n" + clientRequestUuid)`. A repeated request identity returns the existing operation only when `request_sha256` and typed entity match; otherwise it fails with `PLATFORM_IDEMPOTENCY_CONFLICT` and performs no mutation or adapter call.
+| `operation_type` | Required payload keys in addition to `schemaVersion`, `operationType`, `entityType`, `entityUuid` | Optional keys | Exact value rules |
+| --- | --- | --- | --- |
+| `CREATE_CAMPAIGN` | `platformCampaignUuid`, `campaignUuid`, `objective`, `desiredState`, `accountTimezone` | `scheduleStart`, `scheduleEnd` | `entityType=CAMPAIGN`; entity UUID equals `platformCampaignUuid`; objective `OUTCOME_SALES`; desired state `PAUSED`; optional schedule pair follows Campaign constraints |
+| `CREATE_AD_SET` | `platformAdSetUuid`, `platformCampaignUuid`, `budgetType`, `budgetAmount`, `currency`, `accountTimezone`, `optimizationGoal`, `targetingProfileKey`, `placementProfileKey`, `desiredState` | `scheduleStart`, `scheduleEnd` | `entityType=AD_SET`; entity UUID equals `platformAdSetUuid`; profile keys `TW_BROAD_FEEDS_V1`; desired state `PAUSED`; budget and schedule follow stored policy |
+| `CREATE_AD` | `platformAdUuid`, `platformAdSetUuid`, `productUuid`, `assetUuid`, `generationOutputUuid`, `reviewDecisionUuid`, `approvedChecksumSha256`, `creativeMappingKey`, `desiredState` | none | `entityType=AD`; entity UUID equals `platformAdUuid`; desired state `PAUSED`; evidence values equal the database-enforced Ad evidence chain |
+| `PAUSE` | `expectedEntityVersion`, `targetDesiredState` | none | Any exact typed entity; target `PAUSED`; stored pre-change version equals expected version; only `ACTIVE -> PAUSED` |
+| `RESUME` | `expectedEntityVersion`, `targetDesiredState` | none | Any exact typed entity; target `ACTIVE`; stored pre-change version equals expected version; only `PAUSED -> ACTIVE`; schema capability is inert until later human/security policy approval |
+| `UPDATE_BUDGET` | `platformAdSetUuid`, `expectedEntityVersion`, `budgetType`, `currency`, `previousBudgetAmount`, `newBudgetAmount` | none | `entityType=AD_SET`; entity UUID equals `platformAdSetUuid`; type/currency/current amount/version must equal the stored pre-change row; new amount differs and passes the server-owned ceilings |
+
+For every row, `schemaVersion` is JSON number `1`, `operationType` equals the column value, and the generic `entityUuid` equals the one non-null typed entity FK. `request_sha256` is lowercase `SHA-256(exact canonical request_payload UTF-8 bytes)`.
+
+The durable request identity and adapter idempotency key are exact:
+
+```text
+identity = "platform-operation-v1\n"
+         + lowercase(platformAccountUuid) + "\n"
+         + requestedActorType + "\n"
+         + NFC(requestedActorId) + "\n"
+         + lowercase(clientRequestUuid)
+idempotency_key = lowercaseHex(SHA-256(UTF-8(identity)))
+```
+
+`operation_uuid` is generated once by the server before Transaction A and is reused forever for that request identity. A repeated request identity loads the existing row and returns it without Audit or adapter invocation only when account, actor, client request UUID, operation type, entity type/UUID, canonical payload bytes, `request_sha256`, and `idempotency_key` all match. Any mismatch fails locally with `PLATFORM_IDEMPOTENCY_CONFLICT`; it neither inserts/replaces a row nor calls a port.
+
+### Normalized result, error, and evidence contract
+
+Write ports return exactly one closed `PlatformWriteOutcome` variant; reconciliation returns exactly one closed `PlatformReconciliationOutcome` variant. They never throw provider-specific checked exceptions or return null. The orchestration boundary catches unexpected adapter exceptions and maps them by the table below before persistence.
+
+| Outcome record | Required fields | Optional fields | Operation transition |
+| --- | --- | --- | --- |
+| `WriteSucceeded` | `externalId` for create, `evidence` | `safeProviderTraceId`, `observedState`; `externalId` for non-create | `SUBMITTING -> SUCCEEDED` |
+| `WriteRetryableFailure` | `errorCode`, `retryAfterSeconds`, `evidence` | `safeProviderTraceId` | `SUBMITTING -> FAILED_RETRYABLE` only when another attempt remains; otherwise `FAILED_TERMINAL` with `PLATFORM_MAX_ATTEMPTS_EXCEEDED` |
+| `WriteTerminalFailure` | `errorCode`, `evidence` | `safeProviderTraceId` | `SUBMITTING -> FAILED_TERMINAL` |
+| `WriteUnknownOutcome` | `errorCode`, `evidence` | `safeProviderTraceId` | `SUBMITTING -> UNKNOWN_OUTCOME` |
+| `ReconciliationFound` | `externalId`, `evidence` | `safeProviderTraceId`, `observedState` | `RECONCILING -> SUCCEEDED` |
+| `ReconciliationNotFound` | `errorCode=PLATFORM_RECONCILIATION_NOT_FOUND`, `evidence` | `safeProviderTraceId` | attempt `NOT_FOUND`; operation `RECONCILING -> UNKNOWN_OUTCOME` |
+| `ReconciliationStillUnknown` | `errorCode=PLATFORM_RECONCILIATION_INCONCLUSIVE`, `evidence` | `safeProviderTraceId` | `RECONCILING -> UNKNOWN_OUTCOME` |
+| `ReconciliationTerminalFailure` | `errorCode`, `evidence` | `safeProviderTraceId` | `RECONCILING -> FAILED_TERMINAL` |
+
+`externalId` is 1–128 characters matching `^[A-Za-z0-9._:-]+$`. `safeProviderTraceId`, when present, uses the same safe character class and length. `observedState`, when present, is one of the normalized observed states. `retryAfterSeconds` is integer `1..3600`; the application computes `next_attempt_at = claimCompletionTime + retryAfterSeconds` and never accepts a provider timestamp.
+
+`NormalizedPlatformEvidence` serializes to a JSON object with required keys `schemaVersion` (number `1`), `providerKey` (`FAKE` or future approved provider), `attemptKind` (`SUBMIT` or `RECONCILE`), and `resultKind` (`SUCCEEDED`, `FAILED_RETRYABLE`, `FAILED_TERMINAL`, `UNKNOWN_OUTCOME`, `FOUND`, `NOT_FOUND`). Optional keys are only `externalIdFingerprint` (lowercase SHA-256 of external ID), `observedState`, and `retryAfterSeconds`; their presence must agree with the outcome table. No other key or nested object is allowed. The exact object is at most 8 KiB and is copied to the finalized attempt; `platform_operations.outcome_evidence` stores the latest finalized normalized evidence. Raw response/body/message/status/header/URL/account identifier is never retained.
+
+Stable error mapping is exhaustive for 4A:
+
+| Source condition | Stable code | Classification |
+| --- | --- | --- |
+| Fake/provider rate limit or explicit retry-after | `PLATFORM_RATE_LIMITED` | Retryable |
+| Confirmed temporary unavailability before any ambiguous write receipt | `PLATFORM_TEMPORARILY_UNAVAILABLE` | Retryable |
+| Normalized request rejected | `PLATFORM_VALIDATION_FAILED` | Terminal |
+| Provider permission denial | `PLATFORM_PERMISSION_DENIED` | Terminal |
+| Inactive/archived account | `PLATFORM_ACCOUNT_INACTIVE` | Local terminal before dispatch |
+| Server policy or budget ceiling rejection | `PLATFORM_POLICY_REJECTED` | Local terminal before dispatch |
+| Missing usable adapter | `PLATFORM_ADAPTER_UNAVAILABLE` | Local terminal before dispatch |
+| Stale entity/operation version | `PLATFORM_STALE_VERSION` | Local conflict before dispatch |
+| Repeated identity with different contract | `PLATFORM_IDEMPOTENCY_CONFLICT` | Local conflict before dispatch |
+| Retry requested after limit | `PLATFORM_MAX_ATTEMPTS_EXCEEDED` | Terminal |
+| Timeout, connection interruption after dispatch, malformed success, null/unknown result, or persistence uncertainty | `PLATFORM_RESPONSE_AMBIGUOUS` | Unknown outcome; reconcile only |
+| Reconciliation proves no entity | `PLATFORM_RECONCILIATION_NOT_FOUND` | Not found; remains unknown |
+| Reconciliation cannot prove found/not-found | `PLATFORM_RECONCILIATION_INCONCLUSIVE` | Still unknown |
+
+No arbitrary code can be persisted: V12 checks the complete stable-code allowlist and the exact evidence top-level keys/types, while domain constructors enforce the same contract before persistence. Local validation, policy, adapter-availability, stale-version, and idempotency rejection occurs before Transaction A inserts a new operation, creates no STARTED attempt, and performs no entity mutation. Retry against an existing ineligible operation returns the stable local error without changing that operation. Once dispatch begins, any condition that cannot prove the write was not applied maps to unknown, never retryable.
 
 ### `platform_operation_attempts`
 
@@ -296,20 +371,24 @@ This table is required because a mutable aggregate `attempt_count` alone is not 
 | `currency` | `CHAR(3)` | NOT NULL | Uppercase ISO format |
 | `impressions`, `reach`, `clicks`, `conversions` | `BIGINT` | NULL | Nonnegative; missing remains NULL |
 | `spend`, `revenue` | `NUMERIC(19,6)` | NULL | Nonnegative; missing remains NULL |
+| `revision_number` | `INTEGER` | NOT NULL | Append-only revision identity for the exact entity/window; starts at 1 and increases contiguously |
 | `fetched_at` | `TIMESTAMPTZ` | NOT NULL | Source observation time |
 | `freshness_status` | `VARCHAR(16)` | NOT NULL | `FRESH`, `DELAYED`, or `UNAVAILABLE` |
-| `source_fingerprint` | `CHAR(64)` | NOT NULL | SHA-256 duplicate/source evidence |
+| `source_fingerprint` | `CHAR(64)` | NOT NULL | SHA-256 of the canonical normalized observation, excluding revision/fetch/persistence timestamps |
 | `created_at` | `TIMESTAMPTZ` | NOT NULL DEFAULT `CURRENT_TIMESTAMP` | Immutable |
 
 Constraints/indexes:
 
 - Typed entity/account composite FKs and exact-one-entity check.
 - Nonnegative nullable metrics; currency, attribution, window, timezone, freshness, and fingerprint checks.
-- Three partial unique indexes by account, typed entity, UTC window, timezone, attribution, and currency.
+- For each entity type, one partial unique revision index over account, the typed entity UUID, UTC window, timezone, attribution, currency, and `revision_number`.
+- For each entity type, one partial unique duplicate-evidence index over the same window identity plus `source_fingerprint`.
 - Three partial entity/account lookup indexes.
 - Entire row is append-only; update and delete triggers reject mutation.
 
-The table is intentionally inert in 4A; there is no polling service or read port implementation. CTR/CPC/CPM/CPA/CVR/ROAS are derived later from stored base values only when denominators are valid; they are not persisted in V12.
+The model is exactly append-only revisions; it is not one canonical mutable row per window. The canonical window identity is `(platform_account_uuid, typed entity UUID, window_start, window_end, timezone, attribution_click_days, attribution_view_days, currency)`. A V12 insert trigger requires the first revision for an identity to be `1`; every later insert must use `MAX(revision_number) + 1` and a strictly later `fetched_at`. PostgreSQL uniqueness arbitrates concurrent attempts. `source_fingerprint` is lowercase SHA-256 of canonical JSON containing only `entityType`, the typed entity UUID, UTC window, timezone, attribution, currency, nullable base metrics, and freshness; JSON null is retained, object keys are lexically sorted, and `revisionNumber`, `fetchedAt`, `createdAt`, and derived metrics are excluded. Therefore a delayed/corrected observation with changed normalized values creates the next revision, while an exact duplicate fails regardless of a different fetch time.
+
+The latest snapshot for a window is the row with greatest `revision_number`; an as-of read selects the greatest revision whose `fetched_at <= asOf`. No revision is updated, deleted, or silently replaced. The table is intentionally inert in 4A; no poller or metrics read port is defined or implemented until 4D. CTR/CPC/CPM/CPA/CVR/ROAS are derived later from the selected revision's stored base values only when denominators are valid; they are not persisted in V12.
 
 ## Database trigger contract
 
@@ -317,10 +396,10 @@ V12 creates narrowly named trigger functions and per-table triggers; it must not
 
 - Every new table rejects hard delete with SQLSTATE `23514`.
 - Accounts: identity/config fields immutable; only `ACTIVE -> ARCHIVED` is allowed; effective transition increments version exactly once.
-- Campaign/Ad Set/Ad: identity and parent/evidence/schedule/policy fields immutable; external ID is write-once; observed state may follow normalized observation transitions; desired-state transitions follow the exact machine below; version increments exactly once for any effective update.
+- Campaign/Ad/Ad Set policy identity and configuration fields are immutable; Ad Set `budget_amount` and `last_budget_operation_uuid` are the sole budget-mutation pair and must satisfy the deferred successful-operation coherence rule. External ID is write-once; observed state may follow normalized observation transitions; desired-state transitions follow the exact machine below; version increments exactly once for any effective update.
 - Operations: immutable input and idempotency fields; exact state transitions; claim counter/timestamp coherence; terminal rows reject any update; external ID is write-once.
 - Attempts: one finalization only; then immutable.
-- Metrics: append-only.
+- Metrics: append-only numbered revisions; the first/next revision, monotonic fetch time, and exact-duplicate fingerprint rules are database-enforced.
 - Audit: existing V2 append-only triggers remain authoritative.
 
 JPA/domain validation is not a substitute for these direct-SQL constraints. Conversely, triggers do not authorize a command; application policy and trusted entry points remain mandatory in later milestones.
@@ -358,6 +437,16 @@ Status/timestamp coherence is exact: `CREATED` has zero counters and no claim/co
 
 Each `SUBMITTING` claim increments `attempt_count` exactly once and atomically inserts the matching `SUBMIT/STARTED` attempt. Each `RECONCILING` claim increments `reconciliation_count` exactly once and inserts the matching `RECONCILE/STARTED` attempt. Optimistic-lock failure means the loser performs no call.
 
+Exact field mutation by edge:
+
+- Claim from `CREATED` or eligible `FAILED_RETRYABLE`: set `status=SUBMITTING`, increment `attempt_count`, set `claimed_at=now`, clear `next_attempt_at`, clear the operation's prior normalized error/trace/outcome evidence, increment version, and insert `SUBMIT/STARTED` with `attempt_number=attempt_count` in the same transaction.
+- Submit success: set `status=SUCCEEDED`, set `completed_at`, persist normalized external/trace/evidence, clear error/retry fields, increment version, and apply matching bounded entity evidence. `UPDATE_BUDGET` also changes `budget_amount` and `last_budget_operation_uuid` in this same transaction using the payload's expected entity version.
+- Retryable result with attempts remaining: set `status=FAILED_RETRYABLE`, persist retryable code/trace/evidence, set server-computed `next_attempt_at`, keep `completed_at` null, and increment version. When no attempt remains, use `FAILED_TERMINAL` and `PLATFORM_MAX_ATTEMPTS_EXCEEDED` instead.
+- Terminal result: set `status=FAILED_TERMINAL`, persist terminal code/trace/evidence and `completed_at`, clear retry time, and increment version.
+- Ambiguous result: set `status=UNKNOWN_OUTCOME`, persist ambiguity code/trace/evidence, keep completion/retry time null, and increment version. No submit edge exists from this state.
+- Reconcile claim: from `UNKNOWN_OUTCOME`, set `RECONCILING`, increment `reconciliation_count`, set `claimed_at=now`, clear the prior normalized error/trace/outcome evidence, increment version, and atomically insert `RECONCILE/STARTED` numbered from the reconciliation count.
+- Reconcile found/terminal/still-unknown/not-found finalizes the attempt and operation exactly as the normalized outcome table specifies. NOT_FOUND never changes desired state, budget, or external ID and never creates submit eligibility.
+
 ### Attempt
 
 `STARTED` transitions exactly once to one result. A SUBMIT attempt may end `SUCCEEDED`, `FAILED_RETRYABLE`, `FAILED_TERMINAL`, or `UNKNOWN_OUTCOME`. A RECONCILE attempt may end `SUCCEEDED`, `FAILED_TERMINAL`, `UNKNOWN_OUTCOME`, or `NOT_FOUND`. `NOT_FOUND` means no matching external entity was proven; it is not authority to resubmit the write. The containing operation stays `UNKNOWN_OUTCOME` pending an explicit human-safe resolution policy in a later milestone.
@@ -368,44 +457,95 @@ All mutable aggregates use `@Version`. Worker claim uses a version-qualified upd
 
 Required sequence:
 
-1. Transaction A validates canonical input and local references; inserts the paused entity if a create command requires it; inserts `platform_operations` in `CREATED`; writes same-operation Audit; commits.
+1. Transaction A validates canonical input, trusted actor, account state, exact local references, immutable policy, budget ceiling, and expected entity version; inserts the paused entity if a create command requires it; inserts `platform_operations` in `CREATED`; writes same-operation Audit; commits. Duplicate identity resolution happens here and never dispatches twice.
 2. Transaction B claims the exact operation version, moves it to `SUBMITTING`, increments `attempt_count`, inserts a `SUBMIT/STARTED` attempt, writes Audit, and commits.
 3. The application invokes the adapter after Transaction B. `TransactionSynchronizationManager.isActualTransactionActive()` must be false inside the adapter.
-4. Transaction C locks by optimistic version, finalizes the attempt, transitions the operation, applies bounded normalized entity evidence, writes Audit, and commits atomically.
+4. Transaction C locks the operation and entity by the exact expected optimistic versions, finalizes the attempt, transitions the operation, applies bounded normalized entity evidence (including the budget/provenance pair for successful `UPDATE_BUDGET`), writes Audit, and commits atomically. A stale entity version cannot partially finalize a supposedly successful mutation; if the adapter may already have written, recovery records `UNKNOWN_OUTCOME` and reconciles.
 5. If response receipt is ambiguous or Transaction C cannot prove the result, persist/recover `UNKNOWN_OUTCOME`; do not resubmit.
 
 Reconciliation uses the analogous claim/call/finalize sequence with `RECONCILING` and a RECONCILE attempt. Adapter exceptions are normalized outside persistence; raw exception text is not written to the database or Audit.
 
 ## Provider-neutral ports
 
-Application/domain packages may define these interfaces without SDK types:
+The following are the only provider-facing interfaces approved for 4A. Method names, parameter records, and return families are exact; implementations may not add an arbitrary context/map or leak SDK types:
 
-- `PlatformCampaignPort.submitCampaign(PlatformCampaignCommand)`
-- `PlatformAdSetPort.submitAdSet(PlatformAdSetCommand)`
-- `PlatformAdPort.submitAd(PlatformAdCommand)`
-- state-mutation methods on the matching typed port for pause/resume and bounded budget change
-- `PlatformOperationReconciliationPort.reconcile(PlatformReconciliationQuery)`
-- `PlatformDeliveryReadPort` and `PlatformMetricsReadPort` as contracts only; no 4A implementation or scheduled caller
-- `PlatformAccountPolicyProvider` and `PlatformBudgetPolicyProvider` as fail-closed contracts; 4A deterministic fixtures are server-owned
-- `PlatformCredentialProvider` as a marker contract only, with no bean, method that returns a secret, or implementation in 4A
+```java
+interface PlatformCampaignPort {
+    PlatformWriteOutcome submitCampaign(PlatformCampaignCommand command);
+    PlatformWriteOutcome changeCampaignState(PlatformStateMutationCommand command);
+}
 
-Command records contain only local UUIDs, normalized enums/values, canonical checksum/evidence, operation UUID, and idempotency key. Results are a closed sum of success, retryable failure, terminal failure, and ambiguous outcome with bounded stable codes. They contain no access token, Graph URL, raw body, raw provider error, SDK object, arbitrary map, or HTTP response.
+interface PlatformAdSetPort {
+    PlatformWriteOutcome submitAdSet(PlatformAdSetCommand command);
+    PlatformWriteOutcome changeAdSetState(PlatformStateMutationCommand command);
+    PlatformWriteOutcome updateAdSetBudget(PlatformBudgetMutationCommand command);
+}
 
-Port calls are reachable only from the internal 4A test/application orchestration service. There is no controller, scheduler, event listener, AI dependency, or Decision Engine dependency.
+interface PlatformAdPort {
+    PlatformWriteOutcome submitAd(PlatformAdCommand command);
+    PlatformWriteOutcome changeAdState(PlatformStateMutationCommand command);
+}
+
+interface PlatformOperationReconciliationPort {
+    PlatformReconciliationOutcome reconcile(PlatformReconciliationQuery query);
+}
+```
+
+Typed command records have these exact required fields; a question mark means optional and all unmarked fields are required:
+
+| Record | Fields |
+| --- | --- |
+| `PlatformCommandIdentity` | `operationUuid`, `platformAccountUuid`, `idempotencyKey`, `requestSha256` |
+| `PlatformCampaignCommand` | identity fields; `platformCampaignUuid`, `campaignUuid`, `objective`, `desiredState`, `scheduleStart?`, `scheduleEnd?`, `accountTimezone` |
+| `PlatformAdSetCommand` | identity fields; `platformAdSetUuid`, `platformCampaignUuid`, `budgetType`, `budgetAmount`, `currency`, `scheduleStart?`, `scheduleEnd?`, `accountTimezone`, `optimizationGoal`, `targetingProfileKey`, `placementProfileKey`, `desiredState` |
+| `PlatformAdCommand` | identity fields; `platformAdUuid`, `platformAdSetUuid`, `productUuid`, `assetUuid`, `generationOutputUuid`, `reviewDecisionUuid`, `approvedChecksumSha256`, `creativeMappingKey`, `desiredState` |
+| `PlatformStateMutationCommand` | identity fields; `entityType`, `entityUuid`, `expectedEntityVersion`, `targetDesiredState` |
+| `PlatformBudgetMutationCommand` | identity fields; `platformAdSetUuid`, `expectedEntityVersion`, `budgetType`, `currency`, `previousBudgetAmount`, `newBudgetAmount` |
+| `PlatformReconciliationQuery` | identity fields; `operationType`, `entityType`, `entityUuid`, `submitAttemptCount`, `reconciliationAttemptNumber`, `knownExternalId?` |
+
+Every command is reconstructed from the immutable canonical operation payload and database row; no caller-supplied object is passed through after Transaction A. `expectedEntityVersion` is nonnegative. Money uses scale at most six. Optional schedule fields must be both absent or form the approved valid range; `knownExternalId` is present only when already stored. Commands contain no actor credentials, account raw ID, provider payload, URL, raw evidence, or fixture selector.
+
+Internal orchestration methods are also exact and are not web endpoints:
+
+```java
+PlatformOperationView submit(UUID operationUuid, long expectedOperationVersion);
+PlatformOperationView retry(UUID operationUuid, long expectedOperationVersion, Instant now);
+PlatformOperationView reconcile(UUID operationUuid, long expectedOperationVersion);
+```
+
+`submit` accepts only `CREATED`; `retry` accepts only an eligible `FAILED_RETRYABLE`, uses the same operation/entity/payload/idempotency identity, and never creates a replacement row; `reconcile` accepts only `UNKNOWN_OUTCOME`. All use compare-and-set version claims. There is no unattended scheduler or automatic retry in 4A; tests invoke these internal methods explicitly.
+
+Server-owned policy contracts are exact and fail closed:
+
+```java
+interface PlatformAccountPolicyProvider {
+    PlatformAccountPolicy requirePolicy(UUID platformAccountUuid);
+}
+
+interface PlatformBudgetPolicyProvider {
+    PlatformBudgetPolicy requirePolicy(UUID platformAccountUuid, BudgetType budgetType, LocalDate accountBusinessDate);
+}
+```
+
+`PlatformAccountPolicy` contains `platformAccountUuid`, `providerKey`, `environment`, `currency`, `timezone`, `active`; `PlatformBudgetPolicy` contains `currency`, `budgetType`, `maxEntityAmount`, `maxOperationBatchAmount`, `maxAccountBusinessDayAmount`. The 4A implementation may supply only deterministic LOCAL/TEST fixtures matching the approved TWD ceilings. Absence or mismatch returns no permissive default and maps to `PLATFORM_POLICY_REJECTED` before dispatch.
+
+`PlatformDeliveryReadPort`, `PlatformMetricsReadPort`, and every credential/secret contract are explicitly deferred and must not exist, even as marker interfaces, in 4A. They require their own later approved methods and security boundaries. Port calls remain reachable only from the internal 4A orchestration service; there is no controller, scheduler, event listener, AI dependency, Decision Engine dependency, credential lookup, or network client.
 
 ## Deterministic fake adapter contract
 
 - Registered only under `(local | test) & !production` and an explicit fake-platform profile/property.
 - Uses no HTTP/library SDK, filesystem credential, environment secret, random timing, DNS, socket, or paid service.
 - Validates the same normalized request limits as the application port contract.
-- Derives stable external IDs as a documented prefix plus a truncated lowercase SHA-256 of operation UUID/idempotency identity.
+- Derives create IDs exactly as `prefix + first24(lowercaseHex(SHA-256(UTF-8("fake-platform-id-v1\n" + lowercase(operationUuid) + "\n" + idempotencyKey + "\n" + requestSha256))))`. Prefix is `fake-campaign-` for Campaign, `fake-adset-` for Ad Set, and `fake-ad-` for Ad. State and budget mutations return the entity's existing ID and never derive a replacement.
 - Repeated submit with the same identity returns the same external ID; a different payload for the same identity returns an idempotency conflict.
-- Server-owned fixtures cover success, retryable rate limit, terminal validation, terminal permission, malformed-result normalization, ambiguous timeout, and reconciliation success/not-found/still-unknown.
+- Server-owned fixtures map exactly: `SUCCESS -> WriteSucceeded`; `RETRYABLE_RATE_LIMIT -> WriteRetryableFailure(PLATFORM_RATE_LIMITED, 60)`; `TERMINAL_VALIDATION -> WriteTerminalFailure(PLATFORM_VALIDATION_FAILED)`; `TERMINAL_PERMISSION -> WriteTerminalFailure(PLATFORM_PERMISSION_DENIED)`; `MALFORMED_RESULT -> WriteUnknownOutcome(PLATFORM_RESPONSE_AMBIGUOUS)`; `AMBIGUOUS_TIMEOUT -> WriteUnknownOutcome(PLATFORM_RESPONSE_AMBIGUOUS)`; `RECONCILE_FOUND -> ReconciliationFound` with the same deterministic ID; `RECONCILE_NOT_FOUND -> ReconciliationNotFound`; and `RECONCILE_STILL_UNKNOWN -> ReconciliationStillUnknown`.
 - Fixture selection is constructor/test configuration, not persisted arbitrary input and never a Browser/provider-origin field.
 - Records invocation count and whether a Spring transaction was active so tests prove single submission and transaction separation.
 - Default and production profiles expose no usable write adapter; startup or operation dispatch fails closed with `PLATFORM_ADAPTER_UNAVAILABLE`.
 
 Contract tests must run the same test suite against every implementation of a write or reconciliation port. A future Meta adapter cannot weaken the fake contract.
+
+The shared contract suite asserts each exact method and DTO field, absent/null rejection, canonical hash and idempotency replay, the three exact ID prefixes and 24-hex suffix, each stable outcome/error/evidence mapping, retry-after bounds, no replacement ID on mutation, reconciliation identity reuse, one invocation for concurrent/replayed commands, and absence of provider/secret/network types. An unexpected exception or null/unrecognized result is normalized to `PLATFORM_RESPONSE_AMBIGUOUS`; it can never become a retryable result after dispatch.
 
 ## Audit, logging, and redaction boundary
 
@@ -431,12 +571,13 @@ The existing sanitizer marker list is the minimum. Platform canonicalizers rejec
 | Migration immutability | Canonical SHA-256 assertions cover V1–V11 byte-for-byte; V12 is new only; no pending migration remains |
 | Migration atomicity | A deliberate V12 object-name collision causes the migration to roll back with none of the other V12 objects left behind |
 | Hibernate | `ddl-auto=validate` passes against V12; all enum lengths, JSONB, `CHAR`, money precision/scale, nullability, composite relationships, timestamps, and `@Version` mappings match |
-| Direct SQL identity | Attempts to mutate every account/entity/operation identity, Ad approval/checksum evidence, write-once external ID, canonical payload/hash, or attempt identity fail with SQLSTATE `23514` |
+| Direct SQL identity/evidence | Attempts to mutate every account/entity/operation identity, write-once external ID, canonical payload/hash, or attempt identity fail. Ad inserts independently reject mismatched Asset/output (`23503` or semantic `23514` as specified), TEXT output, pending/rejected review, rejected decision, blocked preservation, inactive Product/Asset, null/mismatched Asset/output/snapshot checksum, and later evidence substitution (`23514`) |
 | Direct SQL lifecycle | Invalid desired/observed/operation/attempt transitions, attempt counter drift, terminal updates, account restore, and version jumps fail |
+| Budget mutation | Initial provenance is null; exact successful bounded `UPDATE_BUDGET` changes only amount/provenance/version; stale version, type/currency/policy change, missing/wrong/reused/non-success operation, unchanged/out-of-bound amount, direct amount update, and Audit rollback fail; concurrent changes have one winner |
 | Delete protection | DELETE from each of seven tables fails; referenced V1–V11 records remain protected by `ON DELETE RESTRICT`; Audit remains append-only |
-| Metric append-only | Valid null metrics insert; duplicate window fails; missing values remain NULL; negative/base invalid values, update, and delete fail |
-| Domain unit | All valid and invalid state-machine edges, value bounds, canonicalization, checksum, timezone/currency, exact profiles, and normalized result/error mappings |
-| Port contract | Success, rate limit, validation, permission, malformed response, ambiguous timeout, idempotent replay, reconcile found/not-found/unknown, and no provider types escaping |
+| Metric append-only revisions | Revision 1 and a changed revision 2 coexist; latest/as-of selection is deterministic; skipped/repeated revision, non-monotonic fetch time, exact duplicate fingerprint, negative/base invalid values, update, and delete fail; nullable metrics remain NULL in every revision |
+| Domain unit | All valid and invalid state-machine edges, exact payload keys/value formats, canonical bytes/hash/idempotency construction, budget bounds, evidence checksum, metric fingerprint/revision, timezone/currency, profiles, and exhaustive normalized result/error mapping |
+| Port contract | Every exact method/record field and required/optional rule; three fake ID prefixes plus 24-hex suffix; success, rate limit, validation, permission, malformed/null result, ambiguous timeout, idempotent replay/conflict, retry identity, reconcile found/not-found/unknown, stable evidence schema, and no provider/secret/network types escaping |
 | Persistence before call | A separate connection can read the operation and STARTED attempt inside fake invocation; adapter observes no active Spring transaction |
 | Concurrency | Concurrent duplicate create returns one operation/entity and one submit call; concurrent claim has one winner; stale versions fail; max attempts cannot be exceeded |
 | Retry | Retry reuses operation UUID, canonical payload, idempotency key, and entity; creates the next attempt row only; no replacement entity/operation |
@@ -455,12 +596,12 @@ Normal Remote Push and Pull Request CI must execute `quality-and-compose` and `s
 - Repair a V12 defect with V13 or later after a new approved specification; do not alter V12.
 - Persisted `CREATED`/`FAILED_RETRYABLE` work remains inert until an approved internal runner claims it. Persisted `SUBMITTING` after a crash is ambiguous and must move to reconciliation, not retry.
 - `UNKNOWN_OUTCOME` and `NOT_FOUND` are retained as evidence. A human-safe resolution or provider-specific lookup strategy requires a later approved milestone; no row is rewritten or deleted.
-- Metrics are append-only. Attempt rows remain immutable except for their one allowed STARTED-to-result finalization, after which their history cannot be updated or deleted. Incorrect normalized observations are superseded by later records where the future contract permits; they are never overwritten.
+- Metrics are append-only numbered revisions. A changed delayed/corrected observation creates the next contiguous revision and latest/as-of selection follows the exact rule above; an exact duplicate is rejected and no prior revision is overwritten. Attempt rows remain immutable except for their one allowed STARTED-to-result finalization, after which their history cannot be updated or deleted.
 
 ## Warnings and known limitations
 
 - The V12 model includes inert Campaign, Ad Set, Ad, and metric structures so later milestones do not redesign operation identity. 4A does not expose or schedule those capabilities.
-- Database constraints cannot prove an IANA timezone name or inspect every semantic property of canonical JSON; domain validation and contract tests are mandatory in addition to SQL checks.
+- Database constraints cannot prove an IANA timezone name or independently recompute every canonical JSON hash; exact domain canonicalization, trigger coherence, and contract tests are mandatory together. Ad evidence semantics and metric revision identity remain database-enforced as specified.
 - PostgreSQL uniqueness arbitrates duplicate operation creation, but application code must load and compare the winning row after a constraint race.
 - A provider may ignore an idempotency key or return an ambiguous result. Therefore `UNKNOWN_OUTCOME` is retained and blind resubmission is forbidden.
 - Optimistic locking prevents concurrent application writers but does not replace later authorization, account isolation, rate limiting, or emergency kill-switch design.
@@ -484,6 +625,7 @@ Immediately stop and `ESCALATE_TO_HUMAN` before any:
 - [ ] Implementation diff stays inside the approved 4A scope and contains exactly one additive V12 migration; V1–V11 remain byte-for-byte unchanged.
 - [ ] PostgreSQL is authoritative for all normalized desired state, operation identity, attempts, reconciliation, and evidence.
 - [ ] Identity, approval evidence, external IDs, terminal rows, attempts, metrics, and hard-delete rules are enforced by direct SQL as specified.
+- [ ] Budget policy identity remains immutable; each amount change has bounded canonical command evidence, optimistic concurrency, a successful operation pointer, and same-transaction Audit.
 - [ ] Duplicate and concurrent commands cannot create a second operation/entity or second provider call.
 - [ ] Every adapter call follows a committed operation and STARTED attempt and runs outside a database transaction.
 - [ ] Ambiguous submission can only reconcile; it cannot blindly submit again.

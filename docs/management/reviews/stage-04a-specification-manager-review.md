@@ -19,6 +19,15 @@
 - Human Review Required: No for the current deterministic local/test-only scope; mandatory escalation boundaries remain unchanged
 - Merge: Blocked pending required specification corrections and a new exact-head review
 
+## Developer resolution status
+
+- Resolution date: 2026-08-17
+- Status: `REQUEST_CHANGES` findings resolved by specification-only edits; pending a fresh Independent Manager Review on the new exact Head
+- Implementation: Not started
+- Migration/runtime/API/UI/adapter changes: None
+- Prior Manager Decision: Remains `REQUEST_CHANGES` for reviewed Head `d129df447f670a9f5b1faab230a06a64c8240438`; it is not an approval of the revised Head
+- Merge: Blocked; PR #59 must remain Draft through revised Push/PR CI and new exact-head re-review
+
 ## Scope reviewed
 
 - Approved scope: Exact Stage 4A technical specification for the additive V12 persistence foundation, provider-neutral contracts, deterministic fake-adapter boundary, transaction/reconciliation behavior, verification, and governance.
@@ -87,10 +96,21 @@
 | 4A-SPEC-003 | BLOCKING | `docs/stages/stage-04a-platform-foundation.md:282-312`, `:458`; approved Stage 04 read-sync contract | The three partial unique indexes allow only one snapshot per entity/window/timezone/attribution/currency, while the table is append-only and recovery says later observations supersede earlier records. A delayed or corrected provider fetch for the same daily window cannot coexist without updating an immutable row or replacing the index in a later migration. | Define an exact append-only revision identity now or defer the metric table to 4D. If retained, permit multiple fetched revisions while rejecting an exact duplicate (for example with `fetched_at`/source fingerprint in the revision key), define the latest-snapshot selection rule, and require direct-SQL tests for delayed revision coexistence, exact-duplicate rejection, NULL preservation, and immutable history. |
 | 4A-SPEC-004 | BLOCKING | `docs/stages/stage-04a-platform-foundation.md:204-251`, `:379-405` | The specification claims to be the exact implementation contract but leaves operation payload keys per type, normalized error/evidence allowlists, typed command fields, pause/resume/budget method signatures, fake external-ID prefix/hash length, and several port methods as unnamed or marker-only choices. These choices affect persistence hashes, idempotency, compatibility, and contract tests and would otherwise be made during implementation without exact-head approval. | Enumerate the exact command/result/reconciliation DTO fields, payload key schema per operation, normalized error/evidence schema, port method signatures, and deterministic fake ID algorithm. Explicitly defer unused delivery/metrics/credential contracts rather than approving empty marker interfaces. Add a contract-test matrix tied to those exact values. |
 
+### Finding resolution evidence pending re-review
+
+| ID | Developer resolution status | Revised specification evidence |
+| --- | --- | --- |
+| 4A-SPEC-001 | `RESOLVED_PENDING_RE_REVIEW` | Defines a deferred PostgreSQL Ad-evidence constraint trigger with transaction-boundary locks and exact Product/Asset/IMAGE output/APPROVED decision/PASSED preservation/checksum predicates; enumerates direct-SQL negative cases and SQLSTATE expectations. |
+| 4A-SPEC-002 | `RESOLVED_PENDING_RE_REVIEW` | Separates immutable Ad Set policy/configuration from mutable `budget_amount`; requires a successful same-entity `UPDATE_BUDGET` operation pointer, canonical old/new/version evidence, server-owned ceilings, optimistic concurrency, and same-transaction Audit. |
+| 4A-SPEC-003 | `RESOLVED_PENDING_RE_REVIEW` | Selects one model: append-only contiguous numbered revisions with per-window revision and source-fingerprint uniqueness, monotonic fetch time, exact duplicate rejection, and deterministic latest/as-of selection. |
+| 4A-SPEC-004 | `RESOLVED_PENDING_RE_REVIEW` | Enumerates exact canonical payload keys/formats, typed port methods and record fields, closed write/reconciliation outcomes, normalized evidence/error allowlists, retry/reconcile entry contracts, deterministic fake IDs, idempotency bytes, state mutations, and shared contract tests; unused read/credential marker contracts are deferred. |
+
+These statuses are a Developer Agent completion claim only. An independent reviewer must compare the new exact Head, diff, CI, and all four contracts before changing the Stage Gate decision.
+
 ## Known limitations
 
 - Remote CI validates the current repository baseline only; it cannot execute the proposed V12 or future 4A implementation in this documentation-only PR.
-- The seven-table model and durable attempt history are within the approved 4A persistence scope, but they are not approved for implementation until the blocking contract findings are resolved.
+- The seven-table model and durable attempt history are within the approved 4A persistence scope, but they are not approved for implementation until the revised exact Head receives Independent Manager `APPROVE`, is merged, and passes post-merge `main` CI.
 - Authentication/RBAC/Tenant/security-model work, credentials, external access, spend, production, and real provider behavior remain mandatory human escalation boundaries.
 - The repository still uses a manual Manager Gate; no automated `manager-gate` required check or equivalent branch protection exists.
 - The npm allow-scripts and GitHub Actions Node runtime warnings above remain non-blocking technical debt.
