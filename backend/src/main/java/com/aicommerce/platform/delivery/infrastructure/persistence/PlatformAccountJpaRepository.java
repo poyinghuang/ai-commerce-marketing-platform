@@ -1,0 +1,1 @@
+package com.aicommerce.platform.delivery.infrastructure.persistence; import java.util.UUID; import com.aicommerce.platform.delivery.domain.PlatformAccount; import org.springframework.data.jpa.repository.JpaRepository; public interface PlatformAccountJpaRepository extends JpaRepository<PlatformAccount,UUID>{}

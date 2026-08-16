@@ -1,0 +1,1 @@
+package com.aicommerce.platform.delivery.application.port; import java.util.UUID; import com.aicommerce.platform.delivery.domain.Money; public interface PlatformBudgetPolicyProvider { BudgetDecision evaluate(UUID accountUuid,Money amount); record BudgetDecision(boolean allowed,String reasonCode) {} }

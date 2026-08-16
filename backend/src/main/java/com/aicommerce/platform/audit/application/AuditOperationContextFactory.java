@@ -35,6 +35,14 @@ public class AuditOperationContextFactory {
                 AuditSource.SYSTEM);
     }
 
+    public AuditOperationContext forStableOperation(UUID operationUuid, AuditOperationContext trustedContext) {
+        return new AuditOperationContext(
+                operationUuid,
+                trustedContext.requestId(),
+                trustedContext.actor(),
+                trustedContext.source());
+    }
+
     private String safeRequestId(String candidate) {
         if (candidate != null && SAFE_REQUEST_ID.matcher(candidate).matches()) {
             return candidate;
