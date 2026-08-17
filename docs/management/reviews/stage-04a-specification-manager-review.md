@@ -26,14 +26,14 @@
 ## Developer resolution status
 
 - Resolution date: 2026-08-17
-- Status: Independent re-review completed for exact Head `e661c0d3a219afea2dbc8b89a2a9ad560f3b81c7`; Manager Decision remains `REQUEST_CHANGES`
-- Correction Head: `e661c0d3a219afea2dbc8b89a2a9ad560f3b81c7`
-- Remote CI for correction Head: Passed — Push Run `31982708594`; PR Run `31982710953`
-- Developer local validation: Passed — exact two-document scope, Markdown table sanity, `git diff --check`, Gitleaks 8.28.0 history (103 commits) and worktree; no leaks found
+- Status: Developer correction for finding 4A-SPEC-018 is `RESOLVED_PENDING_RE_REVIEW`; Manager Decision remains `REQUEST_CHANGES`
+- Correction Head: Pending developer correction commit
+- Remote CI for correction Head: Pending new Push and PR runs
+- Developer local validation: Passed — exact two-document scope, Markdown table sanity, `git diff --check`, Gitleaks 8.28.0 history (105 commits) and worktree; no leaks found
 - Implementation: Not started
 - Migration/runtime/API/UI/adapter changes: None
-- Prior Manager Decisions: `REQUEST_CHANGES` for reviewed Heads `d129df447f670a9f5b1faab230a06a64c8240438`, `b8781c224748cceac7ec45706382e73c8f592825`, `ddf4d452c1aec09dcbaabe075da13250646a26f9`, and `9b63954018fa8ce01e877039f3a55bc5f3ba03a9`; none is approval of the correction Head
-- Merge: Blocked; PR #59 remains Draft through one reconciled-mutation correction, new Push/PR CI, and exact-head Independent Manager re-review
+- Prior Manager Decisions: `REQUEST_CHANGES` for reviewed Heads `d129df447f670a9f5b1faab230a06a64c8240438`, `b8781c224748cceac7ec45706382e73c8f592825`, `ddf4d452c1aec09dcbaabe075da13250646a26f9`, `9b63954018fa8ce01e877039f3a55bc5f3ba03a9`, and `e661c0d3a219afea2dbc8b89a2a9ad560f3b81c7`; none is approval of the correction Head
+- Merge: Blocked; PR #59 remains Draft through new Push/PR CI and exact-head Independent Manager re-review
 
 ## Scope reviewed
 
@@ -214,6 +214,12 @@ No human escalation trigger is present. Stage 4A implementation remains locked.
 | ID | Severity | File/Evidence | Finding | Required fix/test |
 | --- | --- | --- | --- | --- |
 | 4A-SPEC-018 | BLOCKING | `docs/stages/stage-04a-platform-foundation.md:186`, `:319`, `:467`, `:494`, `:855` | `ReconciliationFound` changes a mutation operation to `SUCCEEDED`, but the contract applies only ID/optional observation and omits the confirmed `PAUSE`/`RESUME` desired-state or `UPDATE_BUDGET` amount/provenance mutation. Reconciled budget success therefore cannot satisfy the reciprocal deferred trigger, and reconciled state mutation leaves PostgreSQL inconsistent with the confirmed result. | Require reconciled mutation success to atomically apply the same desired-state or budget/provenance change as direct success, subject to the durable payload's expected entity version; combine optional observed-state change; emit the exact entity `ENTITY_RESULT_APPLIED` Audit event; define stale-version ambiguity handling; and add PAUSE, RESUME, UPDATE_BUDGET, stale-version, trigger-coherence, and Audit rollback tests. |
+
+### Developer resolution evidence for finding 4A-SPEC-018
+
+| ID | Developer resolution status | Correction evidence in Stage 4A specification |
+| --- | --- | --- |
+| 4A-SPEC-018 | `RESOLVED_PENDING_RE_REVIEW` | Reconciled PAUSE/RESUME now atomically apply the durable payload's desired-state transition, and reconciled UPDATE_BUDGET applies amount plus provenance, each under the durable expected entity version and combined with optional observation. Audit always includes the entity result event. A stale entity version converts attempt/operation to exact persistence-uncertainty UNKNOWN fields with two Audit events, no entity mutation, no false SUCCEEDED, and no provider re-call. Reciprocal trigger, fake adapter, rollback, direct-SQL, and transaction tests are aligned. |
 
 No escalation trigger exists. Implementation remains locked.
 
