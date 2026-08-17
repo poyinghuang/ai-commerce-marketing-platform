@@ -1,0 +1,3 @@
+package com.aicommerce.platform.delivery.application.port;
+import java.util.*;
+public record ReconciliationStillUnknown(Optional<String> safeProviderTraceId,NormalizedPlatformEvidence evidence) implements PlatformReconciliationOutcome{public ReconciliationStillUnknown{safeProviderTraceId=PlatformContractSupport.opt(safeProviderTraceId);PlatformContractSupport.req(evidence);safeProviderTraceId.ifPresent(PlatformContractSupport::safe);if(evidence.attemptKind()!=com.aicommerce.platform.delivery.domain.PlatformAttemptKind.RECONCILE||evidence.resultKind()!=com.aicommerce.platform.delivery.domain.PlatformEvidenceResultKind.STILL_UNKNOWN)throw PlatformContractSupport.invalid();}}
