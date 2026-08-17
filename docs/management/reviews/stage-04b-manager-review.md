@@ -109,6 +109,73 @@ Required correction: after the implementation and tests are corrected, make the 
 
 After corrections, run focused V13 cold/populated-upgrade, Hibernate, direct-SQL, concurrency, Audit/rollback, API/BFF/frontend, and Playwright suites; then the complete Backend, Frontend, dependency audit, Compose, Smoke, Playwright, actionlint, Gitleaks, migration-immutability, and diff checks. Push the corrected Draft PR and wait for complete exact-head Push and Pull Request CI before requesting a new independent review.
 
+## Re-review cycle 2
+
+### Identity and evidence
+
+- Corrected implementation commit: `e25888baa7c6f1b275d9f7ac26a7d7014b108965`
+- Reviewed superseding Head: `740be0e89b99ac64f35ab18bbf3ec6d17230dd4d`
+- Push CI Run `32033126809` — Passed at the exact reviewed Head.
+- Pull Request CI Run `32033130357` — Passed at the exact reviewed Head.
+- Both runs executed `quality-and-compose` and `secret-scan`: Backend 377/377; Frontend 24 files / 141 tests, build and audit; Compose, Playwright 15/15, Smoke, actionlint, and pinned Gitleaks passed. Only the conditional failure-artifact upload was skipped.
+- Worktree, upstream, PR Head, base, diff check, additive V13 scope, and V1-V12 immutability were independently verified.
+
+The following cycle-1 items materially improved: original Campaign version is now part of Ad Set-create replay; request-time account identity and account-scoped Campaign/Ad Set reads were added; V13 no longer limits post-V13 enforcement to the two fixture accounts; reciprocal reservation/day validation and database-owned timestamps were added; BFF streaming and abort handling improved. These partial resolutions do not close the remaining required findings below.
+
+### 4B-RR-010 — BLOCKING — state and budget replay omit entity identity
+
+State replay compares operation type, expected version, and target state but not the path entity UUID or entity type. Budget replay compares version and amount but not the Ad Set UUID. A reused client request UUID against a different entity with the same intent can return the first operation and disclose its entity identity.
+
+Required correction: compare the persisted entity UUID and entity type as part of immutable replay intent before lookup or write. Add state and budget changed-entity and changed-entity-type tests proving `PLATFORM_IDEMPOTENCY_CONFLICT` and zero database, Audit, disclosure, or adapter side effects.
+
+### 4B-RR-011 — BLOCKING — retry and reconciliation bypass the fixed-account boundary
+
+Operation GET/retry/reconcile checks only that a V13 batch exists and delegates to the generic Stage 4A service; it does not resolve the approved fixed account first or scope the operation and batch to that account. Campaign preview also performs Campaign Plan validation before account resolution, allowing resource-specific errors to precede a fail-closed account error.
+
+Required correction: perform one fixed-account-first resolution for every preview, confirmation, read, retry, and reconciliation route, followed by account-scoped operation/entity lookup. Test wrong-account and misconfigured-account cases for no identifier disclosure, provider call, database write, or Audit event.
+
+### 4B-RR-012 — BLOCKING — Backend error and safe-response acceptance remains incomplete
+
+Validation errors still return empty `fieldErrors`, and the controller suite does not prove the closed route-specific source-to-public status, code, message, precedence, and HTTP 429 matrix or safe success/retryable/terminal/ambiguous/reconciliation JSON shapes.
+
+Required correction: implement the approved route-aware field-error allowlist and exhaustive stable mapping. Add parameterized route/source/precedence tests and forbidden-field snapshots for every exposed outcome.
+
+### 4B-RR-013 — BLOCKING — UI retry/stale behavior and vertical-slice evidence remain incomplete
+
+The UI shows Retry for every `FAILED_RETRYABLE` operation without checking that `nextAttemptAt` is due. An operation 412 only displays an error rather than reloading and invalidating pending confirmation. Component and Playwright suites still cover only the create happy path.
+
+Required correction: compute due-only retry eligibility, reload and invalidate on stale responses, and add component plus Playwright coverage for reads, pause, resume, budget increase/decrease and non-release warning, stale 412, retry, reconciliation, and unknown outcome, proving no automatic mutation or retry.
+
+### 4B-RR-014 / 4B-DB-004 — BLOCKING — typed Audit closure and atomicity matrix remain incomplete
+
+`ACCOUNT_DAY_RESERVED` events are not restricted to `CREATE_AD_SET` + `INITIAL` or `UPDATE_BUDGET` + `INCREASE`; invalid Campaign/state/decrease account-day events can be constructed. Tests do not establish all five command cardinalities, exact persisted AuditChange order/names/types/content, absent/present day paths, redaction/no-event behavior, or writer failure positions across every command and before commit.
+
+Required correction: close the constructor operation-kind-subject-action-presence/arithmetic matrix and add negative constructor plus exact persisted Audit/cardinality/redaction/no-event/all-position rollback tests for all five command types.
+
+### 4B-RR-015 / 4B-DB-005 — BLOCKING — mandatory direct-SQL, real concurrency, and populated-V12 legacy acceptance remains absent
+
+Current V13 acceptance contains only basic availability/date, one happy reservation with simple mutation/delete rejection, and one arbitrary-account missing-batch case. It does not execute the approved direct-SQL identity/date/currency/kind/delta/aggregate/retroactive/unapproved/forged-clock/zero-release rollback matrix, barrier-controlled first-use concurrency below/at/above ceiling and decrease-first, deterministic loser rollback, or stable `40001`/`40P01` no-retry mapping. Migration compatibility does not create the required V12 platform entities, metrics, budget provenance, and coherent operation/attempt/evidence state matrix; it omits the canonical V12 checksum and legacy HTTP-inert proof.
+
+Required correction: implement the complete case-exact Stage 4B specification acceptance matrix, including full post-failure snapshots, actual concurrent transactions, V12 checksum, rich byte-preserved V12 fixtures, allowed GET, and retry/reconcile `LEGACY_OPERATION_INERT` with zero writes, calls, or Audit.
+
+### 4B-RR-016 — MAJOR — BFF exact limits and timeout evidence remain incomplete
+
+The bounded streaming implementation is improved, but deterministic tests do not prove the 10-second timeout/504 case, exact 16 KiB and 1 MiB boundaries, wrong Backend content type/header exposure, and the complete forbidden-field safe DTO set.
+
+Required correction: add deterministic timers, exact-boundary streams, header/content-type, and safe-response cases while retaining client-abort, oversized, network-reset, and redirect coverage.
+
+### 4B-RR-017 — MAJOR — completion report remains broader than executable evidence
+
+The report marks the API, UI, Audit, direct-SQL, concurrency, and legacy findings resolved despite the missing cases above.
+
+Required correction: make every claim case-exact only after the corresponding executable test exists and record only the final superseding Head and its complete exact-head CI.
+
+### Cycle-2 decision
+
+Manager Decision: `REQUEST_CHANGES`
+
+There is no human-escalation trigger. PR #62 remains Draft; merge and Stage 4C remain locked.
+
 ## Stage Gate decision
 
 Manager Decision: `REQUEST_CHANGES`
