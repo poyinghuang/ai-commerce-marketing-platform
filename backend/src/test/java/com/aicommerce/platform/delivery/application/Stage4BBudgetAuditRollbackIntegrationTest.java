@@ -34,6 +34,7 @@ class Stage4BBudgetAuditRollbackIntegrationTest {
     @Container @ServiceConnection static final PostgreSQLContainer postgres=new PostgreSQLContainer("postgres:17.6-alpine3.22");
     @Autowired Stage4BTransactions transactions; @Autowired PlatformOperationService operations; @Autowired JdbcTemplate jdbc;
     @MockitoSpyBean PlatformAuditWriter audit;
+    @MockitoSpyBean Stage4BLedgerCriticalSectionHook transactionHook;
 
     @ParameterizedTest(name="{0} audit append {1}") @MethodSource("auditFailurePositions")
     void everyStage4BCommandRollsBackItsCompleteDatabaseStateWhenAuditAppendFails(String command,int failAt){
@@ -46,6 +47,18 @@ class Stage4BBudgetAuditRollbackIntegrationTest {
     static Stream<Arguments> auditFailurePositions(){return Stream.of(
         positions("CREATE_CAMPAIGN",3),positions("CREATE_AD_SET",5),positions("STATE",2),positions("BUDGET_INCREASE",4),positions("BUDGET_DECREASE",3)).flatMap(s->s);
     }
+
+    @ParameterizedTest(name="{0} post-audit pre-commit rollback")
+    @MethodSource("commands")
+    void everyStage4BCommandRollsBackAfterFinalSuccessfulAuditAppendBeforeCommit(String command){
+        Runnable mutation=fixture(command);Snapshot before=snapshot();reset(transactionHook);
+        doThrow(new IllegalStateException("sentinel-before-commit")).when(transactionHook).afterAuditAppends();
+        assertThatThrownBy(mutation::run).isInstanceOf(IllegalStateException.class).hasMessage("sentinel-before-commit");
+        assertThat(snapshot()).as("complete database state for %s after final audit append",command).isEqualTo(before);
+        verify(transactionHook).afterAuditAppends();reset(transactionHook);
+    }
+
+    static Stream<String> commands(){return Stream.of("CREATE_CAMPAIGN","CREATE_AD_SET","STATE","BUDGET_INCREASE","BUDGET_DECREASE");}
     private static Stream<Arguments> positions(String command,int count){return IntStream.rangeClosed(1,count).mapToObj(position->Arguments.of(command,position));}
 
     private Runnable fixture(String command){

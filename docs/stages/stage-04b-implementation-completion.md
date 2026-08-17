@@ -6,7 +6,7 @@
 - Base: `b43204bc1b06cd0c34c56540735b2b9694d81043`
 - Scope: deterministic-FAKE Campaign and Ad Set vertical slice
 - Migration: additive `V13__add_platform_budget_authorization_ledger.sql`; V1-V12 unchanged
-- Status: Manager cycle 2 findings corrected; `RESOLVED_PENDING_RE_REVIEW`
+- Status: Manager cycle 3 findings corrected; `RESOLVED_PENDING_RE_REVIEW`
 - Manager Decision: `REQUEST_CHANGES` (preserved pending independent re-review)
 - Merge: Not authorized
 - Stage 4C: Locked
@@ -42,8 +42,8 @@ No credentials, real Meta/provider network access, production activation, extern
 - `4B-RR-011`: every preview, confirmation, normalized entity read, operation read, retry, and reconciliation resolves the exact fixed FAKE account before resource lookup; operation and batch lookup is account-scoped. Wrong/mutated account tests assert no identifier disclosure, provider call, write, or Audit event.
 - `4B-RR-012`: route-aware validation field names and the closed source-to-public status/code/message mapping are executable, including 429 retryable outcomes and 409 serialization/deadlock conflicts. Success and failure DTO tests reject credential, token, cookie, authorization, raw payload/evidence, URL, and Provider diagnostic fields.
 - `4B-RR-013`: the UI exposes retry only when `nextAttemptAt` is due, invalidates pending confirmation and reloads after 412, and requires explicit confirmations for retry and reconciliation. Component and browser cases cover normalized reads, Campaign/Ad Set state, increase, decrease/non-release warning, retry, unknown reconciliation, stale reload, and zero automatic mutation.
-- `4B-RR-014`: `ACCOUNT_DAY_RESERVED` is constructible only for `CREATE_AD_SET` + `INITIAL` and `UPDATE_BUDGET` + `INCREASE`. Exact typed Audit subject/change ordering and redaction are asserted for Campaign create, Ad Set create, state, increase, and non-releasing decrease. Seventeen parameterized cases fail every append position across those five Transaction A shapes and compare complete entity, operation, attempt, ledger, Audit, and Audit-change snapshots.
-- `4B-RR-015`: direct SQL invalidity cases assert SQLSTATE `23514` and unchanged full ledger snapshots; barrier-controlled first-use concurrency covers below, exact, above-ceiling loser rollback, and decrease-first behavior. SQLSTATE `40001`/`40P01` maps to one 409 without service retry. A populated V12 Campaign/Ad Set/metric/budget/operation/attempt/evidence fixture is checksum-verified, byte-preserved through V13, readable by GET, and retry/reconcile inert with zero side effects.
+- `4B-RR-014`: `ACCOUNT_DAY_RESERVED` is constructible only for `CREATE_AD_SET` + `INITIAL` and `UPDATE_BUDGET` + `INCREASE`. Exact typed Audit subject/change ordering, UUID relationships, old/new monetary values, request actor/source context, and redaction are asserted for Campaign create, Ad Set create, state, increase, and non-releasing decrease. Seventeen parameterized append-position cases plus five post-final-append/pre-commit cases compare complete entity, operation, attempt, ledger, Audit, and Audit-change snapshots.
+- `4B-RR-015`: true batch-first direct-SQL transactions cover missing operation, retroactive attachment, missing/wrong/extra reservation or batch identity, missing day, aggregate omission, unapproved operation shape, reused operation, forged initial anchors, and valid zero-release, asserting target SQLSTATE `23514`, `23503`, or `23505` and unchanged full snapshots. Database-critical-section barriers after separate parent locks cover fresh below, exact, above-ceiling deterministic loser rollback, and decrease-first behavior. SQLSTATE `40001`/`40P01` maps to one 409 without service retry. A populated V12 Campaign/Ad Set/metric/budget fixture now contains coherent CREATED, SUBMITTING, FAILED_RETRYABLE, UNKNOWN_OUTCOME, RECONCILING, SUCCEEDED, submit-terminal, and reconciliation-terminal operation/attempt/evidence states; every state is byte-preserved through V13, readable by GET, and retry/reconcile inert with zero side effects.
 - `4B-RR-016`: the BFF suite proves the exact 16 KiB request and 1 MiB response boundaries, deterministic 10-second 504, composed client abort, streaming oversize, reset/network failure, redirect refusal, empty body, wrong content type, header sanitization, normalized Ad Set GET allowlisting, and forbidden DTO fields.
 - `4B-RR-017`: the executable evidence and counts below replace the superseded cycle-1 evidence. No Manager decision was altered.
 
@@ -51,10 +51,10 @@ No credentials, real Meta/provider network access, production activation, extern
 
 - `Stage4BControllerIntegrationTest` covers exact replay entity/version binding, fixed-account-first and account-scoped routes, strict boundary precedence, exact ordered Audit/change content for five Transaction A shapes, normalized reads, state and budget operations, and unchanged database/Audit/adapter snapshots on conflicts.
 - `Stage4BControllerErrorMappingTest` parameterizes the stable source status/code/message matrix, 429 retryability, 40001/40P01 conflict mapping without service retry, and safe field-error/output allowlists.
-- `Milestone4BLedgerIntegrationTest` covers cold V13/Hibernate availability, Asia/Taipei midnight anchoring, immutable ledger success, and 16 isolated invalid identity/date/currency/kind/delta/aggregate/retroactive/unapproved/forged-clock transactions with SQLSTATE `23514` and unchanged full snapshots.
+- `Milestone4BLedgerIntegrationTest` covers cold V13/Hibernate availability, Asia/Taipei midnight anchoring, immutable ledger success, actual malformed batch-first/deferred transactions, database-owned forged anchors, valid zero-release, exact SQLSTATE, and full rollback snapshots.
 - `Stage4BLedgerConcurrencyIntegrationTest` uses transaction barriers for first-use below/exact/above-cap and decrease-first cases, proving deterministic loser rollback and exact aggregate/reservation results.
-- `PlatformBudgetAuditEventTest` covers exact five-command constructor shapes and rejects mismatched operation/event/subject/action/presence/currency/arithmetic combinations. `Stage4BBudgetAuditRollbackIntegrationTest` executes 17 every-append-position failures across Campaign create, Ad Set create, state, budget increase, and non-releasing decrease with complete snapshot equality.
-- `MigrationCompatibilityTest` covers V1-V13 cold migration, populated V11 through V12/V13 preservation, canonical V1-V12 checksums, V12 atomic collision, and V13 atomic collision rollback. `Stage4BLegacyOperationIntegrationTest` adds a coherent populated V12 entity/metric/budget/operation/attempt/evidence fixture, byte preservation, allowed GET, and inert retry/reconcile.
+- `PlatformBudgetAuditEventTest` covers exact five-command constructor shapes and rejects mismatched operation/event/subject/action/presence/currency/arithmetic combinations. `Stage4BBudgetAuditRollbackIntegrationTest` executes 17 every-append-position failures and five post-final-append/pre-commit failures across Campaign create, Ad Set create, state, budget increase, and non-releasing decrease with complete snapshot equality.
+- `MigrationCompatibilityTest` covers V1-V13 cold migration, populated V11 through V12/V13 preservation, canonical V1-V12 checksums, V12 atomic collision, and V13 atomic collision rollback. `Stage4BLegacyOperationIntegrationTest` adds a coherent populated V12 entity/metric/budget and eight-state operation/attempt/evidence matrix, byte preservation, allowed GET for each state, and inert retry/reconcile for each state.
 - `Stage4BProfileGateTest` covers the exact enabled test/fake configuration and missing flag, wrong adapter, default, and production fail-closed cases.
 - Existing Stage 4A provider contract, three-transaction, retry/reconciliation, concurrency, evidence, direct-SQL, and typed Audit acceptance suites run against their immutable V12 boundary; V13 compatibility tests separately prove the upgrade and post-V13 legacy boundary.
 - `platform-stage4b.test.ts`, `platform-meta-manager.test.tsx`, and `platform-stage4b.spec.ts` cover exact BFF stream boundaries/timeout/abort/transport/sanitization, normalized Campaign and Ad Set reads, explicit state and budget confirmation, decrease warning, due-only retry, stale invalidation/reload, unknown-only reconciliation, and no automatic mutation or retry.
@@ -69,8 +69,8 @@ The implementation commit was pushed and both exact-head runs finished successfu
 | Focused Stage 4B Testcontainers/Hibernate | Passed |
 | Frontend lint | Passed |
 | Frontend typecheck | Passed |
-| Frontend tests | Passed — 24 files / 147 tests |
-| Full Backend | Passed — 413 tests, 0 failures/errors/skips |
+| Frontend tests | Passed — 24 files / 149 tests |
+| Full Backend | Passed — 422 tests, 0 failures/errors/skips |
 | Frontend build | Passed |
 | `npm audit --omit=dev` | Passed — 0 vulnerabilities |
 | Compose cold build/start/health | Passed; isolated host ports 18080/13000 were used because unrelated local software occupied 8080 |
@@ -83,13 +83,22 @@ The implementation commit was pushed and both exact-head runs finished successfu
 
 Known local warnings are the existing Mockito/Byte Buddy dynamic-agent deprecation, the existing Maven Surefire fork shutdown-after-success warning, and the package-approved `unrs-resolver` install-script warning. During this cycle's local verification, a pre-baseline full Playwright run received the expected AI budget 503 because the README-required fixed AI budget variables were omitted; after correcting the test environment, all 16 cases passed. A focused Stage 4B run also exposed an over-restrictive normalized Ad Set GET BFF allowlist, which was corrected and covered by a route-specific unit test before the complete rerun. The PR must remain Draft until independent Manager review.
 
+## Manager cycle 3 developer resolution
+
+- `4B-RR3-001`: Campaign and Ad Set confirmation plan versions are presence-aware nullable request values and are in the explicit required-field order. Missing/null plan versions and invalid money now identify the declared field deterministically; existing exhaustive stable source/outcome/429/safe-DTO suites remain green.
+- `4B-RR3-002`: all Ad Set create, Campaign/Ad Set state, and budget 412 paths clear the preview and pending confirmation before reloading the entity. The component matrix proves a fresh preview is required and no automatic mutation follows a stale result.
+- `4B-RR3-003 / 4B-DB-005`: the direct-SQL suite now constructs malformed INSERT/deferred graphs rather than updating immutable rows; concurrency meets at the account/day critical section only after separate parent locks; the V12 compatibility fixture covers all eight required coherent states and checks GET plus inert retry/reconcile for each.
+- `4B-RR3-004 / 4B-DB-004`: persisted budget Audit assertions now cover exact operation/batch/reservation/day UUID relationships, action, actor/source/request context, ordered typed field names, exact budget/reserved values, aggregate arithmetic, and absent day events. A dedicated hook after the last Audit append and before commit proves full rollback for all five commands.
+- `4B-RR3-005`: deterministic fake timers prove the composed timeout signal aborts at exactly 10,000 ms, and a two-chunk exact 1 MiB + 1 response proves streaming cancellation and safe 502 mapping.
+- `4B-RR3-006`: this report now names the executable cases and current counts only. Exact remote evidence is recorded by the evidence-only follow-up commit after the implementation Head completes both workflows.
+
 ## Remote implementation-head evidence
 
 - Draft PR: `#62`
-- Implementation Head: `2d7970ead97cefc1e9a81aa6884952b18b073831`
-- Push CI Run: `32037948132` — Passed
-- Pull Request CI Run: `32037950437` — Passed
-- Both runs completed `quality-and-compose` and `secret-scan`. Backend Testcontainers (413 tests), Frontend verification (24 files / 147 tests), Compose build/health, all 16 Playwright scenarios, Smoke, actionlint, and pinned Gitleaks executed successfully; only the conditional failure-artifact upload was correctly skipped.
+- Cycle-3 Implementation Head: pending the implementation commit.
+- Cycle-3 Push CI Run: pending.
+- Cycle-3 Pull Request CI Run: pending.
+- The prior cycle-2 evidence remains `2d7970ead97cefc1e9a81aa6884952b18b073831`, Push `32037948132`, and Pull Request `32037950437`; it is superseded for the next Manager review.
 - GitHub reported the existing non-blocking Actions Node.js 20 deprecation annotation for pinned `actions/checkout`; no Stage 4B check or acceptance step was skipped.
 
 This evidence-only documentation commit creates a superseding Head. Its exact Push and Pull Request CI Run IDs are reported in the Developer handoff after both runs complete successfully; the completion report remains clean rather than creating an infinite evidence-commit cycle.

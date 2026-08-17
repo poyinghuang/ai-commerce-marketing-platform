@@ -21,10 +21,10 @@ public class Stage4BTransactions {
     private static final ZoneId TAIPEI=ZoneId.of("Asia/Taipei");
     private final JdbcTemplate jdbc; private final PlatformOperationService operations;
     private final PlatformOperationJpaRepository operationRepository; private final ObjectMapper mapper;
-    private final Environment environment;
+    private final Environment environment; private final Stage4BLedgerCriticalSectionHook ledgerHook;
     public Stage4BTransactions(JdbcTemplate jdbc,PlatformOperationService operations,
-            PlatformOperationJpaRepository operationRepository,ObjectMapper mapper,Environment environment){
-        this.jdbc=jdbc;this.operations=operations;this.operationRepository=operationRepository;this.mapper=mapper;this.environment=environment;
+            PlatformOperationJpaRepository operationRepository,ObjectMapper mapper,Environment environment,Stage4BLedgerCriticalSectionHook ledgerHook){
+        this.jdbc=jdbc;this.operations=operations;this.operationRepository=operationRepository;this.mapper=mapper;this.environment=environment;this.ledgerHook=ledgerHook;
     }
 
     @Transactional(readOnly=true)
@@ -50,6 +50,7 @@ public class Stage4BTransactions {
         insertBatch(operation,account,request,null,BigDecimal.ZERO);
         LocalDate anchored=batchDate(operation);validatePlan(plan,anchored);
         PlatformOperation stored=create(operation,account,request,entity,PlatformOperationType.CREATE_CAMPAIGN,PlatformEntityType.CAMPAIGN,payload,requestId);
+        ledgerHook.afterAuditAppends();
         return new Created(stored,false);
     }
 
@@ -71,9 +72,10 @@ public class Stage4BTransactions {
         payload.put("currency","TWD");payload.put("accountTimezone","Asia/Taipei");payload.put("optimizationGoal","OFFSITE_CONVERSIONS");
         payload.put("targetingProfileKey","TW_BROAD_FEEDS_V1");payload.put("placementProfileKey","TW_BROAD_FEEDS_V1");payload.put("desiredState","PAUSED");
         payload.put("scheduleStart",campaign.scheduleStart.toString());payload.put("scheduleEnd",campaign.scheduleEnd.toString());
-        UUID batch=insertBatch(operation,account,request,parentVersion,amount);LocalDate date=batchDate(operation);validatePlan(plan,date);
+        UUID batch=insertBatch(operation,account,request,parentVersion,amount);LocalDate date=batchDate(operation);validatePlan(plan,date);ledgerHook.beforeAccountDayClaim();
         Day day=reserveDay(account,date,amount);insertReservation(batch,operation,account,day.uuid,entity,"INITIAL",null,amount,amount);applyDay(account,date,amount);
         PlatformOperation stored=create(operation,account,request,entity,PlatformOperationType.CREATE_AD_SET,PlatformEntityType.AD_SET,payload,requestId);
+        ledgerHook.afterAuditAppends();
         return new Created(stored,false);
     }
 
@@ -91,7 +93,9 @@ public class Stage4BTransactions {
         PlatformOperationType op=target==PlatformDesiredState.PAUSED?PlatformOperationType.PAUSE:PlatformOperationType.RESUME;UUID operation=UUID.randomUUID();
         var payload=base(op,type,entity);payload.put("expectedEntityVersion",expectedVersion);payload.put("targetDesiredState",target.name());
         insertBatch(operation,account,request,expectedVersion,BigDecimal.ZERO);
-        return new Created(create(operation,account,request,entity,op,type,payload,requestId),false);
+        PlatformOperation stored=create(operation,account,request,entity,op,type,payload,requestId);
+        ledgerHook.afterAuditAppends();
+        return new Created(stored,false);
     }
 
     @Transactional(readOnly=true)
@@ -111,9 +115,11 @@ public class Stage4BTransactions {
         BigDecimal delta=next.subtract(current.budget).max(BigDecimal.ZERO);String kind=delta.signum()>0?"INCREASE":"DECREASE_NO_RELEASE";UUID operation=UUID.randomUUID();
         var payload=base(PlatformOperationType.UPDATE_BUDGET,PlatformEntityType.AD_SET,entity);payload.put("platformAdSetUuid",entity);payload.put("expectedEntityVersion",expectedVersion);
         payload.put("budgetType",current.budgetType.name());payload.put("currency","TWD");payload.put("previousBudgetAmount",current.budget);payload.put("newBudgetAmount",next);
-        UUID batch=insertBatch(operation,account,request,expectedVersion,delta);LocalDate date=batchDate(operation);Day day=reserveDay(account,date,delta);
+        UUID batch=insertBatch(operation,account,request,expectedVersion,delta);LocalDate date=batchDate(operation);ledgerHook.beforeAccountDayClaim();Day day=reserveDay(account,date,delta);
         insertReservation(batch,operation,account,day.uuid,entity,kind,current.budget,next,delta);applyDay(account,date,delta);
-        PlatformOperation stored=create(operation,account,request,entity,PlatformOperationType.UPDATE_BUDGET,PlatformEntityType.AD_SET,payload,requestId);return new Created(stored,false);
+        PlatformOperation stored=create(operation,account,request,entity,PlatformOperationType.UPDATE_BUDGET,PlatformEntityType.AD_SET,payload,requestId);
+        ledgerHook.afterAuditAppends();
+        return new Created(stored,false);
     }
 
     private PlatformOperation create(UUID operation,UUID account,UUID request,UUID entity,PlatformOperationType type,PlatformEntityType entityType,Map<String,Object> payload,String requestId){

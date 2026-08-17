@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -50,6 +51,11 @@ class Stage4BLegacyOperationIntegrationTest {
     private static final UUID OPERATION=UUID.fromString("00000000-0000-4000-8000-000000000454");
     private static final UUID ATTEMPT=UUID.fromString("00000000-0000-4000-8000-000000000455");
     private static final UUID METRIC=UUID.fromString("00000000-0000-4000-8000-000000000456");
+    private static final List<UUID> STATE_OPERATIONS=List.of(
+        UUID.fromString("00000000-0000-4000-8000-000000000460"),UUID.fromString("00000000-0000-4000-8000-000000000461"),OPERATION,
+        UUID.fromString("00000000-0000-4000-8000-000000000462"),UUID.fromString("00000000-0000-4000-8000-000000000463"),
+        UUID.fromString("00000000-0000-4000-8000-000000000464"),UUID.fromString("00000000-0000-4000-8000-000000000465"),UUID.fromString("00000000-0000-4000-8000-000000000466"));
+    private static final List<String> EXPECTED_STATES=List.of("CREATED","SUBMITTING","FAILED_RETRYABLE","UNKNOWN_OUTCOME","RECONCILING","SUCCEEDED","FAILED_TERMINAL","FAILED_TERMINAL");
     private static final Map<String,Object> V12_OPERATION=new LinkedHashMap<>();
     private static final Map<String,Object> V12_ATTEMPT=new LinkedHashMap<>();
     private static final Map<String,Object> V12_METRIC=new LinkedHashMap<>();
@@ -70,16 +76,15 @@ class Stage4BLegacyOperationIntegrationTest {
         assertThat(row("platform_ad_sets","platform_ad_set_uuid",AD_SET)).isEqualTo(V12_AD_SET);
         assertThat(jdbc.queryForObject("select count(*) from platform_operation_batches where operation_uuid=?",Integer.class,OPERATION)).isZero();
 
-        mvc.perform(get("/api/platform-operations/"+OPERATION))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.operationUuid").value(OPERATION.toString()))
-            .andExpect(jsonPath("$.status").value("FAILED_RETRYABLE"));
+        assertThat(STATE_OPERATIONS.stream().map(operation->jdbc.queryForObject("select status from platform_operations where operation_uuid=?",String.class,operation)).toList()).containsExactlyElementsOf(EXPECTED_STATES);
 
         Snapshot before=snapshot(); int calls=fake.invocationCount();
-        mvc.perform(post("/api/platform-operations/"+OPERATION+"/retry").header("If-Match","W/\"2\""))
-            .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("PLATFORM_LEGACY_OPERATION_INERT"));
-        mvc.perform(post("/api/platform-operations/"+OPERATION+"/reconcile").header("If-Match","W/\"2\""))
-            .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("PLATFORM_LEGACY_OPERATION_INERT"));
+        for(int index=0;index<STATE_OPERATIONS.size();index++){
+            UUID operation=STATE_OPERATIONS.get(index);long version=jdbc.queryForObject("select version from platform_operations where operation_uuid=?",Long.class,operation);
+            mvc.perform(get("/api/platform-operations/"+operation)).andExpect(status().isOk()).andExpect(jsonPath("$.operationUuid").value(operation.toString())).andExpect(jsonPath("$.status").value(EXPECTED_STATES.get(index)));
+            mvc.perform(post("/api/platform-operations/"+operation+"/retry").header("If-Match","W/\""+version+"\"")) .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("PLATFORM_LEGACY_OPERATION_INERT"));
+            mvc.perform(post("/api/platform-operations/"+operation+"/reconcile").header("If-Match","W/\""+version+"\"")) .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("PLATFORM_LEGACY_OPERATION_INERT"));
+        }
         assertThat(snapshot()).isEqualTo(before);
         assertThat(fake.invocationCount()).isEqualTo(calls);
     }
@@ -90,9 +95,9 @@ class Stage4BLegacyOperationIntegrationTest {
         jdbc.queryForObject("select count(*) from platform_operation_attempts",Integer.class),
         jdbc.queryForObject("select count(*) from platform_operation_batches",Integer.class),
         jdbc.queryForObject("select count(*) from platform_budget_reservations",Integer.class),
-        jdbc.queryForObject("select count(*) from audit_logs",Integer.class),
-        row("platform_operations","operation_uuid",OPERATION),row("platform_operation_attempts","operation_attempt_uuid",ATTEMPT));}
-    private record Snapshot(int operations,int attempts,int batches,int reservations,int audits,Map<String,Object> operation,Map<String,Object> attempt){}
+        jdbc.queryForObject("select count(*) from audit_logs",Integer.class),rows("platform_operations","operation_uuid"),rows("platform_operation_attempts","operation_attempt_uuid"),rows("platform_campaigns","platform_campaign_uuid"),rows("platform_ad_sets","platform_ad_set_uuid"),rows("platform_metric_snapshots","metric_snapshot_uuid"));}
+    private String rows(String table,String order){return jdbc.queryForObject("select coalesce(jsonb_agg(to_jsonb(t) order by "+order+"),'[]')::text from "+table+" t",String.class);}
+    private record Snapshot(int operations,int attempts,int batches,int reservations,int audits,String operationRows,String attemptRows,String campaignRows,String adSetRows,String metricRows){}
 
     @TestConfiguration(proxyBeanMethods=false)
     static class LegacyFixtureMigration {
@@ -115,6 +120,14 @@ class Stage4BLegacyOperationIntegrationTest {
                     jdbc.update("update platform_operations set status='SUBMITTING',attempt_count=1,claimed_at=statement_timestamp(),updated_at=statement_timestamp(),version=1 where operation_uuid=?",OPERATION);
                     jdbc.update("insert into platform_operation_attempts(operation_attempt_uuid,operation_uuid,attempt_kind,attempt_number,status,started_at,version) select ?,operation_uuid,'SUBMIT',1,'STARTED',claimed_at,0 from platform_operations where operation_uuid=?",ATTEMPT,OPERATION);
                 });
+                UUID created=STATE_OPERATIONS.get(0),submitting=STATE_OPERATIONS.get(1),unknown=STATE_OPERATIONS.get(3),reconciling=STATE_OPERATIONS.get(4),succeeded=STATE_OPERATIONS.get(5),submitTerminal=STATE_OPERATIONS.get(6),reconcileTerminal=STATE_OPERATIONS.get(7);
+                for(UUID operation:List.of(created,submitting,unknown,reconciling,succeeded,submitTerminal,reconcileTerminal))insertOperation(jdbc,operation);
+                claimSubmit(jdbc,tx,submitting);
+                claimSubmit(jdbc,tx,unknown);finalizeSubmit(jdbc,tx,unknown,"UNKNOWN_OUTCOME","PLATFORM_RESPONSE_AMBIGUOUS","{\"schemaVersion\":1,\"providerKey\":\"FAKE\",\"attemptKind\":\"SUBMIT\",\"resultKind\":\"UNKNOWN_OUTCOME\"}");
+                claimSubmit(jdbc,tx,reconciling);finalizeSubmit(jdbc,tx,reconciling,"UNKNOWN_OUTCOME","PLATFORM_RESPONSE_AMBIGUOUS","{\"schemaVersion\":1,\"providerKey\":\"FAKE\",\"attemptKind\":\"SUBMIT\",\"resultKind\":\"UNKNOWN_OUTCOME\"}");claimReconcile(jdbc,tx,reconciling);
+                claimSubmit(jdbc,tx,submitTerminal);finalizeSubmit(jdbc,tx,submitTerminal,"FAILED_TERMINAL","PLATFORM_VALIDATION_FAILED","{\"schemaVersion\":1,\"providerKey\":\"FAKE\",\"attemptKind\":\"SUBMIT\",\"resultKind\":\"FAILED_TERMINAL\"}");
+                claimSubmit(jdbc,tx,reconcileTerminal);finalizeSubmit(jdbc,tx,reconcileTerminal,"UNKNOWN_OUTCOME","PLATFORM_RESPONSE_AMBIGUOUS","{\"schemaVersion\":1,\"providerKey\":\"FAKE\",\"attemptKind\":\"SUBMIT\",\"resultKind\":\"UNKNOWN_OUTCOME\"}");claimReconcile(jdbc,tx,reconcileTerminal);finalizeReconcileTerminal(jdbc,tx,reconcileTerminal);
+                claimSubmit(jdbc,tx,succeeded);String success="{\"schemaVersion\":1,\"providerKey\":\"FAKE\",\"attemptKind\":\"SUBMIT\",\"resultKind\":\"SUCCEEDED\"}";tx.executeWithoutResult(s->{jdbc.update("update platform_operation_attempts set status='SUCCEEDED',evidence=?::jsonb,completed_at=statement_timestamp(),version=1 where operation_uuid=? and attempt_kind='SUBMIT'",success,succeeded);jdbc.update("update platform_operations set status='SUCCEEDED',outcome_evidence=?::jsonb,claimed_at=null,completed_at=statement_timestamp(),updated_at=statement_timestamp(),version=2 where operation_uuid=?",success,succeeded);jdbc.update("update platform_ad_sets set budget_amount=30,last_budget_operation_uuid=?,updated_at=statement_timestamp(),version=1 where platform_ad_set_uuid=?",succeeded,AD_SET);});
                 String evidence="{\"schemaVersion\":1,\"providerKey\":\"FAKE\",\"attemptKind\":\"SUBMIT\",\"resultKind\":\"FAILED_RETRYABLE\",\"retryAfterSeconds\":60}";
                 tx.executeWithoutResult(s->{
                     jdbc.update("update platform_operation_attempts set status='FAILED_RETRYABLE',normalized_error_code='PLATFORM_RATE_LIMITED',safe_provider_trace_id='legacy-trace',evidence=?::jsonb,completed_at=statement_timestamp(),version=1 where operation_attempt_uuid=?",evidence,ATTEMPT);
@@ -127,5 +140,11 @@ class Stage4BLegacyOperationIntegrationTest {
                 latest.migrate();
             };
         }
+        private static void insertOperation(JdbcTemplate jdbc,UUID operation){UUID request=UUID.nameUUIDFromBytes(operation.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));String payload="{\"schemaVersion\":1,\"operationType\":\"UPDATE_BUDGET\",\"entityType\":\"AD_SET\",\"entityUuid\":\""+AD_SET+"\",\"platformAdSetUuid\":\""+AD_SET+"\",\"expectedEntityVersion\":0,\"budgetType\":\"DAILY\",\"currency\":\"TWD\",\"previousBudgetAmount\":25,\"newBudgetAmount\":30}";jdbc.update("insert into platform_operations(operation_uuid,platform_account_uuid,operation_type,entity_type,platform_ad_set_uuid,client_request_uuid,idempotency_key,request_payload,request_sha256,requested_actor_type,requested_actor_id,request_id) values (?,?, 'UPDATE_BUDGET','AD_SET',?,?,?,?::jsonb,?,'LOCAL_ADMIN','local-admin',?)",operation,ACCOUNT,AD_SET,request,hex(operation),payload,hex(request),"legacy-"+operation.toString().substring(30));}
+        private static void claimSubmit(JdbcTemplate jdbc,TransactionTemplate tx,UUID operation){tx.executeWithoutResult(s->{jdbc.update("update platform_operations set status='SUBMITTING',attempt_count=attempt_count+1,claimed_at=statement_timestamp(),updated_at=statement_timestamp(),version=version+1 where operation_uuid=?",operation);jdbc.update("insert into platform_operation_attempts(operation_attempt_uuid,operation_uuid,attempt_kind,attempt_number,status,started_at,version) select ?,operation_uuid,'SUBMIT',attempt_count,'STARTED',claimed_at,0 from platform_operations where operation_uuid=?",UUID.randomUUID(),operation);});}
+        private static void finalizeSubmit(JdbcTemplate jdbc,TransactionTemplate tx,UUID operation,String status,String code,String evidence){tx.executeWithoutResult(s->{jdbc.update("update platform_operation_attempts set status=?,normalized_error_code=?,safe_provider_trace_id='legacy-trace',evidence=?::jsonb,completed_at=statement_timestamp(),version=1 where operation_uuid=? and attempt_kind='SUBMIT'",status,code,evidence,operation);jdbc.update("update platform_operations set status=?,normalized_error_code=?,safe_provider_trace_id='legacy-trace',outcome_evidence=?::jsonb,claimed_at=null,completed_at=case when ?='FAILED_TERMINAL' then statement_timestamp() else null end,updated_at=statement_timestamp(),version=version+1 where operation_uuid=?",status,code,evidence,status,operation);});}
+        private static void claimReconcile(JdbcTemplate jdbc,TransactionTemplate tx,UUID operation){tx.executeWithoutResult(s->{jdbc.update("update platform_operations set status='RECONCILING',reconciliation_count=reconciliation_count+1,normalized_error_code=null,safe_provider_trace_id=null,outcome_evidence=null,claimed_at=statement_timestamp(),updated_at=statement_timestamp(),version=version+1 where operation_uuid=?",operation);jdbc.update("insert into platform_operation_attempts(operation_attempt_uuid,operation_uuid,attempt_kind,attempt_number,status,started_at,version) select ?,operation_uuid,'RECONCILE',reconciliation_count,'STARTED',claimed_at,0 from platform_operations where operation_uuid=?",UUID.randomUUID(),operation);});}
+        private static void finalizeReconcileTerminal(JdbcTemplate jdbc,TransactionTemplate tx,UUID operation){String evidence="{\"schemaVersion\":1,\"providerKey\":\"FAKE\",\"attemptKind\":\"RECONCILE\",\"resultKind\":\"FAILED_TERMINAL\"}";tx.executeWithoutResult(s->{jdbc.update("update platform_operation_attempts set status='FAILED_TERMINAL',normalized_error_code='PLATFORM_RECONCILIATION_TERMINAL',safe_provider_trace_id='legacy-trace',evidence=?::jsonb,completed_at=statement_timestamp(),version=1 where operation_uuid=? and attempt_kind='RECONCILE'",evidence,operation);jdbc.update("update platform_operations set status='FAILED_TERMINAL',normalized_error_code='PLATFORM_RECONCILIATION_TERMINAL',safe_provider_trace_id='legacy-trace',outcome_evidence=?::jsonb,claimed_at=null,completed_at=statement_timestamp(),updated_at=statement_timestamp(),version=version+1 where operation_uuid=?",evidence,operation);});}
+        private static String hex(UUID id){return id.toString().replace("-","").repeat(2);}
     }
 }

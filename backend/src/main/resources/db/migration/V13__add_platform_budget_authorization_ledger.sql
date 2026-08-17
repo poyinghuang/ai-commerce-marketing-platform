@@ -100,6 +100,8 @@ BEGIN
     RAISE EXCEPTION 'reservation batch identity mismatch' USING ERRCODE='23514';
   END IF;
   RETURN NEW;
+EXCEPTION WHEN no_data_found THEN
+  RAISE EXCEPTION 'reservation batch provenance missing' USING ERRCODE='23514';
 END $$;
 CREATE TRIGGER trg_platform_anchor_reservation BEFORE INSERT ON platform_budget_reservations
 FOR EACH ROW EXECUTE FUNCTION platform_anchor_reservation();
@@ -142,6 +144,8 @@ BEGIN
     WHERE operation_batch_uuid=NEW.operation_batch_uuid;
   IF ledger<>NEW.reserved_amount THEN RAISE EXCEPTION 'operation batch reservation sum mismatch' USING ERRCODE='23514'; END IF;
   RETURN NULL;
+EXCEPTION WHEN no_data_found THEN
+  RAISE EXCEPTION 'operation batch operation provenance missing' USING ERRCODE='23514';
 END $$;
 CREATE CONSTRAINT TRIGGER trg_platform_batch_coherence AFTER INSERT ON platform_operation_batches
 DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION platform_validate_batch_coherence();
@@ -211,6 +215,8 @@ BEGIN
     RAISE EXCEPTION 'account budget day ledger sum mismatch' USING ERRCODE='23514';
   END IF;
   RETURN NULL;
+EXCEPTION WHEN no_data_found THEN
+  RAISE EXCEPTION 'account budget day provenance missing' USING ERRCODE='23514';
 END $$;
 CREATE CONSTRAINT TRIGGER trg_platform_day_coherence AFTER INSERT OR UPDATE ON platform_account_budget_days
 DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION platform_validate_day_coherence();
