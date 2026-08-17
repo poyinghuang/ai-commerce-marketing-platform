@@ -30,11 +30,12 @@ public final class Stage4BAccountInitializer implements ApplicationRunner {
           VALUES (?,'FAKE',?,?,?,'TWD','Asia/Taipei','ACTIVE',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,0)
           ON CONFLICT DO NOTHING
           """,id,env,ref,fp);
+        Integer candidates=jdbc.queryForObject("SELECT count(*) FROM platform_accounts WHERE provider_key='FAKE' AND account_reference=?",Integer.class,ref);
         Integer exact=jdbc.queryForObject("""
           SELECT count(*) FROM platform_accounts WHERE platform_account_uuid=? AND provider_key='FAKE'
             AND environment=? AND account_reference=? AND external_account_fingerprint=?
             AND currency='TWD' AND timezone='Asia/Taipei' AND lifecycle_status='ACTIVE' AND archived_at IS NULL
           """,Integer.class,id,env,ref,fp);
-        if(exact==null||exact!=1)throw new IllegalStateException("PLATFORM_ACCOUNT_CONFIGURATION_INVALID");
+        if(candidates==null||candidates!=1||exact==null||exact!=1)throw new IllegalStateException("PLATFORM_ACCOUNT_CONFIGURATION_INVALID");
     }
 }

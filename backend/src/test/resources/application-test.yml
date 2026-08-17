@@ -1,4 +1,9 @@
 spring:
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+    parser:
+      strict-duplicate-detection: true
   config:
     activate:
       on-profile: test

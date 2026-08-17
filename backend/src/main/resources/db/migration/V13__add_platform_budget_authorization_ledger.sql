@@ -9,6 +9,7 @@ CREATE TABLE platform_operation_batches (
     client_request_uuid UUID NOT NULL,
     requested_actor_type VARCHAR(32) NOT NULL,
     requested_actor_id VARCHAR(128) NOT NULL,
+    expected_entity_version BIGINT CHECK (expected_entity_version >= 0),
     currency CHAR(3) NOT NULL CHECK (currency = 'TWD'),
     business_date DATE NOT NULL,
     reserved_amount NUMERIC(19,6) NOT NULL CHECK (reserved_amount >= 0 AND reserved_amount <= 300.000000),
@@ -119,6 +120,7 @@ BEGIN
      OR NEW.updated_at<OLD.updated_at THEN
     RAISE EXCEPTION 'invalid account budget day update' USING ERRCODE='23514';
   END IF;
+  NEW.updated_at:=statement_timestamp();
   RETURN NEW;
 END $$;
 CREATE TRIGGER trg_platform_budget_day_protect BEFORE UPDATE OR DELETE ON platform_account_budget_days
@@ -128,6 +130,10 @@ CREATE FUNCTION platform_validate_batch_coherence() RETURNS trigger LANGUAGE plp
 DECLARE o platform_operations%ROWTYPE; ledger NUMERIC(19,6);
 BEGIN
   SELECT * INTO STRICT o FROM platform_operations WHERE operation_uuid=NEW.operation_uuid;
+  IF o.operation_type NOT IN ('CREATE_CAMPAIGN','CREATE_AD_SET','PAUSE','RESUME','UPDATE_BUDGET')
+     OR o.entity_type NOT IN ('CAMPAIGN','AD_SET') THEN
+    RAISE EXCEPTION 'operation batch type is outside stage4b' USING ERRCODE='23514';
+  END IF;
   IF o.platform_account_uuid<>NEW.platform_account_uuid OR o.client_request_uuid<>NEW.client_request_uuid
      OR o.requested_actor_type<>NEW.requested_actor_type OR o.requested_actor_id<>NEW.requested_actor_id THEN
     RAISE EXCEPTION 'operation batch identity mismatch' USING ERRCODE='23514';
@@ -143,12 +149,6 @@ DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION platform_validate_ba
 CREATE FUNCTION platform_validate_stage4b_operation() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE b platform_operation_batches%ROWTYPE; r platform_budget_reservations%ROWTYPE;
 BEGIN
-  -- V13 authorizes only the two server-owned Stage 4B FAKE account identities.
-  -- Other Stage 4A accounts remain legacy/inert and are deliberately not backfilled.
-  IF NEW.platform_account_uuid NOT IN ('00000000-0000-4000-8000-00000000004b'::uuid,
-                                       '00000000-0000-4000-8000-00000000005b'::uuid) THEN
-    RETURN NULL;
-  END IF;
   IF NEW.operation_type NOT IN ('CREATE_CAMPAIGN','CREATE_AD_SET','PAUSE','RESUME','UPDATE_BUDGET')
      OR NEW.entity_type NOT IN ('CAMPAIGN','AD_SET') THEN
     RETURN NULL;
@@ -157,6 +157,16 @@ BEGIN
   IF b.platform_account_uuid<>NEW.platform_account_uuid OR b.client_request_uuid<>NEW.client_request_uuid
      OR b.requested_actor_type<>NEW.requested_actor_type OR b.requested_actor_id<>NEW.requested_actor_id THEN
     RAISE EXCEPTION 'operation batch identity mismatch' USING ERRCODE='23514';
+  END IF;
+  IF (NEW.operation_type='CREATE_CAMPAIGN' AND b.expected_entity_version IS NOT NULL)
+     OR (NEW.operation_type IN ('CREATE_AD_SET','PAUSE','RESUME','UPDATE_BUDGET')
+         AND b.expected_entity_version IS DISTINCT FROM
+             CASE WHEN NEW.operation_type='CREATE_AD_SET' THEN b.expected_entity_version
+                  ELSE (NEW.request_payload->>'expectedEntityVersion')::bigint END) THEN
+    RAISE EXCEPTION 'operation batch expected version mismatch' USING ERRCODE='23514';
+  END IF;
+  IF NEW.operation_type='CREATE_AD_SET' AND b.expected_entity_version IS NULL THEN
+    RAISE EXCEPTION 'ad set parent version provenance missing' USING ERRCODE='23514';
   END IF;
   IF NEW.operation_type IN ('CREATE_AD_SET','UPDATE_BUDGET') THEN
     SELECT * INTO STRICT r FROM platform_budget_reservations WHERE operation_uuid=NEW.operation_uuid;
@@ -183,15 +193,19 @@ CREATE CONSTRAINT TRIGGER trg_platform_stage4b_operation_coherence AFTER INSERT 
 DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION platform_validate_stage4b_operation();
 
 CREATE FUNCTION platform_validate_day_coherence() RETURNS trigger LANGUAGE plpgsql AS $$
-DECLARE ledger NUMERIC(19,6); actual NUMERIC(19,6); positive_count BIGINT; actual_version BIGINT;
+DECLARE ledger NUMERIC(19,6); actual NUMERIC(19,6); positive_count BIGINT; actual_version BIGINT; actual_created TIMESTAMPTZ; actual_updated TIMESTAMPTZ; expected_updated TIMESTAMPTZ;
 BEGIN
   SELECT COALESCE(SUM(reserved_amount),0) INTO ledger FROM platform_budget_reservations
     WHERE platform_account_uuid=NEW.platform_account_uuid AND business_date=NEW.business_date AND currency=NEW.currency;
   SELECT COUNT(*) FILTER (WHERE reserved_amount>0) INTO positive_count FROM platform_budget_reservations
     WHERE platform_account_uuid=NEW.platform_account_uuid AND business_date=NEW.business_date AND currency=NEW.currency;
-  SELECT reserved_amount,version INTO STRICT actual,actual_version FROM platform_account_budget_days
+  SELECT MAX(created_at) FILTER (WHERE reserved_amount>0) INTO expected_updated FROM platform_budget_reservations
+    WHERE platform_account_uuid=NEW.platform_account_uuid AND business_date=NEW.business_date AND currency=NEW.currency;
+  SELECT reserved_amount,version,created_at,updated_at INTO STRICT actual,actual_version,actual_created,actual_updated FROM platform_account_budget_days
     WHERE platform_account_uuid=NEW.platform_account_uuid AND business_date=NEW.business_date AND currency=NEW.currency;
   IF ledger<>actual OR actual_version<>positive_count
+     OR (positive_count=0 AND actual_updated<>actual_created)
+     OR (positive_count>0 AND (actual_updated<expected_updated OR actual_updated<=actual_created))
      OR NOT EXISTS (SELECT 1 FROM platform_budget_reservations
        WHERE platform_account_uuid=NEW.platform_account_uuid AND business_date=NEW.business_date AND currency=NEW.currency) THEN
     RAISE EXCEPTION 'account budget day ledger sum mismatch' USING ERRCODE='23514';
@@ -199,4 +213,6 @@ BEGIN
   RETURN NULL;
 END $$;
 CREATE CONSTRAINT TRIGGER trg_platform_day_coherence AFTER INSERT OR UPDATE ON platform_account_budget_days
+DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION platform_validate_day_coherence();
+CREATE CONSTRAINT TRIGGER trg_platform_reservation_day_coherence AFTER INSERT ON platform_budget_reservations
 DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION platform_validate_day_coherence();

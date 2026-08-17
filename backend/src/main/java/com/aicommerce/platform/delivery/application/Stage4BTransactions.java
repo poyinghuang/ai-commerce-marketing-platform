@@ -46,7 +46,7 @@ public class Stage4BTransactions {
         payload.put("platformCampaignUuid",entity);payload.put("campaignUuid",campaignUuid);
         payload.put("objective","OUTCOME_SALES");payload.put("desiredState","PAUSED");payload.put("accountTimezone","Asia/Taipei");
         payload.put("scheduleStart",scheduleStart(plan).toString());payload.put("scheduleEnd",scheduleEnd(plan).toString());
-        insertBatch(operation,account,request,BigDecimal.ZERO);
+        insertBatch(operation,account,request,null,BigDecimal.ZERO);
         LocalDate anchored=batchDate(operation);validatePlan(plan,anchored);
         PlatformOperation stored=create(operation,account,request,entity,PlatformOperationType.CREATE_CAMPAIGN,PlatformEntityType.CAMPAIGN,payload,requestId);
         return new Created(stored,false);
@@ -61,7 +61,7 @@ public class Stage4BTransactions {
 
     @Transactional
     public Created confirmAdSet(UUID parent,UUID request,PlatformBudgetType type,BigDecimal amount,long expectedPlanVersion,long parentVersion,String requestId){
-        UUID account=account();var existing=replay(account,request);if(existing.isPresent())return replay(existing.get(),PlatformOperationType.CREATE_AD_SET,Map.of("platformCampaignUuid",parent.toString(),"budgetType",type.name(),"budgetAmount",plain(amount)));
+        UUID account=account();var existing=replay(account,request);if(existing.isPresent())return replay(existing.get(),PlatformOperationType.CREATE_AD_SET,Map.of("platformCampaignUuid",parent.toString(),"budgetType",type.name(),"budgetAmount",plain(amount)),parentVersion);
         var campaign=campaign(parent,true);if(campaign.version!=parentVersion)throw error("PLATFORM_ENTITY_STALE",HttpStatus.PRECONDITION_FAILED);
         var plan=plan(campaign.campaignUuid,true);if(plan.version!=expectedPlanVersion)throw error("PLATFORM_CAMPAIGN_PLAN_STALE",HttpStatus.PRECONDITION_FAILED);
         validateBudget(type,amount,plan);UUID entity=UUID.randomUUID(),operation=UUID.randomUUID();
@@ -70,7 +70,7 @@ public class Stage4BTransactions {
         payload.put("currency","TWD");payload.put("accountTimezone","Asia/Taipei");payload.put("optimizationGoal","OFFSITE_CONVERSIONS");
         payload.put("targetingProfileKey","TW_BROAD_FEEDS_V1");payload.put("placementProfileKey","TW_BROAD_FEEDS_V1");payload.put("desiredState","PAUSED");
         payload.put("scheduleStart",campaign.scheduleStart.toString());payload.put("scheduleEnd",campaign.scheduleEnd.toString());
-        UUID batch=insertBatch(operation,account,request,amount);LocalDate date=batchDate(operation);validatePlan(plan,date);
+        UUID batch=insertBatch(operation,account,request,parentVersion,amount);LocalDate date=batchDate(operation);validatePlan(plan,date);
         Day day=reserveDay(account,date,amount);insertReservation(batch,operation,account,day.uuid,entity,"INITIAL",null,amount,amount);applyDay(account,date,amount);
         PlatformOperation stored=create(operation,account,request,entity,PlatformOperationType.CREATE_AD_SET,PlatformEntityType.AD_SET,payload,requestId);
         return new Created(stored,false);
@@ -89,7 +89,7 @@ public class Stage4BTransactions {
         var current=entity(type,entity,true);if(current.version!=expectedVersion)throw error("PLATFORM_ENTITY_STALE",HttpStatus.PRECONDITION_FAILED);validateState(current,target);
         PlatformOperationType op=target==PlatformDesiredState.PAUSED?PlatformOperationType.PAUSE:PlatformOperationType.RESUME;UUID operation=UUID.randomUUID();
         var payload=base(op,type,entity);payload.put("expectedEntityVersion",expectedVersion);payload.put("targetDesiredState",target.name());
-        insertBatch(operation,account,request,BigDecimal.ZERO);
+        insertBatch(operation,account,request,expectedVersion,BigDecimal.ZERO);
         return new Created(create(operation,account,request,entity,op,type,payload,requestId),false);
     }
 
@@ -110,7 +110,7 @@ public class Stage4BTransactions {
         BigDecimal delta=next.subtract(current.budget).max(BigDecimal.ZERO);String kind=delta.signum()>0?"INCREASE":"DECREASE_NO_RELEASE";UUID operation=UUID.randomUUID();
         var payload=base(PlatformOperationType.UPDATE_BUDGET,PlatformEntityType.AD_SET,entity);payload.put("platformAdSetUuid",entity);payload.put("expectedEntityVersion",expectedVersion);
         payload.put("budgetType",current.budgetType.name());payload.put("currency","TWD");payload.put("previousBudgetAmount",current.budget);payload.put("newBudgetAmount",next);
-        UUID batch=insertBatch(operation,account,request,delta);LocalDate date=batchDate(operation);Day day=reserveDay(account,date,delta);
+        UUID batch=insertBatch(operation,account,request,expectedVersion,delta);LocalDate date=batchDate(operation);Day day=reserveDay(account,date,delta);
         insertReservation(batch,operation,account,day.uuid,entity,kind,current.budget,next,delta);applyDay(account,date,delta);
         PlatformOperation stored=create(operation,account,request,entity,PlatformOperationType.UPDATE_BUDGET,PlatformEntityType.AD_SET,payload,requestId);return new Created(stored,false);
     }
@@ -121,19 +121,22 @@ public class Stage4BTransactions {
         catch(Stage4BException e){throw e;}catch(RuntimeException e){throw e;}catch(Exception e){throw new IllegalStateException(e);}
     }
     private Optional<PlatformOperation> replay(UUID account,UUID request){return operationRepository.findByPlatformAccountUuidAndRequestedActorTypeAndRequestedActorIdAndClientRequestUuid(account,"LOCAL_ADMIN","local-admin",request);}
-    private Created replay(PlatformOperation operation,PlatformOperationType expected,Map<String,String> fields){
+    private Created replay(PlatformOperation operation,PlatformOperationType expected,Map<String,String> fields){return replay(operation,expected,fields,null);}
+    private Created replay(PlatformOperation operation,PlatformOperationType expected,Map<String,String> fields,Long expectedEntityVersion){
         try{
             var payload=mapper.readTree(operation.getRequestPayload());
             if(operation.getOperationType()!=expected)throw error("PLATFORM_IDEMPOTENCY_CONFLICT",HttpStatus.CONFLICT);
             for(var field:fields.entrySet())if(!field.getValue().equals(payload.path(field.getKey()).asText()))throw error("PLATFORM_IDEMPOTENCY_CONFLICT",HttpStatus.CONFLICT);
             if(jdbc.queryForObject("SELECT count(*) FROM platform_operation_batches WHERE operation_uuid=?",Integer.class,operation.getOperationUuid())!=1)throw error("PLATFORM_LEGACY_OPERATION_INERT",HttpStatus.CONFLICT);
+            Long persistedVersion=jdbc.queryForObject("SELECT expected_entity_version FROM platform_operation_batches WHERE operation_uuid=?",Long.class,operation.getOperationUuid());
+            if(expectedEntityVersion!=null&&!expectedEntityVersion.equals(persistedVersion))throw error("PLATFORM_IDEMPOTENCY_CONFLICT",HttpStatus.CONFLICT);
             return new Created(operation,true);
         }catch(Stage4BException e){throw e;}catch(Exception e){throw error("PLATFORM_IDEMPOTENCY_CONFLICT",HttpStatus.CONFLICT);}
     }
-    private UUID insertBatch(UUID operation,UUID account,UUID request,BigDecimal amount){UUID id=UUID.randomUUID();jdbc.update("""
-      INSERT INTO platform_operation_batches(operation_batch_uuid,operation_uuid,platform_account_uuid,client_request_uuid,requested_actor_type,requested_actor_id,currency,business_date,reserved_amount,created_at,version)
-      VALUES (?,?,?,?, 'LOCAL_ADMIN','local-admin','TWD',CURRENT_DATE,?,CURRENT_TIMESTAMP,0)
-      """,id,operation,account,request,amount);return id;}
+    private UUID insertBatch(UUID operation,UUID account,UUID request,Long expectedVersion,BigDecimal amount){UUID id=UUID.randomUUID();jdbc.update("""
+      INSERT INTO platform_operation_batches(operation_batch_uuid,operation_uuid,platform_account_uuid,client_request_uuid,requested_actor_type,requested_actor_id,expected_entity_version,currency,business_date,reserved_amount,created_at,version)
+      VALUES (?,?,?,?, 'LOCAL_ADMIN','local-admin',?,'TWD',CURRENT_DATE,?,CURRENT_TIMESTAMP,0)
+      """,id,operation,account,request,expectedVersion,amount);return id;}
     private LocalDate batchDate(UUID operation){return jdbc.queryForObject("SELECT business_date FROM platform_operation_batches WHERE operation_uuid=?",LocalDate.class,operation);}
     private Day reserveDay(UUID account,LocalDate date,BigDecimal delta){UUID candidate=UUID.randomUUID();jdbc.update("""
       INSERT INTO platform_account_budget_days(platform_account_uuid,business_date,currency,account_budget_day_uuid,reserved_amount,ceiling_amount,created_at,updated_at,version)
@@ -147,13 +150,13 @@ public class Stage4BTransactions {
       VALUES (?,?,?,?,?,?,?,?,?,?,'TWD',CURRENT_DATE,CURRENT_TIMESTAMP)
       """,UUID.randomUUID(),batch,operation,account,day,entity,kind,previous,next,reserved);}
 
-    private UUID account(){boolean test=Arrays.asList(environment.getActiveProfiles()).contains("test");UUID id=test?Stage4BAccountInitializer.TEST_UUID:Stage4BAccountInitializer.LOCAL_UUID;Integer count=jdbc.queryForObject("SELECT count(*) FROM platform_accounts WHERE platform_account_uuid=? AND provider_key='FAKE' AND lifecycle_status='ACTIVE' AND currency='TWD' AND timezone='Asia/Taipei'",Integer.class,id);if(count==null||count!=1)throw error("PLATFORM_ACCOUNT_CONFIGURATION_INVALID",HttpStatus.SERVICE_UNAVAILABLE);return id;}
+    UUID account(){boolean test=Arrays.asList(environment.getActiveProfiles()).contains("test");UUID id=test?Stage4BAccountInitializer.TEST_UUID:Stage4BAccountInitializer.LOCAL_UUID;String reference=test?"stage4b-test":"stage4b-local";String expectedEnvironment=test?"TEST":"LOCAL";String fingerprint=test?"9276789d487fcd7791df964134173a1b815a4f9fc1d507457ee6dbcca187c8c2":"4f1eee978e5efed2d42ac62995484b642870cda74dea26cd2d2f63653d51cf36";List<UUID> candidates=jdbc.query("SELECT platform_account_uuid FROM platform_accounts WHERE provider_key='FAKE' AND account_reference=?",(rs,n)->rs.getObject(1,UUID.class),reference);if(candidates.size()!=1||!id.equals(candidates.getFirst()))throw error("PLATFORM_ACCOUNT_CONFIGURATION_INVALID",HttpStatus.SERVICE_UNAVAILABLE);Integer exact=jdbc.queryForObject("SELECT count(*) FROM platform_accounts WHERE platform_account_uuid=? AND provider_key='FAKE' AND environment=? AND account_reference=? AND external_account_fingerprint=? AND lifecycle_status='ACTIVE' AND archived_at IS NULL AND currency='TWD' AND timezone='Asia/Taipei'",Integer.class,id,expectedEnvironment,reference,fingerprint);if(exact==null||exact!=1)throw error("PLATFORM_ACCOUNT_CONFIGURATION_INVALID",HttpStatus.SERVICE_UNAVAILABLE);return id;}
     private Plan plan(UUID id,boolean lock){List<Plan> rows=jdbc.query("SELECT campaign_uuid,start_date,end_date,objective,platform,budget_daily,budget_total,currency,lifecycle_status,archived_at,version FROM campaign_plans WHERE campaign_uuid=?"+(lock?" FOR UPDATE":""),(rs,n)->new Plan(rs.getObject(1,UUID.class),rs.getObject(2,LocalDate.class),rs.getObject(3,LocalDate.class),rs.getString(4),rs.getString(5),rs.getBigDecimal(6),rs.getBigDecimal(7),rs.getString(8),rs.getString(9),rs.getObject(10),rs.getLong(11)),id);if(rows.size()!=1)throw error("PLATFORM_RESOURCE_NOT_FOUND",HttpStatus.NOT_FOUND);return rows.getFirst();}
     private void validatePlan(Plan p,LocalDate date){if(!"ACTIVE".equals(p.lifecycle)||p.archived!=null||!"META".equals(p.platform)||!"OUTCOME_SALES".equals(p.objective)||!"TWD".equals(p.currency)||p.start==null||p.end==null||p.start.isBefore(date)||p.end.isBefore(p.start)||(nonPositive(p.daily)&&nonPositive(p.total)))throw error("PLATFORM_CAMPAIGN_PLAN_INELIGIBLE",HttpStatus.CONFLICT);}
     private void validateBudget(PlatformBudgetType type,BigDecimal amount,Plan p){amount=money(amount);BigDecimal max=type==PlatformBudgetType.DAILY?new BigDecimal("100"):new BigDecimal("300");BigDecimal planMax=type==PlatformBudgetType.DAILY?p.daily:p.total;if(planMax==null||amount.signum()<=0||amount.compareTo(max)>0||amount.compareTo(planMax)>0)throw error("PLATFORM_POLICY_REJECTED",HttpStatus.CONFLICT);}
-    private CampaignRow campaign(UUID id,boolean lock){List<CampaignRow> rows=jdbc.query("SELECT platform_campaign_uuid,campaign_uuid,platform_account_uuid,desired_state,observed_state,schedule_start,schedule_end,external_id,version FROM platform_campaigns WHERE platform_campaign_uuid=?"+(lock?" FOR UPDATE":""),(rs,n)->new CampaignRow(rs.getObject(1,UUID.class),rs.getObject(2,UUID.class),rs.getObject(3,UUID.class),PlatformDesiredState.valueOf(rs.getString(4)),rs.getString(5),rs.getTimestamp(6).toInstant(),rs.getTimestamp(7).toInstant(),rs.getString(8),rs.getLong(9)),id);if(rows.size()!=1)throw error("PLATFORM_RESOURCE_NOT_FOUND",HttpStatus.NOT_FOUND);return rows.getFirst();}
+    private CampaignRow campaign(UUID id,boolean lock){UUID account=account();List<CampaignRow> rows=jdbc.query("SELECT platform_campaign_uuid,campaign_uuid,platform_account_uuid,desired_state,observed_state,schedule_start,schedule_end,external_id,version FROM platform_campaigns WHERE platform_campaign_uuid=? AND platform_account_uuid=?"+(lock?" FOR UPDATE":""),(rs,n)->new CampaignRow(rs.getObject(1,UUID.class),rs.getObject(2,UUID.class),rs.getObject(3,UUID.class),PlatformDesiredState.valueOf(rs.getString(4)),rs.getString(5),rs.getTimestamp(6).toInstant(),rs.getTimestamp(7).toInstant(),rs.getString(8),rs.getLong(9)),id,account);if(rows.size()!=1)throw error("PLATFORM_RESOURCE_NOT_FOUND",HttpStatus.NOT_FOUND);return rows.getFirst();}
     private EntityRow entity(PlatformEntityType type,UUID id,boolean lock){if(type==PlatformEntityType.CAMPAIGN){var c=campaign(id,lock);return new EntityRow(c.id,c.desired,c.externalId,c.version,c.scheduleStart,c.scheduleEnd);}var a=adSet(id,lock);return new EntityRow(a.id,a.desiredState,a.externalId,a.version,a.scheduleStart,a.scheduleEnd);}
-    private AdSetRow adSet(UUID id,boolean lock){List<AdSetRow> rows=jdbc.query("SELECT s.platform_ad_set_uuid,s.platform_campaign_uuid,s.platform_account_uuid,s.budget_type,s.budget_amount,s.desired_state,s.external_id,s.version,s.schedule_start,s.schedule_end,c.campaign_uuid FROM platform_ad_sets s JOIN platform_campaigns c ON c.platform_campaign_uuid=s.platform_campaign_uuid WHERE s.platform_ad_set_uuid=?"+(lock?" FOR UPDATE OF s":""),(rs,n)->new AdSetRow(rs.getObject(1,UUID.class),rs.getObject(2,UUID.class),rs.getObject(3,UUID.class),PlatformBudgetType.valueOf(rs.getString(4)),rs.getBigDecimal(5),PlatformDesiredState.valueOf(rs.getString(6)),rs.getString(7),rs.getLong(8),rs.getTimestamp(9).toInstant(),rs.getTimestamp(10).toInstant(),rs.getObject(11,UUID.class)),id);if(rows.size()!=1)throw error("PLATFORM_RESOURCE_NOT_FOUND",HttpStatus.NOT_FOUND);return rows.getFirst();}
+    private AdSetRow adSet(UUID id,boolean lock){UUID account=account();List<AdSetRow> rows=jdbc.query("SELECT s.platform_ad_set_uuid,s.platform_campaign_uuid,s.platform_account_uuid,s.budget_type,s.budget_amount,s.desired_state,s.external_id,s.version,s.schedule_start,s.schedule_end,c.campaign_uuid FROM platform_ad_sets s JOIN platform_campaigns c ON c.platform_campaign_uuid=s.platform_campaign_uuid AND c.platform_account_uuid=s.platform_account_uuid WHERE s.platform_ad_set_uuid=? AND s.platform_account_uuid=?"+(lock?" FOR UPDATE OF s":""),(rs,n)->new AdSetRow(rs.getObject(1,UUID.class),rs.getObject(2,UUID.class),rs.getObject(3,UUID.class),PlatformBudgetType.valueOf(rs.getString(4)),rs.getBigDecimal(5),PlatformDesiredState.valueOf(rs.getString(6)),rs.getString(7),rs.getLong(8),rs.getTimestamp(9).toInstant(),rs.getTimestamp(10).toInstant(),rs.getObject(11,UUID.class)),id,account);if(rows.size()!=1)throw error("PLATFORM_RESOURCE_NOT_FOUND",HttpStatus.NOT_FOUND);return rows.getFirst();}
     private void validateState(EntityRow row,PlatformDesiredState target){if(row.externalId==null||row.desired==target||(target!=PlatformDesiredState.PAUSED&&target!=PlatformDesiredState.ACTIVE))throw error("PLATFORM_INVALID_OPERATION_STATE",HttpStatus.CONFLICT);}
     private Stage4BViews.Preview preview(UUID req,PlatformOperationType op,PlatformEntityType type,UUID entity,Long version,Long planVersion,PlatformDesiredState state,PlatformBudgetType budgetType,BigDecimal amount,Instant start,Instant end,String kind,BigDecimal previous,BigDecimal next,BigDecimal delta){LocalDate date=businessDate();BigDecimal before=accountDay(date),after=before.add(delta);List<String> warnings=new java.util.ArrayList<>();if("DECREASE_NO_RELEASE".equals(kind))warnings.add("CAPACITY_NOT_RELEASED");warnings.add("CONFIRMATION_REVALIDATES");warnings.add("FAKE_ONLY_NO_REAL_DELIVERY");return new Stage4BViews.Preview(req,op,type,Optional.ofNullable(entity),Optional.ofNullable(version),Optional.ofNullable(planVersion),state,Optional.ofNullable(budgetType),Optional.ofNullable(amount).map(Stage4BTransactions::plain),Optional.ofNullable(start),Optional.ofNullable(end),policy(budgetType),new Stage4BViews.Reservation(kind,Optional.ofNullable(previous).map(Stage4BTransactions::plain),Optional.ofNullable(next).map(Stage4BTransactions::plain),plain(delta),date,plain(delta),plain(before),plain(after),plain(new BigDecimal("1000").subtract(after))),List.copyOf(warnings),after.compareTo(new BigDecimal("1000"))<=0);}
     private Stage4BViews.Policy policy(PlatformBudgetType type){return new Stage4BViews.Policy("TWD","Asia/Taipei","OUTCOME_SALES","OFFSITE_CONVERSIONS","TW_BROAD_FEEDS_V1","TW_BROAD_FEEDS_V1",Optional.ofNullable(type).map(t->t==PlatformBudgetType.DAILY?"100":"300"),"300","1000");}

@@ -26,16 +26,23 @@ export async function forwardStage4B(request: NextRequest, backendPath: string) 
   const headers=new Headers();
   for(const name of ["If-Match","X-Request-ID"]){const value=request.headers.get(name);if(value&&(name!=="X-Request-ID"||SAFE_REQUEST_ID.test(value)))headers.set(name,value);}
   if(!isEmpty&&request.method==="POST")headers.set("Content-Type","application/json");
-  let body: string|undefined;
-  if(request.method==="POST"){body=await request.text();if(new TextEncoder().encode(body).byteLength>REQUEST_LIMIT)return error("PAYLOAD_TOO_LARGE","Request body is too large",413);if(isEmpty&&body.trim())return error("PLATFORM_REQUEST_INVALID","Platform request is invalid",400);if(isEmpty)body=undefined;}
+  let body: Uint8Array<ArrayBuffer>|undefined;
+  if(request.method==="POST"){try{body=await readBounded(request.body,REQUEST_LIMIT);}catch{return error("PAYLOAD_TOO_LARGE","Request body is too large",413);}if(isEmpty&&new TextDecoder().decode(body).trim())return error("PLATFORM_REQUEST_INVALID","Platform request is invalid",400);if(isEmpty||body.byteLength===0)body=undefined;}
   try{
-    const response=await fetch(new URL(backendPath,origin),{method:request.method,headers,body,cache:"no-store",redirect:"manual",signal:AbortSignal.timeout(10_000)});
+    const timeout=AbortSignal.timeout(10_000);const signal=AbortSignal.any([request.signal,timeout]);
+    const response=await fetch(new URL(backendPath,origin),{method:request.method,headers,body,cache:"no-store",redirect:"manual",signal});
     if(response.status>=300&&response.status<400)return error("BACKEND_BAD_GATEWAY","Backend is unavailable",502);
-    const bytes=new Uint8Array(await response.arrayBuffer());if(bytes.byteLength>RESPONSE_LIMIT)return error("BACKEND_RESPONSE_TOO_LARGE","Backend response is too large",502);
+    let bytes:Uint8Array<ArrayBuffer>;try{bytes=await readBounded(response.body,RESPONSE_LIMIT);}catch{return error("BACKEND_RESPONSE_TOO_LARGE","Backend response is too large",502);}
+    if(bytes.byteLength===0||!safeJson(bytes))return error("BACKEND_BAD_GATEWAY","Backend is unavailable",502);
     const exposed=new Headers();for(const name of ["Content-Type","ETag","Location","X-Request-ID"]){const value=response.headers.get(name);if(value)exposed.set(name,value);}
-    return new NextResponse(response.status===204?null:bytes,{status:response.status,headers:exposed});
-  }catch(cause){return error(cause instanceof DOMException&&cause.name==="TimeoutError"?"BACKEND_TIMEOUT":"BACKEND_BAD_GATEWAY",cause instanceof DOMException&&cause.name==="TimeoutError"?"Backend request timed out":"Backend is unavailable",cause instanceof DOMException&&cause.name==="TimeoutError"?504:502);}
+    const responseBody=response.status===204?null:bytes.buffer;
+    return new NextResponse(responseBody,{status:response.status,headers:exposed});
+  }catch(cause){const timedOut=cause instanceof DOMException&&cause.name==="TimeoutError";return error(timedOut?"BACKEND_TIMEOUT":"BACKEND_BAD_GATEWAY",timedOut?"Backend request timed out":"Backend is unavailable",timedOut?504:502);}
 }
+
+async function readBounded(stream:ReadableStream<Uint8Array>|null,limit:number):Promise<Uint8Array<ArrayBuffer>>{if(!stream)return new Uint8Array(0);const reader=stream.getReader();const chunks:Uint8Array[]=[];let size=0;try{while(true){const {done,value}=await reader.read();if(done)break;if(!value)continue;size+=value.byteLength;if(size>limit){await reader.cancel();throw new Error("limit");}chunks.push(value);}const result=new Uint8Array(new ArrayBuffer(size));let offset=0;for(const chunk of chunks){result.set(chunk,offset);offset+=chunk.byteLength;}return result;}finally{reader.releaseLock();}}
+function safeJson(bytes:Uint8Array){try{const value=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(bytes));return !containsForbidden(value);}catch{return false;}}
+function containsForbidden(value:unknown):boolean{if(Array.isArray(value))return value.some(containsForbidden);if(value&&typeof value==="object")return Object.entries(value).some(([key,item])=>/account.*(?:uuid|reference)|externalId$|canonical|payload|evidence|trace|authorization|cookie|token|credential|secret|provider.*(?:body|url)/i.test(key)||containsForbidden(item));return false;}
 
 function backendOrigin(){const value=process.env.BACKEND_INTERNAL_URL;if(!value)return null;try{const url=new URL(value);if(!["http:","https:"].includes(url.protocol)||url.username||url.password||url.search||url.hash)return null;url.pathname=url.pathname.replace(/\/*$/,"/");return url;}catch{return null;}}
 function error(code:string,message:string,status:number){return NextResponse.json({code,message},{status});}

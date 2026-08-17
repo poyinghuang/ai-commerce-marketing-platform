@@ -125,6 +125,7 @@ public class PlatformOperationTransactions {
     }
 
     private void appendStage4BBudgetAudit(PlatformOperation operation, AuditOperationContext context) {
+        if(jdbc.queryForObject("SELECT to_regclass('platform_operation_batches') IS NOT NULL",Boolean.class)!=Boolean.TRUE)return;
         List<Map<String,Object>> batches=jdbc.queryForList("SELECT operation_batch_uuid,business_date,reserved_amount,currency FROM platform_operation_batches WHERE operation_uuid=?",operation.getOperationUuid());
         if(batches.isEmpty())return;
         Map<String,Object> b=batches.getFirst();UUID batch=(UUID)b.get("operation_batch_uuid");

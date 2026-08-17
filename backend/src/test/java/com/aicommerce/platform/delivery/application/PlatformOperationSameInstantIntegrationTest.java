@@ -26,7 +26,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 @Testcontainers
-@SpringBootTest
+@SpringBootTest(properties={"spring.flyway.target=12","spring.jpa.hibernate.ddl-auto=none"})
 @ActiveProfiles("test")
 @Import(PlatformOperationSameInstantIntegrationTest.FixedClockConfiguration.class)
 class PlatformOperationSameInstantIntegrationTest {

@@ -16,6 +16,8 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -28,6 +30,7 @@ class Milestone4BLedgerIntegrationTest {
             new PostgreSQLContainer("postgres:17.6-alpine3.22");
     @Autowired JdbcTemplate jdbc;
     @Autowired Stage4BTransactions transactions;
+    @Autowired PlatformTransactionManager transactionManager;
 
     @Test
     void v13TablesHibernateMappingsAndTaipeiBoundaryAreAvailable() {
@@ -57,6 +60,17 @@ class Milestone4BLedgerIntegrationTest {
         assertSqlState23514(() -> jdbc.update("UPDATE platform_account_budget_days SET reserved_amount=51 WHERE account_budget_day_uuid=?",day));
         assertSqlState23514(() -> jdbc.update("DELETE FROM platform_account_budget_days WHERE account_budget_day_uuid=?",day));
         assertThat(jdbc.queryForObject("SELECT reserved_amount FROM platform_account_budget_days WHERE account_budget_day_uuid=?",BigDecimal.class,day)).isEqualByComparingTo("50");
+    }
+
+    @Test void arbitraryAccountPostV13Stage4BOperationCannotCommitWithoutBatch() {
+        UUID account=UUID.randomUUID(),plan=UUID.randomUUID(),campaign=UUID.randomUUID(),operation=UUID.randomUUID(),request=UUID.randomUUID();
+        jdbc.update("INSERT INTO platform_accounts(platform_account_uuid,provider_key,environment,account_reference,external_account_fingerprint,currency,timezone) VALUES (?,'FAKE','TEST',?,?, 'TWD','Asia/Taipei')",account,"universal-"+account,account.toString().replace("-","").repeat(2));
+        jdbc.update("INSERT INTO campaign_plans(campaign_uuid,campaign_name) VALUES (?,'Universal')",plan);
+        jdbc.update("INSERT INTO platform_campaigns(platform_campaign_uuid,campaign_uuid,platform_account_uuid,objective,account_timezone) VALUES (?,?,?,'OUTCOME_SALES','Asia/Taipei')",campaign,plan,account);
+        String payload="{\"schemaVersion\":1,\"operationType\":\"CREATE_CAMPAIGN\",\"entityType\":\"CAMPAIGN\",\"entityUuid\":\""+campaign+"\",\"platformCampaignUuid\":\""+campaign+"\",\"campaignUuid\":\""+plan+"\",\"objective\":\"OUTCOME_SALES\",\"desiredState\":\"PAUSED\",\"accountTimezone\":\"Asia/Taipei\"}";
+        assertSqlState23514(()->new TransactionTemplate(transactionManager).executeWithoutResult(s->jdbc.update("INSERT INTO platform_operations(operation_uuid,platform_account_uuid,operation_type,entity_type,platform_campaign_uuid,client_request_uuid,idempotency_key,request_payload,request_sha256,requested_actor_type,requested_actor_id,request_id) VALUES (?,?, 'CREATE_CAMPAIGN','CAMPAIGN',?,?,?,?::jsonb,?,'LOCAL_ADMIN','local-admin','universal')",operation,account,campaign,request,"a".repeat(64),payload,"b".repeat(64))));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM platform_operations WHERE operation_uuid=?",Integer.class,operation)).isZero();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM platform_operation_batches WHERE operation_uuid=?",Integer.class,operation)).isZero();
     }
 
     private UUID plan(){UUID id=UUID.randomUUID();jdbc.update("""
