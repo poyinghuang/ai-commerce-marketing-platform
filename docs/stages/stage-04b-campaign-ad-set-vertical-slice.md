@@ -2,17 +2,17 @@
 
 ## Gate status
 
-- Status: Repository-owner decision recorded; specification corrections complete pending independent re-review
+- Status: Specification approved at reviewed content Head; approval-record commit pending exact-head CI
 - Branch: `codex/stage-04b-campaign-adset-specification`
 - Base: `4d89448cb48520c14f6ce991d803a0221503ebeb`
 - Stage 4A prerequisite: Passed; PR #60 merged at `4d89448cb48520c14f6ce991d803a0221503ebeb`; post-merge CI Run `31998731088` passed
 - Product settings: Approved by the repository owner on 2026-08-17
-- Implementation: Blocked; not started
-- Manager Decision: `ESCALATE_TO_HUMAN` on reviewed Head; findings resolved pending independent re-review
+- Implementation: Blocked; not started; unlock only after PR #61 merge and post-merge main CI
+- Manager Decision: `APPROVE` for reviewed content Head `8dfef4ee4cc34cbee0f14cfcc6df8845ac30e995`
 - Merge: Not started
 - Stage 4C: Locked
 
-The reviewed content Head is `2b0dba3bc94b0e9be9d699f23a42880da3e0fee7`. Exact-head Push CI `32007307611` and PR CI `32007310578` passed. On 2026-08-17 the repository owner selected the narrowly scoped deterministic-FAKE exception described below. Findings `4B-SPEC-001` through `4B-SPEC-009` are corrected in this document but remain `RESOLVED_PENDING_RE_REVIEW`; PR #61 stays Draft and all Stage 4B runtime work remains frozen until a corrected exact Head passes full CI and independent re-review.
+The approved reviewed content Head is `8dfef4ee4cc34cbee0f14cfcc6df8845ac30e995`. Exact-head Push CI `32021497931` and PR CI `32021501115` passed. On 2026-08-17 the repository owner selected the narrowly scoped deterministic-FAKE exception described below. Independent architecture/API/security and database/concurrency/migration re-review found no remaining BLOCKING or MAJOR finding and no further human-escalation trigger. The approval-record documentation commit must itself pass complete exact-head Push/PR CI before PR #61 may become Ready or merge; all Stage 4B runtime work remains frozen until merge and post-merge main verification pass.
 
 ## Objective
 
