@@ -163,3 +163,27 @@ The exact-operation provenance uniqueness, database-server-time retry eligibilit
 - Decision rationale: Exact-head CI and implementation integrity findings passed, but the remaining required acceptance evidence is BLOCKING under the approved specification and completion report claims.
 - Required next action: Keep PR #60 Draft. Resolve 4A-IMPL-016, run the complete local baseline, push a new exact Head, wait for full Push and PR CI, and repeat independent Code, Database, and Manager review. Do not merge or start Stage 4B.
 - Human approval required: `No`; this is a correctable Stage 4A verification/evidence gap.
+
+## Re-review cycle 3 — 2026-08-17
+
+### Exact-head evidence
+
+- Candidate Head: `360dd494312e073e4ae6f1cab486f30b1e7b7b7d`
+- Push CI: `31995242609` — Passed
+- Pull Request CI: `31995244963` — Passed
+- Verification: Backend 344 tests, frontend lint/typecheck/134 tests/build/audit, Compose, Playwright 14 tests, Smoke, actionlint, cleanup, and Gitleaks executed; worktree clean and synchronized; PR remained Draft/Open.
+- Independent Code Review: `REQUEST_CHANGES`
+- Independent Database Review: `REQUEST_CHANGES`
+
+The additional Ad, metric, budget, fake-provider, and typed-Audit suites materially improve the acceptance evidence, but they do not fully resolve the case-exact requirement.
+
+| ID | Severity | File／Evidence | Finding | Required fix／test |
+| --- | --- | --- | --- | --- |
+| 4A-IMPL-017 | BLOCKING | Completion report lines 49 and 55-59; operation budget, Ad evidence, fake adapter, and typed Audit tests | Some report claims remain unproven: budget has no explicit lower-bound case; several budget statements combine multiple invalid conditions and cannot identify the intended invariant; raw reciprocal and Ad checksum/inactive-Product cases still use broad exception assertions or lack complete unchanged-state checks; fake exact-field assertions omit submit `RECONCILE_FOUND`, reconcile `SUCCESS`, and exact replayed Ad Set/Ad IDs; typed Audit exact sequence/content remains limited mostly to successful Campaign creation and a few no-event paths rather than the approved failure/reconciliation/mutation/recovery/attempt-3 matrix. | Isolate each negative with an otherwise-valid fixture, assert target SQLState/constraint and complete unchanged operation/attempt/entity/Audit state, including a lower bound. Exact-check every fake scenario and deterministic replayed expected ID for all three entity types. Add parameterized exact typed Audit sequence/content/no-event coverage for the approved transaction matrix. Make the report match only executable cases. |
+
+### Re-review decision
+
+- Decision: `REQUEST_CHANGES`
+- Decision rationale: Exact-head CI and production integrity remain green, but 4A-IMPL-017 is an unresolved required BLOCKING acceptance-evidence finding.
+- Required next action: Keep PR #60 Draft. Resolve 4A-IMPL-017, repeat the full local baseline and exact-head Push/PR CI, then repeat independent review. Do not merge or start Stage 4B.
+- Human approval required: `No`; no escalation-policy trigger exists.
