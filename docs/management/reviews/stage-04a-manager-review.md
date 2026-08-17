@@ -138,3 +138,28 @@ Developer changes materially resolved the principal defects recorded as 4A-IMPL-
 - Decision rationale: Both exact-head CI runs passed and most initial findings improved, but exact-operation database provenance and the required acceptance evidence remain BLOCKING. Retry schedule integrity and typed money/create-state contracts also retain unresolved MAJOR findings.
 - Required next action: Keep PR #60 Draft. Correct 4A-IMPL-011 through 015 within Stage 4A, run full local verification, push a new exact Head, wait for complete Push and PR CI, and repeat independent Code, Database, and Manager review. Do not merge or begin Stage 4B.
 - Human approval required: `No`; no escalation-policy trigger exists.
+
+## Re-review cycle 2 — 2026-08-17
+
+### Exact-head evidence
+
+- Candidate Head: `9d395100719899273460120d0275e6405cb42c3c`
+- Push CI: `31992960900` — Passed
+- Pull Request CI: `31992963434` — Passed
+- Required jobs and steps: `quality-and-compose` and `secret-scan` passed; Backend 337 tests, frontend lint/typecheck/134 tests/build/audit, Compose, Playwright 14 tests, Smoke, actionlint, cleanup, and Gitleaks executed. Only failure-artifact upload was conditionally skipped after Playwright success.
+- Scope and worktree: Clean, synchronized, Draft/Open, and Stage 4A-only; no forbidden provider, credential, production, security-boundary, spend, REST/UI, or Stage 4B change.
+- Independent Code Review: `REQUEST_CHANGES`
+- Independent Database Review: `REQUEST_CHANGES`
+
+The exact-operation provenance uniqueness, database-server-time retry eligibility, deferred retry schedule equality, normalized money scale, and PAUSED Campaign create contract resolve 4A-IMPL-011 and 013 through 015. Acceptance coverage also improved materially. One required finding remains.
+
+| ID | Severity | File／Evidence | Finding | Required fix／test |
+| --- | --- | --- | --- | --- |
+| 4A-IMPL-016 | BLOCKING | Stage 4A completion report lines 52-58 and the Ad, operation/budget, metric, fake-provider, and Audit acceptance tests | The completion report's case-exact claims still exceed executable evidence. Missing independent cases include existing mismatched Product/output and TEXT output; pending/missing review; blocked preservation; inactive/non-image/null-checksum Asset and Asset lifecycle/type/checksum divergence; wrong/reused/non-success budget operation and currency/policy/bound/deferred rollback cases; metric base/window/attribution/freshness/fingerprint invalidity; exact fake outcome code/evidence/retry/trace/ID fields; and exact typed Audit sequence/content plus required no-event/rollback paths. Several broad RuntimeException/count assertions do not prove the intended invariant or unchanged post-state. | Add case-specific fixtures and tests that exercise actual deferred constraints, assert the intended SQLState/invariant and unchanged state, and verify exact normalized fake and Audit records. Cover the approved Stage 4A matrix or make the completion report strictly enumerate only actual cases; the approved acceptance scope itself is not reduced. |
+
+### Re-review decision
+
+- Decision: `REQUEST_CHANGES`
+- Decision rationale: Exact-head CI and implementation integrity findings passed, but the remaining required acceptance evidence is BLOCKING under the approved specification and completion report claims.
+- Required next action: Keep PR #60 Draft. Resolve 4A-IMPL-016, run the complete local baseline, push a new exact Head, wait for full Push and PR CI, and repeat independent Code, Database, and Manager review. Do not merge or start Stage 4B.
+- Human approval required: `No`; this is a correctable Stage 4A verification/evidence gap.
