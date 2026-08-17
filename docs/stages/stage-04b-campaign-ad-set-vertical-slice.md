@@ -172,12 +172,16 @@ Preview is read-only. It canonicalizes and validates the same DTO and policies a
 
 ### Confirmation Transaction A
 
-1. Require the exact four-part Backend gate and BFF server flag; resolve the exact server-owned actor and the one reference-selected active FAKE account.
-2. Validate canonical DTO, lock/revalidate Campaign Plan and parent/entity versions, derive the server schedule, and validate account, profiles, Plan/per-entity budget, aggregate policy, and accepted operation state.
-3. Resolve idempotency identity. A matching replay with a V13 batch returns existing data before writes; a matching unbatched V12 row returns `PLATFORM_LEGACY_OPERATION_INERT`; a payload mismatch returns conflict.
-4. Insert the batch first to capture database time/business date. For `CREATE_AD_SET` or `UPDATE_BUDGET`, execute the atomic day-row bootstrap then lock its persisted winner and validate remaining capacity; other commands create no account-day row.
-5. Insert the Stage 4A entity/operation, the budget reservation when applicable, aggregate delta, and exact typed Audit in the same transaction as the one batch from step 4.
+1. Require the exact four-part Backend gate and BFF server flag; resolve the exact server-owned actor and the one reference-selected active FAKE account; validate only closed DTO/header syntax needed to form durable identity and stable intent.
+2. Resolve durable idempotency identity **before** Campaign Plan/entity lookup or current-version/state/policy validation. A matching V13 replay returns existing data without consulting mutable current rows; a matching unbatched V12 row returns `PLATFORM_LEGACY_OPERATION_INERT`; an intent mismatch returns conflict.
+3. For a new identity, lock/revalidate Campaign Plan and parent/entity versions and validate all time-independent account/profile/Plan/per-entity/state rules. Derive schedule from the locked Plan and compute the exact reservation delta, but do not yet compare `start_date` with a current clock.
+4. Insert the immutable batch with its now-known reserved amount. Read back its database-owned `created_at`/`business_date`; that persisted date is the **only** date used for Campaign Plan start-date eligibility. A failure rolls back the batch. For budget operations, execute the atomic day-row bootstrap, lock its persisted winner and validate capacity against this same batch date.
+5. Insert the Stage 4A entity/operation, budget reservation when applicable, aggregate delta and exact typed Audit in the same transaction.
 6. Commit before adapter dispatch.
+
+Replay equality is exact and does not recompute server-derived schedule/policy from current rows. It compares the durable identity plus: Campaign create — operation type and `campaignUuid`; Ad Set create — operation type, parent Platform Campaign UUID, budget type and canonical amount; state — operation type, entity type/UUID, target desired state and the original entity `If-Match` version; budget — entity UUID, canonical new amount and the original entity `If-Match` version. `expectedCampaignPlanVersion` is confirmation-time validation-only, is not added to the closed V12 canonical operation payload/hash, and is ignored after an operation with the durable identity exists. The previously persisted canonical schedule/payload remains authoritative. An exact replay therefore succeeds after Plan version change/archive or an Asia/Taipei date rollover; a changed business intent conflicts.
+
+V13 defines immutable SQL function `platform_taipei_business_date(timestamptz)` and both the batch trigger and eligibility query use it. Boundary tests assert the dates immediately before/at/after Asia/Taipei midnight. A barrier test pauses a transaction after the batch insert and proves later eligibility reads the persisted batch date even if another clock statement observes a different date; rollback leaves no batch.
 
 Transactions B/C, retries, attempt-3 conversion, unknown-outcome handling, reconciliation, entity mutation, and Audit reuse the exact Stage 4A contracts. No controller catches ambiguity and creates a replacement operation. A stale optimistic version, policy rejection, or ledger ceiling failure creates no attempt or provider call.
 
@@ -234,16 +238,25 @@ record PlatformAdSetView(UUID platformAdSetUuid, UUID platformCampaignUuid,
     String targetingProfile, String placementProfile,
     Optional<Instant> scheduleStart, Optional<Instant> scheduleEnd,
     Optional<String> externalIdFingerprint, long version) {}
+record PlatformOperationApiView(UUID operationUuid,
+    PlatformOperationType operationType, PlatformEntityType entityType,
+    UUID entityUuid, PlatformOperationStatus status, int attemptCount,
+    int reconciliationCount, int maxAttempts,
+    Optional<PlatformStableErrorCode> normalizedErrorCode,
+    Optional<Instant> nextAttemptAt, Optional<Instant> completedAt,
+    Instant createdAt, Instant updatedAt, long version) {}
 ```
 
-All records and `Optional` containers are non-null. Optionals serialize as a property only when present; Java NULL never serializes. Create previews have `entityUuid` and `expectedEntityVersion` empty because the server allocates the Platform entity UUID only during the confirmation transaction; existing-entity previews require both present. Reservation kind is `NONE`, `INITIAL`, `INCREASE`, or `DECREASE_NO_RELEASE`; `NONE` has both amount optionals empty and all deltas zero. Warning values are a closed ordered subset of `CAPACITY_NOT_RELEASED`, `CONFIRMATION_REVALIDATES`, and `FAKE_ONLY_NO_REAL_DELIVERY`. Fingerprints are lowercase SHA-256; raw external IDs never leave Backend. `PlatformOperationView` is the exact Stage 4A record without modification.
+All records and `Optional` containers are non-null. Optionals serialize as a property only when present; Java NULL never serializes. Create previews have `entityUuid` and `expectedEntityVersion` empty because the server allocates the Platform entity UUID only during the confirmation transaction; existing-entity previews require both present. Reservation kind is `NONE`, `INITIAL`, `INCREASE`, or `DECREASE_NO_RELEASE`; `NONE` has both amount optionals empty and all deltas zero. Warning values are a closed ordered subset of `CAPACITY_NOT_RELEASED`, `CONFIRMATION_REVALIDATES`, and `FAKE_ONLY_NO_REAL_DELIVERY`. Fingerprints are lowercase SHA-256; raw external IDs never leave Backend.
+
+`PlatformOperationView` remains the exact internal Stage 4A application record. Controllers/BFF never serialize it directly; they map it to `PlatformOperationApiView`. The public record intentionally excludes `platformAccountUuid`, raw `externalId`, `safeProviderTraceId`, `outcomeEvidence`, and `claimedAt`. Its normalized error is the closed enum value already persisted, never provider text. Success, retryable, terminal, ambiguous, reconciliation and GET contract tests serialize the actual JSON and assert those forbidden property names and sentinel values are absent; BFF tests repeat the assertion after proxying.
 
 ### Routes, headers, and statuses
 
 | Route | Request/header | Success |
 | --- | --- | --- |
 | `POST /api/platforms/meta/campaigns/preview` | `CampaignPreviewRequest`; no `If-Match` | 200 + `PlatformMutationPreviewView` |
-| `POST /api/platforms/meta/campaigns` | `CampaignConfirmRequest`; no `If-Match` | 202 + operation `ETag`, `Location`, `X-Request-ID`, `PlatformOperationView`; exact replay 200 |
+| `POST /api/platforms/meta/campaigns` | `CampaignConfirmRequest`; no `If-Match` | 202 + operation `ETag`, `Location`, `X-Request-ID`, `PlatformOperationApiView`; exact replay 200 |
 | `POST /api/platforms/meta/campaigns/{campaign}/ad-sets/preview` | `AdSetPreviewRequest`; no `If-Match` | 200 + preview containing parent and Plan versions |
 | `POST /api/platforms/meta/campaigns/{campaign}/ad-sets` | `AdSetConfirmRequest`; parent `If-Match` required | 202 operation response; exact replay 200 |
 | `POST /api/platforms/meta/campaigns/{campaign}/state-preview` | `StateMutationRequest`; no `If-Match` | 200 + preview |
@@ -256,7 +269,7 @@ All records and `Optional` containers are non-null. Optionals serialize as a pro
 | `POST /api/platform-operations/{operation}/retry` | empty body; operation `If-Match` | 202 + operation headers/view |
 | `POST /api/platform-operations/{operation}/reconcile` | empty body; operation `If-Match` | 202 + operation headers/view |
 
-The GET routes remain `/api/platforms/meta/campaigns/{uuid}`, `/api/platforms/meta/ad-sets/{uuid}`, and `/api/platform-operations/{uuid}`. Mutation/operation `ETag` is `W/"<operationVersion>"`; entity `ETag` is `W/"<entityVersion>"`. `Location` is `/api/platform-operations/{operationUuid}`. `If-Match` accepts exactly one weak decimal ETag, with no wildcard/list/strong tag. Header version becomes the canonical payload's `expectedEntityVersion`. Retry error precedence remains Stage 4A: not-found, stale ETag, max attempts, invalid state, not due. Reconcile precedence is not-found, stale ETag, reconciliation cap, invalid state. Reads reveal no canonical payload/evidence/raw ID. Lists, search, Ads, delivery and metrics are absent.
+The GET routes remain `/api/platforms/meta/campaigns/{uuid}`, `/api/platforms/meta/ad-sets/{uuid}`, and `/api/platform-operations/{uuid}`. Mutation/operation `ETag` is `W/"<operationVersion>"`; entity `ETag` is `W/"<entityVersion>"`. `Location` is `/api/platform-operations/{operationUuid}`. `If-Match` accepts exactly one weak decimal ETag, with no wildcard/list/strong tag. Header version becomes the canonical payload's `expectedEntityVersion`. Retry error precedence remains Stage 4A: not-found, stale ETag, max attempts, invalid state, not due. Reconcile precedence is not-found, stale ETag, reconciliation cap, invalid state. Operation reads return only `PlatformOperationApiView`; entity/operation reads reveal no account UUID, canonical payload, evidence, trace or raw external ID. Lists, search, Ads, delivery and metrics are absent.
 
 ### Stable errors
 
@@ -266,7 +279,7 @@ All Backend errors use exact `ApiError(code,message,requestId,timestamp,path,fie
 | --- | --- |
 | 400 | `PLATFORM_REQUEST_INVALID`, `PLATFORM_CONTRACT_INVALID` |
 | 404 | `PLATFORM_RESOURCE_NOT_FOUND`; outside-gate controller/Route Handler absence |
-| 409 | `PLATFORM_IDEMPOTENCY_CONFLICT`, `PLATFORM_INVALID_OPERATION_STATE`, `PLATFORM_RETRY_NOT_DUE`, `PLATFORM_MAX_ATTEMPTS_EXCEEDED`, `PLATFORM_RECONCILIATION_INELIGIBLE`, `PLATFORM_POLICY_REJECTED`, `PLATFORM_CAMPAIGN_PLAN_INELIGIBLE`, `PLATFORM_CAMPAIGN_ALREADY_MAPPED`, `PLATFORM_BUDGET_CAP_EXCEEDED`, `PLATFORM_LEDGER_CONCURRENCY_CONFLICT`, `PLATFORM_LEGACY_OPERATION_INERT` |
+| 409 | `PLATFORM_IDEMPOTENCY_CONFLICT`, `PLATFORM_INVALID_OPERATION_STATE`, `PLATFORM_RETRY_NOT_DUE`, `PLATFORM_MAX_ATTEMPTS_EXCEEDED`, `PLATFORM_MAX_RECONCILIATIONS_EXCEEDED`, `PLATFORM_RECONCILIATION_INELIGIBLE`, `PLATFORM_POLICY_REJECTED`, `PLATFORM_EVIDENCE_INVALID`, `PLATFORM_CAMPAIGN_PLAN_INELIGIBLE`, `PLATFORM_CAMPAIGN_ALREADY_MAPPED`, `PLATFORM_BUDGET_CAP_EXCEEDED`, `PLATFORM_LEDGER_CONCURRENCY_CONFLICT`, `PLATFORM_LEGACY_OPERATION_INERT` |
 | 412 | `PLATFORM_ENTITY_STALE`, `PLATFORM_OPERATION_STALE`, `PLATFORM_CAMPAIGN_PLAN_STALE` |
 | 428 | `PLATFORM_IF_MATCH_REQUIRED` |
 | 429 | `PLATFORM_PROVIDER_RETRYABLE`; safe operation `Location`, no provider body |
@@ -284,8 +297,10 @@ The exact public message map is immutable in 4B:
 | `PLATFORM_INVALID_OPERATION_STATE` | `The operation is not eligible for this action` |
 | `PLATFORM_RETRY_NOT_DUE` | `The operation is not yet eligible for retry` |
 | `PLATFORM_MAX_ATTEMPTS_EXCEEDED` | `The operation has no retry attempts remaining` |
+| `PLATFORM_MAX_RECONCILIATIONS_EXCEEDED` | `The operation has no reconciliation attempts remaining` |
 | `PLATFORM_RECONCILIATION_INELIGIBLE` | `The operation is not eligible for reconciliation` |
 | `PLATFORM_POLICY_REJECTED` | `Platform policy rejected the request` |
+| `PLATFORM_EVIDENCE_INVALID` | `Platform evidence is inconsistent` |
 | `PLATFORM_CAMPAIGN_PLAN_INELIGIBLE` | `The Campaign Plan is not eligible for platform creation` |
 | `PLATFORM_CAMPAIGN_ALREADY_MAPPED` | `The Campaign Plan already has a platform campaign` |
 | `PLATFORM_BUDGET_CAP_EXCEEDED` | `The authorized budget capacity is insufficient` |
@@ -300,7 +315,30 @@ The exact public message map is immutable in 4B:
 | `PLATFORM_ADAPTER_UNAVAILABLE` | `The fake platform adapter is unavailable` |
 | `INTERNAL_ERROR` | `An unexpected error occurred` |
 
-Validation chooses the first error in DTO field declaration order; route/path/header validation precedes body parsing, then idempotency, locked versions, eligibility/state, and capacity. A persisted provider result never gets remapped by controller guesswork.
+The exhaustive Stage 4A source mapping is:
+
+| Internal `PlatformStableErrorCode` | Exposed route | HTTP / public code |
+| --- | --- | --- |
+| `PLATFORM_CONTRACT_INVALID` | any | 400 / same code |
+| `PLATFORM_OPERATION_NOT_FOUND` | operation GET/retry/reconcile | 404 / `PLATFORM_RESOURCE_NOT_FOUND` |
+| `PLATFORM_INVALID_OPERATION_STATE` | confirm/retry/reconcile | 409 / same code |
+| `PLATFORM_STALE_VERSION` | Ad Set create/state/budget | 412 / `PLATFORM_ENTITY_STALE` |
+| `PLATFORM_STALE_VERSION` | retry/reconcile | 412 / `PLATFORM_OPERATION_STALE` |
+| `PLATFORM_RETRY_NOT_DUE` | retry | 409 / same code |
+| `PLATFORM_RECOVERY_NOT_DUE` | none | recovery has no HTTP route; controller contract test proves unreachable |
+| `PLATFORM_MAX_ATTEMPTS_EXCEEDED` | retry | 409 / same code |
+| `PLATFORM_MAX_RECONCILIATIONS_EXCEEDED` | reconcile | 409 / same code |
+| `PLATFORM_ACCOUNT_INACTIVE`, `PLATFORM_ACCOUNT_ENVIRONMENT_MISMATCH`, `PLATFORM_PROVIDER_UNSUPPORTED` | any 4B route | 503 / `PLATFORM_ACCOUNT_CONFIGURATION_INVALID` |
+| `PLATFORM_POLICY_REJECTED` | preview/confirm | 409 / same code |
+| `PLATFORM_ADAPTER_UNAVAILABLE` | confirm/retry/reconcile | 503 / same code |
+| `PLATFORM_IDEMPOTENCY_CONFLICT` | confirm | 409 / same code |
+| `PLATFORM_EVIDENCE_INVALID` | confirm/retry/reconcile | 409 / same code |
+
+Stage 4B-only mapping is also closed: malformed DTO/header/body -> 400 `PLATFORM_REQUEST_INVALID`; missing resource -> 404 `PLATFORM_RESOURCE_NOT_FOUND`; missing ETag -> 428 `PLATFORM_IF_MATCH_REQUIRED`; Campaign Plan version -> 412 `PLATFORM_CAMPAIGN_PLAN_STALE`; Plan eligibility/duplicate -> their exact 409 codes; Plan or per-entity budget bound -> 409 `PLATFORM_POLICY_REJECTED`; batch/day capacity -> 409 `PLATFORM_BUDGET_CAP_EXCEEDED`; ledger serialization exhaustion -> 409 `PLATFORM_LEDGER_CONCURRENCY_CONFLICT`; unbatched operation -> 409 `PLATFORM_LEGACY_OPERATION_INERT`; fixed-account failure -> 503 `PLATFORM_ACCOUNT_CONFIGURATION_INVALID`.
+
+Provider outcomes are not converted into local exception codes. Persisted `PLATFORM_RATE_LIMITED` or `PLATFORM_TEMPORARILY_UNAVAILABLE` returns 429 `PLATFORM_PROVIDER_RETRYABLE` with operation `Location`/ETag, and its exact persisted enum is visible only through the safe operation DTO. Persisted validation/permission terminal, ambiguity, reconciliation-not-found/inconclusive/terminal and success return 202 with `PlatformOperationApiView`; their normalized enum/status are preserved without provider text. Tests cover every row for create, state, budget, retry and reconcile.
+
+Validation chooses the first error in DTO field declaration order; route/path/header validation precedes body parsing, then durable replay resolution, locked versions, eligibility/state, and capacity. A persisted provider result never gets remapped by controller guesswork.
 
 ## Same-origin BFF and UI
 
@@ -378,7 +416,7 @@ Audit/log/response redaction forbids account references/UUID disclosure in publi
 
 ### Backend and database
 
-- Cold migration V1–V13; populated V12 upgrade; Hibernate validate; V1–V12 canonical checksum assertions; deliberate V13 collision rollback. The populated fixture contains a LOCAL/TEST FAKE account, Campaign Plan/Product/Asset/output/review evidence, Campaign/Ad Set/Ad rows with versions/external fingerprints, successful budget provenance, metric revisions, and unbatched operations in `CREATED`, `FAILED_RETRYABLE`, `UNKNOWN_OUTCOME`, `SUCCEEDED`, `FAILED_TERMINAL`, and `RECONCILIATION_TERMINAL`; every pre-V13 value is preserved and each legacy operation exhibits the documented read-only/inert HTTP behavior.
+- Cold migration V1–V13; populated V12 upgrade; Hibernate validate; V1–V12 canonical checksum assertions; deliberate V13 collision rollback. The populated fixture contains a LOCAL/TEST FAKE account, Campaign Plan/Product/Asset/output/review evidence, Campaign/Ad Set/Ad rows with versions/external fingerprints, successful budget provenance and metric revisions. Its unbatched operation fixtures are: `CREATED` with no attempt; `SUBMITTING` with the matching numbered `SUBMIT/STARTED` attempt; `FAILED_RETRYABLE` with its finalized submit attempt/evidence and due time; `UNKNOWN_OUTCOME` with coherent finalized ambiguous submit attempt/evidence; `RECONCILING` with the matching numbered `RECONCILE/STARTED` attempt; `SUCCEEDED` with coherent finalized success attempt/evidence; submit-terminal `FAILED_TERMINAL`; and reconciliation-terminal `FAILED_TERMINAL` with `normalized_error_code=PLATFORM_RECONCILIATION_TERMINAL` plus coherent finalized `RECONCILE` attempt/evidence, counters and timestamps. Every fixture satisfies the V12 deferred operation/attempt/evidence constraints before migration; V13 preserves every value byte-for-byte and each legacy operation exhibits the documented read-only/inert HTTP behavior.
 - Direct-SQL identity, append-only, hard-delete, reciprocal batch/operation/reservation/day aggregate, exact delta, forged date/time, ceiling, replay, zero-release, and transaction rollback tests.
 - Policy unit tests for exact account/objective/profile/schedule/currency/entity/batch/day bounds.
 - Preview/confirm equivalence and confirmation-time revalidation.

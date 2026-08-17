@@ -104,7 +104,23 @@
 | 4B-SPEC-006 | `RESOLVED_PENDING_RE_REVIEW` | Requires batch-first insertion, rejects retroactive attachment, adds reciprocal deferred checks, preserves pre-V13 rows without backfill, and makes legacy unbatched operation mutation/retry/reconcile inert with a stable code. |
 | 4B-SPEC-007 | `RESOLVED_PENDING_RE_REVIEW` | Defines `INSERT ... ON CONFLICT DO NOTHING` then `SELECT ... FOR UPDATE`, persisted-winner UUID handling, zero-row/version/timestamp behavior, no automatic transaction retry, stable concurrency mapping and first-use barrier tests. |
 | 4B-SPEC-008 | `RESOLVED_PENDING_RE_REVIEW` | Requires database overwrite of the batch clock/date, exact reservation-to-day UUID/composite FK, account FKs, pristine day insertion, positive-delta-only update and reciprocal deferred sum/count/coherence tests. |
-| 4B-SPEC-009 | `RESOLVED_PENDING_RE_REVIEW` | Enumerates the populated V12 preservation fixture across entity/evidence/metric/budget data and every representative unbatched operation status, including HTTP inertness. |
+| 4B-SPEC-009 | `RESOLVED_PENDING_RE_REVIEW` | Enumerates populated V12 entity/evidence/metric/budget preservation and every real operation state, including coherent SUBMITTING/RECONCILING STARTED attempts and reconciliation-terminal as `FAILED_TERMINAL` plus `PLATFORM_RECONCILIATION_TERMINAL`, with V12 constraint validity and HTTP inertness. |
+
+## Independent re-review cycle 1
+
+- Reviewed correction Head: `c37d0976b5250c55af7e72e25ab2b06404bf92f6`
+- Exact-head CI: Push `32019700707` Passed; PR `32019704703` Passed; both `quality-and-compose` and `secret-scan` executed required Backend, Frontend, Compose, Playwright, Smoke, actionlint and Gitleaks steps
+- Independent recommendation: `REQUEST_CHANGES`
+- Scope: still exactly the two specification/review Markdown files; no implementation
+
+| Finding | Severity | Independent evidence | Developer correction status |
+| --- | --- | --- | --- |
+| 4B-RR-001 | BLOCKING | Public API returned unmodified internal `PlatformOperationView`, contradicting the no-raw-ID/account/evidence boundary. | `RESOLVED_PENDING_RE_REVIEW`: adds exact `PlatformOperationApiView`, explicit mapping and forbidden-field serialization/BFF tests. |
+| 4B-RR-002 | BLOCKING | Plan/date validation preceded the authoritative batch date, replay followed mutable validation, and Plan version/payload equality was unspecified. | `RESOLVED_PENDING_RE_REVIEW`: durable replay now precedes mutable lookup, intent equality and validation-only Plan version are exact, and new commands validate dates only from the persisted batch anchor with midnight/barrier tests. |
+| 4B-RR-003 / 4B-SPEC-009 | BLOCKING/MAJOR | `RECONCILIATION_TERMINAL` was incorrectly named as a status and actual `SUBMITTING`/`RECONCILING` fixtures were absent. | `RESOLVED_PENDING_RE_REVIEW`: enumerates all real V12 states, matching STARTED/finalized attempts/evidence, and reconciliation-terminal as `FAILED_TERMINAL` plus its normalized code. |
+| 4B-RR-004 | MAJOR | Stage 4A local source codes lacked exhaustive route/public mapping and capacity classes were ambiguous. | `RESOLVED_PENDING_RE_REVIEW`: adds every Stage 4A local code, route-specific stale mapping, unreachable recovery rule, exact Plan/entity/batch/day distinctions, provider-outcome handling and tests. |
+
+The cycle-1 `REQUEST_CHANGES` decision is preserved. These corrections require a new exact Head, complete Push/PR CI and another independent re-review; they are not Manager approval.
 
 ## Known limitations
 
