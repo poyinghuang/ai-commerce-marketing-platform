@@ -6,7 +6,7 @@
 - Base: `b43204bc1b06cd0c34c56540735b2b9694d81043`
 - Scope: deterministic-FAKE Campaign and Ad Set vertical slice
 - Migration: additive `V13__add_platform_budget_authorization_ledger.sql`; V1-V12 unchanged
-- Status: Manager cycle 1 findings corrected; `RESOLVED_PENDING_RE_REVIEW`
+- Status: Manager cycle 2 findings corrected; `RESOLVED_PENDING_RE_REVIEW`
 - Manager Decision: `REQUEST_CHANGES` (preserved pending independent re-review)
 - Merge: Not authorized
 - Stage 4C: Locked
@@ -36,15 +36,28 @@ No credentials, real Meta/provider network access, production activation, extern
 - `4B-RT-008`: resolved by bounded streaming reads, composed timeout/client-abort signals, manual redirect refusal, and sanitized transport/response failure tests.
 - `4B-RT-009`: this report names only executable cases and records the completed implementation-head Push and Pull Request CI evidence below.
 
+## Manager cycle 2 developer resolution
+
+- `4B-RR-010`: state and budget idempotent replay now compare the path entity UUID and entity type before returning any prior operation. Changed-entity and changed-type cases assert a stable conflict plus unchanged operations, attempts, batches, reservations, days, Audit rows, and adapter invocation count.
+- `4B-RR-011`: every preview, confirmation, normalized entity read, operation read, retry, and reconciliation resolves the exact fixed FAKE account before resource lookup; operation and batch lookup is account-scoped. Wrong/mutated account tests assert no identifier disclosure, provider call, write, or Audit event.
+- `4B-RR-012`: route-aware validation field names and the closed source-to-public status/code/message mapping are executable, including 429 retryable outcomes and 409 serialization/deadlock conflicts. Success and failure DTO tests reject credential, token, cookie, authorization, raw payload/evidence, URL, and Provider diagnostic fields.
+- `4B-RR-013`: the UI exposes retry only when `nextAttemptAt` is due, invalidates pending confirmation and reloads after 412, and requires explicit confirmations for retry and reconciliation. Component and browser cases cover normalized reads, Campaign/Ad Set state, increase, decrease/non-release warning, retry, unknown reconciliation, stale reload, and zero automatic mutation.
+- `4B-RR-014`: `ACCOUNT_DAY_RESERVED` is constructible only for `CREATE_AD_SET` + `INITIAL` and `UPDATE_BUDGET` + `INCREASE`. Exact typed Audit subject/change ordering and redaction are asserted for Campaign create, Ad Set create, state, increase, and non-releasing decrease. Seventeen parameterized cases fail every append position across those five Transaction A shapes and compare complete entity, operation, attempt, ledger, Audit, and Audit-change snapshots.
+- `4B-RR-015`: direct SQL invalidity cases assert SQLSTATE `23514` and unchanged full ledger snapshots; barrier-controlled first-use concurrency covers below, exact, above-ceiling loser rollback, and decrease-first behavior. SQLSTATE `40001`/`40P01` maps to one 409 without service retry. A populated V12 Campaign/Ad Set/metric/budget/operation/attempt/evidence fixture is checksum-verified, byte-preserved through V13, readable by GET, and retry/reconcile inert with zero side effects.
+- `4B-RR-016`: the BFF suite proves the exact 16 KiB request and 1 MiB response boundaries, deterministic 10-second 504, composed client abort, streaming oversize, reset/network failure, redirect refusal, empty body, wrong content type, header sanitization, normalized Ad Set GET allowlisting, and forbidden DTO fields.
+- `4B-RR-017`: the executable evidence and counts below replace the superseded cycle-1 evidence. No Manager decision was altered.
+
 ## Executable acceptance evidence
 
-- `Stage4BControllerIntegrationTest` covers preview and explicit PAUSED Campaign/Ad Set confirmation, deterministic success, normalized/account-scoped reads, Ad Set resume, budget increase, non-releasing decrease, exact ledger/Audit cardinality, Ad Set replay using the original parent version after the parent advances, changed-version zero-side-effect conflict, wrong-account non-disclosure, ambiguous fixed-account fail-closed behavior, and strict size/query/content-type/duplicate/unknown/null/canonical-UUID/NFC/secret boundary rejection.
-- `Milestone4BLedgerIntegrationTest` covers cold V13/Hibernate availability, Asia/Taipei midnight boundaries, anchored authorization persistence, SQLSTATE `23514` update/delete rejection, and an arbitrary-account post-V13 Stage 4B operation that cannot commit without its reciprocal batch and leaves no operation or batch.
-- `PlatformBudgetAuditEventTest` covers valid non-budget, initial, increase, and non-releasing-decrease event shapes plus exact rejection of mismatched entity/event/action/currency/aggregate contracts. The controller integration path additionally asserts five batch, three reservation, two positive account-day events and secret-sentinel absence.
-- `MigrationCompatibilityTest` covers V1-V13 cold migration, populated V11 through V12/V13 preservation, canonical V1-V11 checksums, V12 atomic collision, and V13 atomic collision rollback.
+- `Stage4BControllerIntegrationTest` covers exact replay entity/version binding, fixed-account-first and account-scoped routes, strict boundary precedence, exact ordered Audit/change content for five Transaction A shapes, normalized reads, state and budget operations, and unchanged database/Audit/adapter snapshots on conflicts.
+- `Stage4BControllerErrorMappingTest` parameterizes the stable source status/code/message matrix, 429 retryability, 40001/40P01 conflict mapping without service retry, and safe field-error/output allowlists.
+- `Milestone4BLedgerIntegrationTest` covers cold V13/Hibernate availability, Asia/Taipei midnight anchoring, immutable ledger success, and 16 isolated invalid identity/date/currency/kind/delta/aggregate/retroactive/unapproved/forged-clock transactions with SQLSTATE `23514` and unchanged full snapshots.
+- `Stage4BLedgerConcurrencyIntegrationTest` uses transaction barriers for first-use below/exact/above-cap and decrease-first cases, proving deterministic loser rollback and exact aggregate/reservation results.
+- `PlatformBudgetAuditEventTest` covers exact five-command constructor shapes and rejects mismatched operation/event/subject/action/presence/currency/arithmetic combinations. `Stage4BBudgetAuditRollbackIntegrationTest` executes 17 every-append-position failures across Campaign create, Ad Set create, state, budget increase, and non-releasing decrease with complete snapshot equality.
+- `MigrationCompatibilityTest` covers V1-V13 cold migration, populated V11 through V12/V13 preservation, canonical V1-V12 checksums, V12 atomic collision, and V13 atomic collision rollback. `Stage4BLegacyOperationIntegrationTest` adds a coherent populated V12 entity/metric/budget/operation/attempt/evidence fixture, byte preservation, allowed GET, and inert retry/reconcile.
 - `Stage4BProfileGateTest` covers the exact enabled test/fake configuration and missing flag, wrong adapter, default, and production fail-closed cases.
 - Existing Stage 4A provider contract, three-transaction, retry/reconciliation, concurrency, evidence, direct-SQL, and typed Audit acceptance suites run against their immutable V12 boundary; V13 compatibility tests separately prove the upgrade and post-V13 legacy boundary.
-- `platform-stage4b.test.ts`, `platform-meta-manager.test.tsx`, and `platform-stage4b.spec.ts` cover BFF allowlisting/sanitization and bounded streaming, redirect/empty/invalid/forbidden/oversize/network/client-abort failure handling, explicit mutation confirmation, and the browser Campaign-to-Ad-Set happy path. Retry and reconciliation now require an additional explicit UI confirmation and never auto-run.
+- `platform-stage4b.test.ts`, `platform-meta-manager.test.tsx`, and `platform-stage4b.spec.ts` cover exact BFF stream boundaries/timeout/abort/transport/sanitization, normalized Campaign and Ad Set reads, explicit state and budget confirmation, decrease warning, due-only retry, stale invalidation/reload, unknown-only reconciliation, and no automatic mutation or retry.
 
 ## Verification record
 
@@ -56,27 +69,27 @@ The implementation commit was pushed and both exact-head runs finished successfu
 | Focused Stage 4B Testcontainers/Hibernate | Passed |
 | Frontend lint | Passed |
 | Frontend typecheck | Passed |
-| Frontend tests | Passed — 24 files / 141 tests |
-| Full Backend | Passed — 377 tests, 0 failures/errors/skips |
+| Frontend tests | Passed — 24 files / 147 tests |
+| Full Backend | Passed — 413 tests, 0 failures/errors/skips |
 | Frontend build | Passed |
 | `npm audit --omit=dev` | Passed — 0 vulnerabilities |
 | Compose cold build/start/health | Passed; isolated host ports 18080/13000 were used because unrelated local software occupied 8080 |
 | Smoke | Passed — Backend health, BFF health, Product create/read/update/archive/restore |
-| Playwright | Passed — 15/15, including Stage 4B preview/confirm Campaign-to-Ad-Set path |
+| Playwright | Passed — 16/16, including Stage 4B Campaign/Ad Set reads, state, budget, stale, retry, and reconciliation paths |
 | actionlint | Passed — 1.7.7 container |
 | Gitleaks | Passed — pinned 8.28.0 history and working-tree scans, no leaks |
 | `git diff --check` / V1-V12 immutability | Passed |
-| Push/PR CI | Passed — Push `32032456950`; Pull Request `32032459611` |
+| Push/PR CI | Passed — Push `32037948132`; Pull Request `32037950437` |
 
-Known local warnings are the existing Mockito/Byte Buddy dynamic-agent deprecation, the existing Maven Surefire fork shutdown-after-success warning, and the package-approved `unrs-resolver` install-script warning. The first Playwright run correctly failed because the runtime-only frontend feature flag had been evaluated during static generation; the page was changed to runtime dynamic rendering, the stack was rebuilt, and the complete 15-test suite then passed without retry. The PR must remain Draft until independent Manager review.
+Known local warnings are the existing Mockito/Byte Buddy dynamic-agent deprecation, the existing Maven Surefire fork shutdown-after-success warning, and the package-approved `unrs-resolver` install-script warning. During this cycle's local verification, a pre-baseline full Playwright run received the expected AI budget 503 because the README-required fixed AI budget variables were omitted; after correcting the test environment, all 16 cases passed. A focused Stage 4B run also exposed an over-restrictive normalized Ad Set GET BFF allowlist, which was corrected and covered by a route-specific unit test before the complete rerun. The PR must remain Draft until independent Manager review.
 
 ## Remote implementation-head evidence
 
 - Draft PR: `#62`
-- Implementation Head: `e25888baa7c6f1b275d9f7ac26a7d7014b108965`
-- Push CI Run: `32032456950` — Passed
-- Pull Request CI Run: `32032459611` — Passed
-- Both runs completed `quality-and-compose` and `secret-scan`. Backend Testcontainers, Frontend verification, Compose build/health, all 15 Playwright scenarios, Smoke, actionlint, and Gitleaks executed successfully; only the conditional failure-artifact upload was correctly skipped.
+- Implementation Head: `2d7970ead97cefc1e9a81aa6884952b18b073831`
+- Push CI Run: `32037948132` — Passed
+- Pull Request CI Run: `32037950437` — Passed
+- Both runs completed `quality-and-compose` and `secret-scan`. Backend Testcontainers (413 tests), Frontend verification (24 files / 147 tests), Compose build/health, all 16 Playwright scenarios, Smoke, actionlint, and pinned Gitleaks executed successfully; only the conditional failure-artifact upload was correctly skipped.
 - GitHub reported the existing non-blocking Actions Node.js 20 deprecation annotation for pinned `actions/checkout`; no Stage 4B check or acceptance step was skipped.
 
 This evidence-only documentation commit creates a superseding Head. Its exact Push and Pull Request CI Run IDs are reported in the Developer handoff after both runs complete successfully; the completion report remains clean rather than creating an infinite evidence-commit cycle.
