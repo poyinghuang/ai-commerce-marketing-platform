@@ -6,10 +6,10 @@
 - Base: `b43204bc1b06cd0c34c56540735b2b9694d81043`
 - Scope: deterministic-FAKE Campaign and Ad Set vertical slice
 - Migration: additive `V13__add_platform_budget_authorization_ledger.sql`; V1-V12 unchanged
-- Status: Independent Manager Review complete at reviewed Head `6dbb3fb2aac1d3a5d22610f992fecd64fac3ebd2`; approval-record CI pending
+- Status: Complete; merged to `main` and post-merge verification passed
 - Manager Decision: `APPROVE`
-- Merge: Not authorized
-- Stage 4C: Locked
+- Merge: Squash merge `dcfb5e7dcb284bba824c6c81d91ad6ad8b3cd785`
+- Stage 4C: Specification phase unlocked; runtime implementation remains locked
 
 ## Implemented scope
 
@@ -173,3 +173,11 @@ This evidence-only documentation commit creates a superseding Head. Its exact Pu
 - Both exact-head runs executed Backend 446/446, frontend install/lint/typecheck/149 tests/build/audit, Compose build/health, Playwright 16/16, Smoke, actionlint, cleanup, and pinned Gitleaks. Only the conditional failure-artifact upload was skipped because Playwright passed.
 - Independent architecture/API/security/UI/BFF/Audit and database/concurrency/migration/Audit reviewers both recommended `APPROVE`; no CRITICAL, BLOCKING, unresolved required MAJOR, or human-escalation trigger remains.
 - The approval applies to the reviewed Head above. This governance-only approval-record update creates a new Head whose complete Push and Pull Request CI must pass before Ready or merge. Stage 4C remains locked until merge and post-merge main verification.
+
+## Post-merge integration verification
+
+- Approval-record Head: `8f2499ef7d9e6cef6268cd34373c82966a03dac0`.
+- Approval-record Push CI Run `32055155559` and Pull Request CI Run `32055158475` passed before Ready and merge.
+- PR #62 was squash merged to `main` at `dcfb5e7dcb284bba824c6c81d91ad6ad8b3cd785`.
+- Post-merge main CI Run `32055963526` passed. `quality-and-compose` and `secret-scan` completed successfully; Backend, frontend verification, Compose health, Playwright 16/16, Smoke, actionlint, and Gitleaks executed. Only the conditional Playwright failure-artifact upload was skipped because Playwright passed.
+- Stage 4B is closed. This satisfies the prerequisite to begin the Stage 4C specification phase. It does not approve or start Stage 4C runtime implementation.
