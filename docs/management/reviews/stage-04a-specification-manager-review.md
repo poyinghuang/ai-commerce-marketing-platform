@@ -25,14 +25,14 @@
 ## Developer resolution status
 
 - Resolution date: 2026-08-17
-- Status: Independent re-review completed for exact Head `9b63954018fa8ce01e877039f3a55bc5f3ba03a9`; Manager Decision remains `REQUEST_CHANGES`
-- Correction Head: `9b63954018fa8ce01e877039f3a55bc5f3ba03a9`
-- Remote CI for correction Head: Passed — Push Run `31982090287`; PR Run `31982092954`
-- Developer local validation: Passed — exact two-document scope, Markdown table sanity, `git diff --check`, Gitleaks 8.28.0 history (101 commits) and worktree; no leaks found
+- Status: Developer corrections for findings 4A-SPEC-015 through 017 are `RESOLVED_PENDING_RE_REVIEW`; Manager Decision remains `REQUEST_CHANGES`
+- Correction Head: Pending developer correction commit
+- Remote CI for correction Head: Pending new Push and PR runs
+- Developer local validation: Passed — exact two-document scope, Markdown table sanity, `git diff --check`, Gitleaks 8.28.0 history (103 commits) and worktree; no leaks found
 - Implementation: Not started
 - Migration/runtime/API/UI/adapter changes: None
-- Prior Manager Decisions: `REQUEST_CHANGES` for reviewed Heads `d129df447f670a9f5b1faab230a06a64c8240438`, `b8781c224748cceac7ec45706382e73c8f592825`, and `ddf4d452c1aec09dcbaabe075da13250646a26f9`; none is approval of the correction Head
-- Merge: Blocked; PR #59 remains Draft through another focused Audit/recovery correction, new Push/PR CI, and exact-head Independent Manager re-review
+- Prior Manager Decisions: `REQUEST_CHANGES` for reviewed Heads `d129df447f670a9f5b1faab230a06a64c8240438`, `b8781c224748cceac7ec45706382e73c8f592825`, `ddf4d452c1aec09dcbaabe075da13250646a26f9`, and `9b63954018fa8ce01e877039f3a55bc5f3ba03a9`; none is approval of the correction Head
+- Merge: Blocked; PR #59 remains Draft through new Push/PR CI and exact-head Independent Manager re-review
 
 ## Scope reviewed
 
@@ -192,6 +192,14 @@ No escalation-policy trigger exists. These are ordinary specification correction
 | 4A-SPEC-015 | BLOCKING | `docs/stages/stage-04a-platform-foundation.md:315`, `:319`, `:423`, `:446-448`, `:641-670`, `:800-841` | Write/reconciliation success may carry `observedState` and mutate entity `observed_state`, but `PlatformAuditEvent` has no old/new observed-state fields and the claimed-exhaustive matrix has no event content for that effective mutation. | Either forbid `observedState` in all 4A outcomes and defer it, or add exact old/new observed-state Audit fields, constructor rules, entity-event cardinality, mapping order, and tests for create, mutation, and reconciliation-found present/unchanged/changed cases. |
 | 4A-SPEC-016 | MAJOR | `docs/stages/stage-04a-platform-foundation.md:458`, `:824`, `:828-843` | Stale `SUBMITTING -> UNKNOWN_OUTCOME` and stale `RECONCILING -> UNKNOWN_OUTCOME` recovery are required, but the exact transaction/Audit matrix does not define operation/attempt finalization or event cardinality. | Define both recovery transactions, whether/how the matching STARTED attempt finalizes, exact evidence/code/timestamps/version transitions, exact Audit events/cardinality, rollback, restart, and zero-resubmit tests. |
 | 4A-SPEC-017 | MAJOR | `docs/stages/stage-04a-platform-foundation.md:776` | The sentence that repeated submit returns the same external ID contradicts mutation results, which intentionally return/persist no ID, and orchestration replay, which does not invoke the adapter. | Narrow the statement to repeated create-port invocation and explicitly state mutation replay returns the committed view with no adapter call and no returned operation ID; align tests. |
+
+### Developer resolution evidence for findings 4A-SPEC-015 through 017
+
+| ID | Developer resolution status | Correction evidence in Stage 4A specification |
+| --- | --- | --- |
+| 4A-SPEC-015 | `RESOLVED_PENDING_RE_REVIEW` | Adds exact previous/new `PlatformObservedState` Audit fields, constructor presence rules, fixed mapping order, and entity-event cardinality for create, mutation, and reconciliation-found outcomes. Absent, first/changed, and present-but-unchanged observations have explicit event/no-event behavior and tests. |
+| 4A-SPEC-016 | `RESOLVED_PENDING_RE_REVIEW` | Defines fixed-threshold stale SUBMITTING and RECONCILING recovery transactions, matching STARTED-attempt finalization, application-generated evidence, exact operation/attempt fields and codes, two-event Audit cardinality, zero adapter/resubmit, rollback, concurrency, and restart tests. |
+| 4A-SPEC-017 | `RESOLVED_PENDING_RE_REVIEW` | Narrows deterministic repeated-ID behavior to isolated repeated create-port invocation. Any orchestration replay returns the committed view without a port call; mutation replay exposes no operation/existing entity ID and changes no persistence or Audit state. |
 
 No human escalation trigger is present. Stage 4A implementation remains locked.
 
