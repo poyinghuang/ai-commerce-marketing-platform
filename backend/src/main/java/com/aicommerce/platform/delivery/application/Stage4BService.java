@@ -2,6 +2,7 @@ package com.aicommerce.platform.delivery.application;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.Clock;
 import java.util.*;
 
 import com.aicommerce.platform.delivery.domain.*;
@@ -14,8 +15,8 @@ import org.springframework.stereotype.Service;
 @Service @Profile("(local | test) & !production")
 public class Stage4BService {
     private final Stage4BTransactions tx;private final PlatformOperationService operationService;
-    private final PlatformOperationJpaRepository operations;private final JdbcTemplate jdbc;
-    public Stage4BService(Stage4BTransactions tx,PlatformOperationService operationService,PlatformOperationJpaRepository operations,JdbcTemplate jdbc){this.tx=tx;this.operationService=operationService;this.operations=operations;this.jdbc=jdbc;}
+    private final PlatformOperationJpaRepository operations;private final JdbcTemplate jdbc;private final Clock clock;
+    public Stage4BService(Stage4BTransactions tx,PlatformOperationService operationService,PlatformOperationJpaRepository operations,JdbcTemplate jdbc,Clock clock){this.tx=tx;this.operationService=operationService;this.operations=operations;this.jdbc=jdbc;this.clock=clock;}
     public Stage4BViews.Preview previewCampaign(UUID request,UUID campaign){return tx.previewCampaign(request,campaign);}
     public Stage4BViews.Confirmation confirmCampaign(UUID request,UUID campaign,long planVersion,String requestId){return dispatch(tx.confirmCampaign(request,campaign,planVersion,requestId));}
     public Stage4BViews.Preview previewAdSet(UUID parent,UUID request,PlatformBudgetType type,String amount){return tx.previewAdSet(parent,request,type,money(amount));}
@@ -25,7 +26,7 @@ public class Stage4BService {
     public Stage4BViews.Preview previewBudget(UUID id,UUID request,String amount){return tx.previewBudget(id,request,money(amount));}
     public Stage4BViews.Confirmation confirmBudget(UUID id,UUID request,String amount,long version,String requestId){return dispatch(tx.confirmBudget(id,request,money(amount),version,requestId));}
     public Stage4BViews.Operation operation(UUID id){UUID account=tx.account();PlatformOperation value=operations.findById(id).filter(o->account.equals(o.getPlatformAccountUuid())).orElseThrow(()->new Stage4BException("PLATFORM_RESOURCE_NOT_FOUND",HttpStatus.NOT_FOUND));return view(value);}
-    public Stage4BViews.Confirmation retry(UUID id,long version){scopedOperation(id);return new Stage4BViews.Confirmation(from(operationService.retry(id,version,java.time.Instant.now())),false);}
+    public Stage4BViews.Confirmation retry(UUID id,long version){scopedOperation(id);return new Stage4BViews.Confirmation(from(operationService.retry(id,version,java.time.Instant.now(clock))),false);}
     public Stage4BViews.Confirmation reconcile(UUID id,long version){scopedOperation(id);return new Stage4BViews.Confirmation(from(operationService.reconcile(id,version)),false);}
     public Stage4BViews.Campaign campaign(UUID id){List<Stage4BViews.Campaign> rows=jdbc.query("""
       SELECT p.platform_campaign_uuid,p.campaign_uuid,c.version,p.objective,p.account_timezone,p.desired_state,p.observed_state,

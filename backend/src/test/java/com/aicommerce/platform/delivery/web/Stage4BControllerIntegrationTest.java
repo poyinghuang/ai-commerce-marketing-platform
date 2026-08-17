@@ -14,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -23,6 +24,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +33,7 @@ import com.aicommerce.platform.delivery.application.Stage4BService;
 import com.aicommerce.platform.delivery.application.Stage4BLedgerCriticalSectionHook;
 import com.aicommerce.platform.delivery.domain.PlatformBudgetType;
 import com.aicommerce.platform.delivery.infrastructure.provider.DeterministicFakePlatformAdapter;
+import tools.jackson.databind.ObjectMapper;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -38,16 +41,40 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 @Testcontainers @SpringBootTest @AutoConfigureMockMvc @ActiveProfiles("test")
 class Stage4BControllerIntegrationTest {
     @Container @ServiceConnection static final PostgreSQLContainer postgres=new PostgreSQLContainer("postgres:17.6-alpine3.22");
-    @Autowired MockMvc mvc; @Autowired JdbcTemplate jdbc; @Autowired PlatformTransactionManager transactionManager;
+    @Autowired MockMvc mvc; @Autowired JdbcTemplate jdbc; @Autowired PlatformTransactionManager transactionManager; @Autowired ObjectMapper mapper;
     @MockitoSpyBean Stage4BService stage4BService; @MockitoSpyBean Stage4BLedgerCriticalSectionHook ledgerHook;
     @Autowired DeterministicFakePlatformAdapter fake;
     UUID plan;
     @BeforeEach void fixture(){
-        reset(ledgerHook);jdbc.execute("TRUNCATE platform_budget_reservations, platform_operation_batches, platform_account_budget_days, platform_operation_attempts, platform_operations, platform_ad_sets, platform_campaigns, campaign_plans, audit_log_changes, audit_logs RESTART IDENTITY CASCADE");
+        reset(ledgerHook);fake.useScenario(DeterministicFakePlatformAdapter.Scenario.SUCCESS);jdbc.execute("TRUNCATE platform_budget_reservations, platform_operation_batches, platform_account_budget_days, platform_operation_attempts, platform_operations, platform_ad_sets, platform_campaigns, campaign_plans, audit_log_changes, audit_logs RESTART IDENTITY CASCADE");
         plan=UUID.randomUUID();jdbc.update("""
           INSERT INTO campaign_plans(campaign_uuid,campaign_name,start_date,end_date,objective,platform,budget_daily,budget_total,currency)
           VALUES (?,'Stage 4B',?,?, 'OUTCOME_SALES','META',100.0000,300.0000,'TWD')
           """,plan,LocalDate.now().plusDays(10),LocalDate.now().plusDays(20));
+    }
+    @ParameterizedTest
+    @EnumSource(value=DeterministicFakePlatformAdapter.Scenario.class,names={"RETRYABLE_RATE_LIMIT","RETRYABLE_TEMPORARILY_UNAVAILABLE"})
+    void retryableFakeCrossesEveryApplicableWriteRouteAndPersistsSafeEvidence(DeterministicFakePlatformAdapter.Scenario scenario) throws Exception {
+        String expected=scenario==DeterministicFakePlatformAdapter.Scenario.RETRYABLE_RATE_LIMIT?"PLATFORM_RATE_LIMITED":"PLATFORM_TEMPORARILY_UNAVAILABLE";
+        String campaign=createCampaign(plan),adSet=createAdSet(campaign,"10");fake.useScenario(scenario);
+
+        UUID campaignCreate=UUID.randomUUID(),failedPlan=newPlan();
+        assertRetryable(mvc.perform(post("/api/platforms/meta/campaigns").contentType(MediaType.APPLICATION_JSON).content("{\"clientRequestUuid\":\""+campaignCreate+"\",\"campaignUuid\":\""+failedPlan+"\",\"expectedCampaignPlanVersion\":0}")),campaignCreate,expected,1);
+
+        UUID adSetCreate=UUID.randomUUID();String campaignEtag=mvc.perform(get("/api/platforms/meta/campaigns/"+campaign)).andReturn().getResponse().getHeader("ETag");
+        assertRetryable(mvc.perform(post("/api/platforms/meta/campaigns/"+campaign+"/ad-sets").header("If-Match",campaignEtag).contentType(MediaType.APPLICATION_JSON).content("{\"clientRequestUuid\":\""+adSetCreate+"\",\"budgetType\":\"DAILY\",\"budgetAmount\":\"11\",\"expectedCampaignPlanVersion\":0}")),adSetCreate,expected,1);
+
+        UUID campaignState=UUID.randomUUID();
+        assertRetryable(mvc.perform(post("/api/platforms/meta/campaigns/"+campaign+"/resume").header("If-Match",campaignEtag).contentType(MediaType.APPLICATION_JSON).content("{\"clientRequestUuid\":\""+campaignState+"\",\"targetDesiredState\":\"ACTIVE\"}")),campaignState,expected,1);
+
+        String adSetEtag=mvc.perform(get("/api/platforms/meta/ad-sets/"+adSet)).andReturn().getResponse().getHeader("ETag");UUID adSetState=UUID.randomUUID();
+        assertRetryable(mvc.perform(post("/api/platforms/meta/ad-sets/"+adSet+"/resume").header("If-Match",adSetEtag).contentType(MediaType.APPLICATION_JSON).content("{\"clientRequestUuid\":\""+adSetState+"\",\"targetDesiredState\":\"ACTIVE\"}")),adSetState,expected,1);
+
+        UUID budget=UUID.randomUUID();
+        assertRetryable(mvc.perform(post("/api/platforms/meta/ad-sets/"+adSet+"/budget").header("If-Match",adSetEtag).contentType(MediaType.APPLICATION_JSON).content("{\"clientRequestUuid\":\""+budget+"\",\"newBudgetAmount\":\"12\"}")),budget,expected,1);
+
+        // Reconcile has no retryable provider outcome in the approved Stage 4A contract. Retry-route
+        // serialization remains covered by the route matrix; due eligibility is DB-server-time owned.
     }
     @Test void campaignAndAdSetCreateUsePausedFakeOperationsAndLedger() throws Exception {
         int batchAudit=auditCount("PLATFORM_OPERATION_BATCH"),reservationAudit=auditCount("PLATFORM_BUDGET_RESERVATION"),dayAudit=auditCount("PLATFORM_ACCOUNT_BUDGET_DAY");
@@ -286,16 +313,26 @@ class Stage4BControllerIntegrationTest {
     private String persistentSnapshot(){return jdbc.queryForObject("SELECT jsonb_build_object('operations',(SELECT jsonb_agg(to_jsonb(t) ORDER BY operation_uuid) FROM platform_operations t),'attempts',(SELECT jsonb_agg(to_jsonb(t) ORDER BY operation_attempt_uuid) FROM platform_operation_attempts t),'batches',(SELECT jsonb_agg(to_jsonb(t) ORDER BY operation_batch_uuid) FROM platform_operation_batches t),'reservations',(SELECT jsonb_agg(to_jsonb(t) ORDER BY budget_reservation_uuid) FROM platform_budget_reservations t),'days',(SELECT jsonb_agg(to_jsonb(t) ORDER BY account_budget_day_uuid) FROM platform_account_budget_days t),'campaigns',(SELECT jsonb_agg(to_jsonb(t) ORDER BY platform_campaign_uuid) FROM platform_campaigns t),'adsets',(SELECT jsonb_agg(to_jsonb(t) ORDER BY platform_ad_set_uuid) FROM platform_ad_sets t),'audit',(SELECT jsonb_agg(to_jsonb(t) ORDER BY audit_uuid) FROM audit_logs t),'changes',(SELECT jsonb_agg(to_jsonb(t) ORDER BY audit_uuid,change_order) FROM audit_log_changes t))::text",String.class);}
     private String auditSnapshot(){return jdbc.queryForObject("SELECT jsonb_build_object('audit',(SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY audit_uuid),'[]') FROM audit_logs t),'changes',(SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY audit_uuid,change_order),'[]') FROM audit_log_changes t))::text",String.class);}
     private UUID operation(UUID request){return jdbc.queryForObject("select operation_uuid from platform_operations where client_request_uuid=?",UUID.class,request);}
+    private void assertRetryable(ResultActions action,UUID request,String expectedCode,int attemptNumber) throws Exception {
+        UUID operation=operation(request);var response=action.andExpect(status().isTooManyRequests()).andExpect(header().string("Location","/api/platform-operations/"+operation)).andExpect(header().string("ETag","W/\""+(attemptNumber*2)+"\"")).andExpect(jsonPath("$.operationUuid").value(operation.toString())).andExpect(jsonPath("$.status").value("FAILED_RETRYABLE")).andExpect(jsonPath("$.attemptCount").value(attemptNumber)).andExpect(jsonPath("$.normalizedErrorCode").value(expectedCode)).andExpect(jsonPath("$.externalId").doesNotExist()).andExpect(jsonPath("$.safeProviderTraceId").doesNotExist()).andExpect(jsonPath("$.outcomeEvidence").doesNotExist()).andExpect(jsonPath("$.claimedAt").doesNotExist()).andReturn().getResponse();
+        var json=mapper.readTree(response.getContentAsString());assertThat(json.properties().stream().map(java.util.Map.Entry::getKey).toList()).containsExactlyInAnyOrder("operationUuid","operationType","entityType","entityUuid","status","attemptCount","reconciliationCount","maxAttempts","normalizedErrorCode","nextAttemptAt","createdAt","updatedAt","version");
+        var row=jdbc.queryForMap("SELECT status,attempt_count,normalized_error_code,outcome_evidence::text evidence,version FROM platform_operations WHERE operation_uuid=?",operation);assertThat(row.get("status")).isEqualTo("FAILED_RETRYABLE");assertThat(((Number)row.get("attempt_count")).intValue()).isEqualTo(attemptNumber);assertThat(row.get("normalized_error_code")).isEqualTo(expectedCode);assertThat(((Number)row.get("version")).longValue()).isEqualTo(attemptNumber*2L);
+        var attempt=jdbc.queryForMap("SELECT attempt_kind,attempt_number,status,normalized_error_code,evidence::text evidence FROM platform_operation_attempts WHERE operation_uuid=? AND attempt_kind='SUBMIT' AND attempt_number=?",operation,attemptNumber);assertThat(attempt.get("status")).isEqualTo("FAILED_RETRYABLE");assertThat(attempt.get("normalized_error_code")).isEqualTo(expectedCode);assertThat(attempt.get("evidence")).isEqualTo(row.get("evidence"));var evidence=mapper.readTree((String)row.get("evidence"));assertThat(evidence.get("providerKey").asText()).isEqualTo("FAKE");assertThat(evidence.get("attemptKind").asText()).isEqualTo("SUBMIT");assertThat(evidence.get("resultKind").asText()).isEqualTo("FAILED_RETRYABLE");assertThat(evidence.get("retryAfterSeconds").asInt()).isEqualTo("PLATFORM_RATE_LIMITED".equals(expectedCode)?60:30);assertThat(evidence.properties().stream().map(java.util.Map.Entry::getKey).toList()).containsExactlyInAnyOrder("schemaVersion","providerKey","attemptKind","resultKind","retryAfterSeconds");
+    }
     private java.util.List<String> subjects(UUID operation){var rows=jdbc.queryForList("select stage4b_operation_ordinal,entity_type from audit_logs where operation_uuid=? order by stage4b_operation_ordinal",operation);for(int i=0;i<rows.size();i++)assertThat(((Number)rows.get(i).get("stage4b_operation_ordinal")).intValue()).isEqualTo(i);return rows.stream().map(row->(String)row.get("entity_type")).toList();}
     private java.util.List<String> changes(UUID operation,String subject){return jdbc.queryForList("select c.field_name||':'||c.value_type from audit_log_changes c join audit_logs l on l.audit_uuid=c.audit_uuid where l.operation_uuid=? and l.entity_type=? order by c.change_order",String.class,operation,subject);}
     private void assertAuditEnvelope(UUID operation,String requestId){
         var rows=jdbc.queryForList("select stage4b_operation_ordinal,action,entity_type,entity_uuid,actor_type,actor_id,source,request_id from audit_logs where operation_uuid=? order by stage4b_operation_ordinal",operation);
         assertThat(rows).isNotEmpty();
+        UUID entity=jdbc.queryForObject("select coalesce(platform_campaign_uuid,platform_ad_set_uuid,platform_ad_uuid) from platform_operations where operation_uuid=?",UUID.class,operation),attempt=jdbc.queryForObject("select operation_attempt_uuid from platform_operation_attempts where operation_uuid=? and attempt_kind='SUBMIT' and attempt_number=1",UUID.class,operation);int operationSeen=0,attemptSeen=0,entitySeen=0;
         for(int ordinal=0;ordinal<rows.size();ordinal++){
             var row=rows.get(ordinal);assertThat(((Number)row.get("stage4b_operation_ordinal")).intValue()).isEqualTo(ordinal);
             assertThat(row.get("actor_type")).isEqualTo("LOCAL_ADMIN");assertThat(row.get("actor_id")).isEqualTo("local-admin");
             assertThat(row.get("source")).isEqualTo("API");assertThat(row.get("request_id")).isEqualTo(requestId);
-            assertThat(row.get("action")).isIn("CREATE","UPDATE");assertThat(row.get("entity_uuid")).isNotNull();
+            String type=(String)row.get("entity_type"),expectedAction;UUID expectedUuid;
+            switch(type){case "PLATFORM_OPERATION"->{expectedAction=operationSeen++==0?"CREATE":"UPDATE";expectedUuid=operation;}case "PLATFORM_OPERATION_ATTEMPT"->{expectedAction=attemptSeen++==0?"CREATE":"UPDATE";expectedUuid=attempt;}case "PLATFORM_CAMPAIGN","PLATFORM_AD_SET"->{expectedAction=ordinal==0&&entitySeen++==0?"CREATE":"UPDATE";expectedUuid=entity;}case "PLATFORM_OPERATION_BATCH","PLATFORM_BUDGET_RESERVATION"->{expectedAction="CREATE";expectedUuid=(UUID)row.get("entity_uuid");}case "PLATFORM_ACCOUNT_BUDGET_DAY"->{expectedAction="UPDATE";expectedUuid=(UUID)row.get("entity_uuid");}default->throw new AssertionError(type);}
+            assertThat(row.get("action")).isEqualTo(expectedAction);assertThat(row.get("entity_uuid")).isEqualTo(expectedUuid);
+            var changes=jdbc.queryForList("select change_order,field_name,value_type,old_value,new_value from audit_log_changes where audit_uuid=(select audit_uuid from audit_logs where operation_uuid=? and stage4b_operation_ordinal=?) order by change_order",operation,ordinal);assertThat(changes).isNotEmpty();for(int index=0;index<changes.size();index++){var change=changes.get(index);assertThat(((Number)change.get("change_order")).intValue()).isEqualTo(index);assertThat(change.get("field_name")).isNotNull();assertThat(change.get("value_type")).isNotNull();assertThat(change.get("old_value")!=null||change.get("new_value")!=null).isTrue();}
         }
         assertThat(jdbc.queryForObject("select count(*) from audit_log_changes c join audit_logs l on l.audit_uuid=c.audit_uuid where l.operation_uuid=? and (c.change_order<0 or c.field_name is null or c.value_type is null)",Integer.class,operation)).isZero();
     }

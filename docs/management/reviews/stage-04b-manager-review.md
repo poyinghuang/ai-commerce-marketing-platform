@@ -392,6 +392,8 @@ Manager Decision: `REQUEST_CHANGES`
 
 There is no human-escalation trigger. PR #62 remains Draft; merge and Stage 4C remain locked.
 
+Developer resolution status: `RESOLVED_PENDING_RE_REVIEW`. The Cycle-6 Manager decision and history remain authoritative until a new independent review evaluates the superseding exact Head and CI evidence.
+
 ## Stage Gate decision
 
 Manager Decision: `REQUEST_CHANGES`
