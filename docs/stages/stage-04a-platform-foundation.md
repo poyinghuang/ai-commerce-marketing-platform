@@ -2,19 +2,19 @@
 
 ## Gate status
 
-- Status: Technical specification correction for finding 4A-SPEC-018 completed; implementation not started
+- Status: Technical specification approved; implementation not started
 - Branch: `codex/stage-04a-platform-foundation-specification`
 - Base Commit: `a90f6e0bb20d23da10edb66712d85261dafe14e8`
 - Prerequisite: Stage 04 specification merged by PR #56; post-merge main CI Run `31921389709` passed
-- Specification: Manager Decision remains `REQUEST_CHANGES`; Developer corrections are pending new exact-head Independent Manager re-review
+- Specification: Independent Manager `APPROVE` on reviewed content Head `05503a516c343c66aef532ab51e8284694879ed0`; approval-record Head requires final CI confirmation
 - Implementation: Not started
 - Migration: Not started; the approved implementation may add only `V12__create_platform_operation_foundation.sql`
 - Local Verification: Passed — two-file scope, Markdown table sanity, `git diff --check`, and pinned Gitleaks 8.28.0 history/worktree scans
-- Remote CI: Pending
-- Manager Review: Re-review required after correction Push/PR CI
-- Manager Decision: `REQUEST_CHANGES` on re-reviewed candidate Head `b8781c224748cceac7ec45706382e73c8f592825`; Developer correction Head pending decision
+- Remote CI: Passed on reviewed content Head — Push Run `31983316008`; PR Run `31983318364`
+- Manager Review: Passed on reviewed content Head; final approval-record Head confirmation pending
+- Manager Decision: `APPROVE`
 - Human Review Required: No for the deterministic, local/test-only foundation described here; mandatory before any separately gated security or external-access scope
-- Merge: Pending
+- Merge: Blocked until the approval-record Head passes full Push/PR CI and is confirmed unchanged except for Manager/Stage Gate documentation
 - Milestone 4B and later: Locked
 
 ## Purpose

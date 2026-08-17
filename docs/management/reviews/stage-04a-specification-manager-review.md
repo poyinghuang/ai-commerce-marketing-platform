@@ -13,6 +13,7 @@
 - Latest Re-reviewed Candidate Head Commit: `ddf4d452c1aec09dcbaabe075da13250646a26f9`
 - Latest Contract Candidate Head Commit: `9b63954018fa8ce01e877039f3a55bc5f3ba03a9`
 - Latest Recovery Candidate Head Commit: `e661c0d3a219afea2dbc8b89a2a9ad560f3b81c7`
+- Approved Content Head Commit: `05503a516c343c66aef532ab51e8284694879ed0`
 - Pull Request: #59
 
 ## Status before review
@@ -26,14 +27,14 @@
 ## Developer resolution status
 
 - Resolution date: 2026-08-17
-- Status: Developer correction for finding 4A-SPEC-018 is `RESOLVED_PENDING_RE_REVIEW`; Manager Decision remains `REQUEST_CHANGES`
-- Correction Head: Pending developer correction commit
-- Remote CI for correction Head: Pending new Push and PR runs
+- Status: Independent exact-head review completed; Manager Decision is `APPROVE`
+- Approved Content Head: `05503a516c343c66aef532ab51e8284694879ed0`
+- Remote CI for approved content: Passed — Push Run `31983316008`; PR Run `31983318364`
 - Developer local validation: Passed — exact two-document scope, Markdown table sanity, `git diff --check`, Gitleaks 8.28.0 history (105 commits) and worktree; no leaks found
 - Implementation: Not started
 - Migration/runtime/API/UI/adapter changes: None
 - Prior Manager Decisions: `REQUEST_CHANGES` for reviewed Heads `d129df447f670a9f5b1faab230a06a64c8240438`, `b8781c224748cceac7ec45706382e73c8f592825`, `ddf4d452c1aec09dcbaabe075da13250646a26f9`, `9b63954018fa8ce01e877039f3a55bc5f3ba03a9`, and `e661c0d3a219afea2dbc8b89a2a9ad560f3b81c7`; none is approval of the correction Head
-- Merge: Blocked; PR #59 remains Draft through new Push/PR CI and exact-head Independent Manager re-review
+- Merge: Blocked until this approval-record commit passes full Push/PR CI and the resulting exact Head is confirmed to contain only expected Manager/Stage Gate documentation beyond the approved content
 
 ## Scope reviewed
 
@@ -223,6 +224,18 @@ No human escalation trigger is present. Stage 4A implementation remains locked.
 
 No escalation trigger exists. Implementation remains locked.
 
+### Final exact-head review of `05503a516c343c66aef532ab51e8284694879ed0`
+
+- Repository/PR identity: local, upstream, and PR Head matched; branch `codex/stage-04a-platform-foundation-specification`; base and merge-base `a90f6e0bb20d23da10edb66712d85261dafe14e8`; PR #59 Draft/Open/Mergeable; worktree clean before approval edits.
+- Scope: PR diff remains exactly this Manager Review and `docs/stages/stage-04a-platform-foundation.md`; no runtime, migration, API, UI, adapter, dependency, workflow, parent Stage 04, credential, production, spend, or security-boundary change.
+- Push Run `31983316008`: Passed at the exact Head; all required `quality-and-compose` and `secret-scan` jobs/steps executed.
+- PR Run `31983318364`: Passed at the exact Head; Backend 288/288, Frontend 22 files / 134 tests, lint, typecheck, build, dependency audit 0, Compose/cold start, Smoke, Playwright 14/14, actionlint, and Gitleaks passed. Only failure-artifact upload was skipped because Playwright passed.
+- Local evidence: `git diff --check`, Markdown sanity, and pinned Gitleaks 8.28.0 history/worktree passed.
+- Architecture specialist: APPROVE; no unresolved BLOCKING/MAJOR finding after 4A-SPEC-018 correction.
+- Database specialist: APPROVE; reconciled budget/state mutation, stale uncertainty, reciprocal triggers, and all additive V12 contracts are coherent.
+- Findings: 4A-SPEC-001 through 018 are resolved. No CRITICAL, BLOCKING, or required MAJOR finding remains.
+- Boundaries: Stage 4A implementation remains Not started. All real provider, credential, production, spend, authentication/RBAC/Tenant, destructive migration, external publication, and Stage 4B+ boundaries remain unchanged.
+
 ## Known limitations
 
 - Remote CI validates the current repository baseline only; it cannot execute the proposed V12 or future 4A implementation in this documentation-only PR.
@@ -233,12 +246,22 @@ No escalation trigger exists. Implementation remains locked.
 
 ## Stage Gate decision
 
-- Decision: REQUEST_CHANGES
-- Decision rationale: Candidate Head `e661c0d3a219afea2dbc8b89a2a9ad560f3b81c7`, exact scope, and required CI passed; both specialist reviews confirm 4A-SPEC-015 through 017 and prior database findings resolved, and no escalation trigger exists. However, 4A-SPEC-018 makes reconciled mutation success incompatible with the authoritative entity and budget-provenance contract.
-- Required next action: Keep PR #59 Draft. The specification Developer Agent must correct only 4A-SPEC-018, validate scope/diff/Gitleaks, push a new exact Head, and pass full Push/PR CI. Then perform another independent exact-head Manager Review. Do not create V12 or runtime implementation.
+- Decision: APPROVE
+- Decision rationale: Exact content Head `05503a516c343c66aef532ab51e8284694879ed0`, scope, local evidence, full Push/PR CI, Architecture review, and Database review passed. All findings are resolved, no implementation exists, and no human escalation trigger is present.
+- Required next action: Commit and push only this Manager Review/Stage Gate approval documentation, require full Push and PR CI on the resulting approval-record Head, confirm that exact Head differs only by these approval records, then mark PR #59 Ready and merge according to repository policy. Do not start Stage 4A implementation until post-merge `main` CI passes.
 - Human approval required: No for the required corrections if they remain within the approved deterministic local/test-only 4A scope.
 - Human approval reason/evidence: The findings are technical consistency and verification-contract corrections within the already approved Stage 04 boundaries. Escalate if resolution would change product cardinality, security/tenant authority, credentials/access, spend, production, destructive data behavior, or Stage 4B+ scope.
 
 ## Approval record
 
-Not applicable. Decision is `REQUEST_CHANGES`; merge and Stage 4A implementation remain blocked.
+- Approved content Head: `05503a516c343c66aef532ab51e8284694879ed0`
+- Push CI: `31983316008` — Passed
+- PR CI: `31983318364` — Passed
+- Tests reviewed: Backend 288; Frontend 22 files / 134 tests; lint; typecheck; production build; dependency audit; Compose/cold start; Smoke; Playwright 14; actionlint; Gitleaks; `git diff --check`
+- Specialist reviews: Software Architecture `APPROVE`; Database `APPROVE`
+- Findings: 4A-SPEC-001 through 018 resolved; none open
+- Known limitations: Documentation-only CI cannot execute V12; direct SQL can bypass application Audit by design; creation-time Ad snapshots preserve later divergence; aggregate budget accounting is deferred to 4B; metrics as-of performance index is deferred pending 4D query evidence; manual Manager Gate remains in use
+- Manager Decision: APPROVE
+- Approval-record Head: Pending commit and exact-head CI confirmation
+- Merge status: Blocked pending approval-record Head CI
+- Implementation: Not started
