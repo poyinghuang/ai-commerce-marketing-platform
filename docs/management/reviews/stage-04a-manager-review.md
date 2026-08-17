@@ -187,3 +187,48 @@ The additional Ad, metric, budget, fake-provider, and typed-Audit suites materia
 - Decision rationale: Exact-head CI and production integrity remain green, but 4A-IMPL-017 is an unresolved required BLOCKING acceptance-evidence finding.
 - Required next action: Keep PR #60 Draft. Resolve 4A-IMPL-017, repeat the full local baseline and exact-head Push/PR CI, then repeat independent review. Do not merge or start Stage 4B.
 - Human approval required: `No`; no escalation-policy trigger exists.
+
+## Re-review cycle 4 — Final Manager Gate — 2026-08-17
+
+### Exact-head evidence reviewed
+
+- Implementation content Head: `d3e9254eb04d7567c0747a5e068f54e3c368d968`
+- Push CI: `31997614937` — Passed
+- Pull Request CI: `31997617878` — Passed
+- Required execution: Backend 359/359, frontend lint/typecheck/134 tests/build/audit, Compose cold start, Playwright 14/14, Smoke, actionlint, cleanup, and Gitleaks passed. Only Playwright failure-artifact upload was conditionally skipped after success.
+- Repository state: Branch clean and synchronized; PR #60 Draft/Open/CLEAN; `git diff --check` passed; V12 is the only new migration and V1-V11 remain unchanged.
+- Scope: Approved Stage 4A internal PostgreSQL/provider-neutral/fake-provider foundation only. No REST/UI, real provider/network, credential, production, spend, authentication/RBAC/Tenant, destructive migration, or Stage 4B change.
+- Independent Code Review: `APPROVE` recommendation; no unresolved BLOCKING/MAJOR finding.
+- Independent Database Review: `APPROVE` recommendation; no unresolved BLOCKING/MAJOR finding.
+
+### Findings disposition
+
+- 4A-IMPL-001 through 017: `RESOLVED` after exact-head independent review.
+- CRITICAL/BLOCKING/unresolved required MAJOR findings: None.
+- Completion report comparison: Passed. Its case-exact test mapping matches executable repository evidence.
+- Escalation triggers: None.
+
+### Known limitations and warnings
+
+- Account-day and batch budget aggregation remains intentionally deferred to Stage 4B; Stage 4A enforces approved per-entity bounds only.
+- Ad evidence remains an immutable creation-time snapshot; later source divergence is historical and blocks new eligible evidence creation as tested.
+- Audit is an application transaction invariant, not protection against arbitrary direct SQL.
+- Metric as-of performance indexing remains deferred pending Stage 4D query evidence.
+- Existing Mockito/Byte Buddy, post-success Surefire fork shutdown, npm allow-scripts, and GitHub Actions Node runtime transition warnings are non-blocking and accurately recorded in the completion report.
+
+### Stage Gate decision
+
+- Decision: `APPROVE`
+- Decision rationale: Scope and boundaries match the approved Stage 4A specification; additive migration and provider-neutral contracts are coherent; all prior findings are resolved; local and exact-head Remote CI evidence is complete; both independent specialist reviews recommend approval; no human escalation trigger exists.
+- Approved implementation content Commit: `d3e9254eb04d7567c0747a5e068f54e3c368d968`
+- Approved implementation content CI: Push `31997614937`; PR `31997617878`
+- Required next action: Commit only this Manager approval/acceptance documentation. Require full Push and PR CI on that approval-record Head, then submit the final approval against that exact Head, mark PR #60 Ready, merge under repository governance, and verify post-merge `main` CI before unlocking Stage 4B.
+- Human approval required: `No`
+
+### Approval record
+
+- Manager Review: Passed
+- Manager Decision: APPROVE
+- Tests reviewed: Backend 359; frontend 134; migration cold/upgrade/atomicity/immutability; Hibernate; Stage 4A contract, direct-SQL, Ad, metric, retry, reconciliation, concurrency, Audit, fake/profile; Compose; Smoke; Playwright; actionlint; dependency audit; Gitleaks.
+- Merge allowed: Yes, only after the approval-record exact-head CI and final exact-head approval pass.
+- Next Stage allowed: Only after merge and post-merge `main` verification.
