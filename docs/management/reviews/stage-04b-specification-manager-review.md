@@ -1,0 +1,179 @@
+# Stage 04B Specification Manager Review
+
+## Review identity
+
+- Stage／Milestone: Stage 4B Campaign and Ad Set vertical slice specification
+- Review date: 2026-08-17
+- Reviewer: Independent Project Manager / Lead Reviewer / Stage Gate Owner
+- Repository: `ai-commerce-marketing-platform`
+- Branch: `codex/stage-04b-campaign-adset-specification`
+- Base Commit: `4d89448cb48520c14f6ce991d803a0221503ebeb`
+- Head Commit: `8dfef4ee4cc34cbee0f14cfcc6df8845ac30e995` (reviewed content Head; the commit containing this approval record requires its own exact-head CI before merge)
+- Pull Request: #61
+
+## Status before review
+
+- Implementation: Blocked; not started; unlock only after merge and post-merge main CI
+- Repository-owner product settings: Approved on 2026-08-17
+- Local Verification: Passed for documentation scope and repository integrity checks
+- Remote CI: Passed on the reviewed exact Head
+- Human Review Required: Satisfied — repository owner selected the narrow deterministic-FAKE exception on 2026-08-17
+- Merge: Not started
+
+## Repository-owner decision and correction status
+
+- Decision recorded: 2026-08-17
+- Selected option: **A — deterministic FAKE exception**
+- Exact boundary: the fixed LOCAL/TEST actor may confirm RESUME and budget changes only behind deterministic `FAKE`; credentials, network, real Provider, paid delivery, billing and production remain forbidden, and every real path still requires `PLATFORM_OPERATOR`/`PLATFORM_APPROVER` separation.
+- Correction scope: only this review record and the Stage 4B specification; no runtime, migration, REST, BFF or UI implementation
+- Findings `4B-SPEC-001` through `4B-SPEC-009` and `4B-RR-001` through `4B-RR2-003`: Resolved by cycle-3 independent re-review
+- Gate status: `APPROVE` for reviewed content Head `8dfef4e...`; the approval-record commit requires exact-head CI confirmation before Ready or merge
+
+## Scope reviewed
+
+- Approved scope: Stage 4B specification for Campaign/Ad Set preview-confirm-read-state-budget vertical slice and aggregate budget authorization ledger.
+- Explicit out of scope: Runtime implementation, migrations, REST/BFF/UI code, real provider/network, credentials, production, spend, Auth/RBAC/Tenant, Ads, delivery, metrics, Stage 4C+.
+- Files reviewed: `docs/stages/stage-04b-campaign-ad-set-vertical-slice.md`; `docs/management/reviews/stage-04b-specification-manager-review.md`
+- Forbidden or unexpected files: None on the reviewed Head; the diff contains exactly the two documentation files above
+- Completion report compared: Not applicable; specification phase
+
+## Architecture and contracts
+
+- Architecture documents reviewed: `AGENTS.md`, `README.md`, `docs/agents/AGENTS.md`, `docs/Architecture.md`, `docs/Data-Model.md`, `docs/Development-Rules.md`, `docs/Logging-and-Error-Handling.md`, parent Stage 04, approved Stage 4A specification/completion/reviews, and actual V12 migration/application/test contracts
+- Migration reviewed: Proposed additive V13 only; V1–V12 remain immutable. Exact legacy-operation, account-day bootstrap, clock, FK/coherence, populated-upgrade and forward-recovery contracts are implementation-ready
+- Domain／Transaction／Audit boundary: Stage 4A operation lifecycle is retained; the additive batch/ledger and typed budget Audit contracts are exact and bounded to deterministic FAKE LOCAL/TEST
+- API contract changes: Additive local/test-only typed routes, DTOs, ETags, replay rules, stable errors, disclosure boundary and route precedence are implementation-ready
+- Frontend／BFF contract changes at reviewed Head: Same-origin fail-closed routes, feature gates, exact size/timeout/error limits and forbidden-field handling are implementation-ready
+- Backward compatibility: Documentation-only now. Proposed V13 is additive; pre-V13 unbatched operations are preserved byte-for-byte and remain HTTP-inert
+- Rollback／forward recovery: Forward-only migration intent is exact; V13 defects use V14+, with atomic rollback and collision acceptance requirements
+
+## Impact
+
+- Security impact at reviewed Head: No runtime change in this PR. The proposed same-actor activation/budget confirmation required the human resolution now recorded in the correction cycle
+- Data impact: No data change in this PR. Proposed V13 adds immutable authorization evidence with exact integrity and legacy-preservation requirements
+- Production impact: None; fail-closed required
+- External service／cost impact: None; deterministic fake only
+
+## Verification executed
+
+| Verification | Command／Run | Result | Evidence／Notes |
+| --- | --- | --- | --- |
+| Repository/branch/Head | `git status --porcelain=v1 --branch`; `git rev-parse`; PR metadata | Passed | Local/upstream/PR Head matched `8dfef4ee4cc34cbee0f14cfcc6df8845ac30e995`; base/merge-base matched `4d89448cb48520c14f6ce991d803a0221503ebeb`; worktree was clean before approval-record edits |
+| Diff check | `git diff --check origin/main...HEAD` | Passed | No whitespace errors |
+| Commit history | `git log --oneline --decorate -8` | Passed | Specification and review-correction commits only on the post-Stage-4A main base |
+| PR scope/patch | `git diff --name-status origin/main...HEAD`; PR files | Passed | Exactly two new Markdown files; no runtime, migration, workflow, dependency, credential, or production change |
+| Backend tests | Push `32021497931`; PR `32021501115` | Passed | 359 tests; 0 failures, errors, or skips; build succeeded |
+| Migration/Hibernate | Same Remote CI runs | Passed for existing V1–V12 | Proposed V13 is documentation only and therefore not executable evidence |
+| Frontend lint/typecheck/tests/build | Same Remote CI runs | Passed | 22 files / 134 tests; production build passed |
+| Dependency audit | Same Remote CI runs | Passed | 0 vulnerabilities |
+| Compose/Smoke/Playwright | Same Remote CI runs | Passed | Compose config/cold health, Product Smoke, and Playwright 14/14 executed |
+| Gitleaks/actionlint | Local Gitleaks 8.28.0 and same Remote CI runs | Passed | Local history/worktree found no leaks; Remote secret scans and actionlint passed |
+
+## Remote CI
+
+- Workflow／Run ID: Push `32021497931`; Pull Request `32021501115`
+- Head SHA matches: Yes — both ran at `8dfef4ee4cc34cbee0f14cfcc6df8845ac30e995`
+- `quality-and-compose`: Passed in both runs
+- `secret-scan`: Passed in both runs
+- Required steps skipped: None. Playwright failure-artifact upload was conditionally skipped because browser tests passed
+- Warnings／annotations: Existing GitHub Actions Node 20 to Node 24 runtime-transition annotation; non-blocking and unrelated to this specification
+
+## Findings
+
+| ID | Severity | File／Evidence | Finding | Required fix／test |
+| --- | --- | --- | --- | --- |
+| 4B-SPEC-001 | BLOCKING / HUMAN ESCALATION | Parent Stage 04 human-approved decision 6; Stage 4A RESUME contract; Stage 4B lines describing fixed actor/two-step UI | Parent Stage 04 requires `PLATFORM_OPERATOR`/`PLATFORM_APPROVER` separation for activation and budget changes, and Stage 4A keeps RESUME inert pending security-policy approval. This specification substitutes a second confirmation by the same unauthenticated local/test actor. Whether deterministic FAKE/local/test is exempt is an unapproved product/security-boundary decision. | Repository owner must explicitly choose: (A) approve a narrowly defined FAKE/local/test-only exemption with no credential/network/spend/production path, or (B) keep RESUME and budget confirmation inert until the approved authorization/separation model exists. Record the choice and limits before correction or implementation. |
+| 4B-SPEC-002 | BLOCKING | Stage 4B Campaign/API/policy sections; Campaign Plan V4 model | Campaign Plan eligibility/mapping and schedule policy are incomplete: ACTIVE/platform/objective/currency compatibility, version/lock behavior, duplicate mapping, LocalDate-to-Instant rules, parent/child schedule containment, and confirmation-time revalidation are not exact. | Define exact eligible Campaign Plan state/fields, immutable mapping, schedule authority/conversion/containment, duplicate/stale errors, and positive/negative transaction tests. |
+| 4B-SPEC-003 | BLOCKING | Stage 4B policy, Transaction A, and controller gate | Fixed account/actor selection, zero/multiple-account fail-closed behavior, actor type/ID/source, feature-property conjunction, and optimization goal are unspecified. `platform.fake.enabled` also diverges from the implemented Stage 4A `platform.adapter=fake` gate. | Define the exact account fixture/selection, actor tuple, configuration properties, optimization goal, startup/request failure codes, and profile tests. |
+| 4B-SPEC-004 | BLOCKING | Stage 4B API/BFF sections | Exact preview, Campaign, Ad Set, retry, and reconciliation DTOs; required/optional/null rules; route-specific headers/status/body/ETag/replay behavior; stable `ApiError.code` mapping; body limits; timeout/abort; and 413/502/504 behavior are absent. The generic state-preview path is not closed to CAMPAIGN/AD_SET and can admit Stage 4C AD scope. | Define exact records and JSON shapes, restrict entity type, specify every route contract and error precedence, fix numeric limits/timeouts, and add controller/BFF/browser contract tests. |
+| 4B-SPEC-005 | BLOCKING | Stage 4B Audit contract; exact Stage 4A `PlatformAuditEvent`; V2 Audit UUID identity | The three new subjects/events require business date, reservation kind, currency and amount/aggregate fields that the closed Stage 4A event cannot represent. `platform_account_budget_days` also has no UUID for required `subjectUuid`. Optionality, action, field ordering, value type, event cardinality, and zero-delta rules are undefined. | Add a stable subject UUID/mapping and exact additive typed event contract, constructors/presence matrix, AuditChange names/order/types, per-operation cardinality, rollback/no-event/redaction tests; retain Audit as an application invariant, not a direct-SQL claim. |
+| 4B-SPEC-006 | BLOCKING | V13 batch/operation contract | Batch-first deferred FK is feasible, but retroactive batching of a committed pre-V13 operation is not forbidden, and legacy unbatched V12 operations are not classified for submit/retry/reconcile. | Require batch-insert rejection for an already-visible operation, reciprocal deferred checks for new operations, explicitly keep legacy unbatched rows inert/read-only, and test populated V12 upgrade plus retroactive/missing/orphan/valid batch-first cases. |
+| 4B-SPEC-007 | BLOCKING | V13 account-day locking/concurrency | `SELECT ... FOR UPDATE` locks no absent row. Concurrent first reservations can race the PK insert rather than serialize under the ceiling; first zero-decrease behavior is also undefined. | Specify atomic `INSERT ... ON CONFLICT DO NOTHING` bootstrap followed by `SELECT ... FOR UPDATE` (or an equally exact protocol), zero-row/version/timestamp semantics, DB error mapping, and deterministic first-use concurrency tests below/at/above ceiling. |
+| 4B-SPEC-008 | BLOCKING | V13 time/ledger/day coherence | A default does not prevent forged caller `created_at`; reservation-to-day FK/coherence and exact account-day insert/update protectors are incomplete. | Require database overwrite/rejection of caller batch time, derive date from that exact anchor, copy it to reservation, define account/FK/reciprocal/deferred aggregate checks, and add forged clock/orphan/wrong-day/aggregate/version/rollback direct-SQL tests. |
+| 4B-SPEC-009 | MAJOR | Stage 4B verification matrix | Populated V12 upgrade evidence does not enumerate representative platform entities, budget provenance, or each in-flight/terminal unbatched operation state. | Require exact preservation fixtures and documented no-batch legacy behavior in migration compatibility tests. |
+
+## Developer correction evidence and final disposition
+
+| Finding | Status | Specification correction |
+| --- | --- | --- |
+| 4B-SPEC-001 | `RESOLVED` | Records the repository-owner-approved same-actor exception only under `local/test` + `platform.adapter=fake` + both web/stage flags; expressly forbids credentials/network/real Provider/spend/production and retains real operator/approver separation. |
+| 4B-SPEC-002 | `RESOLVED` | Defines exact ACTIVE Campaign Plan eligibility, META/OUTCOME_SALES/TWD fields, version locking, Plan budget caps, database-date eligibility, Asia/Taipei inclusive-date mapping, parent schedule copying, duplicate/stale/ineligible errors and confirmation revalidation. |
+| 4B-SPEC-003 | `RESOLVED` | Defines the implemented `platform.adapter=fake` conjunction, exact fixed account UUID/reference/environment/fingerprint with local/test-only initializer and mismatch failure, fixed actor tuple/source and `OFFSITE_CONVERSIONS`. |
+| 4B-SPEC-004 | `RESOLVED` | Adds exact typed request/preview/entity DTOs, Optional/null/money rules, typed Campaign/Ad Set state routes, route-specific If-Match/status/body/ETag/replay/error precedence, exact retry/reconcile empty bodies, and stable error codes. BFF limits are 16 KiB request, 1 MiB response, 10 seconds, with exact 413/502/504 behavior. |
+| 4B-SPEC-005 | `RESOLVED` | Adds stable account-day UUID, separate exact typed budget Audit record/writer overload, presence/action/change-order rules, five exact Transaction A cardinalities, no-event/redaction and every-position rollback tests. |
+| 4B-SPEC-006 | `RESOLVED` | Requires batch-first insertion, rejects retroactive attachment, adds reciprocal deferred checks, preserves pre-V13 rows without backfill, and makes legacy unbatched operation mutation/retry/reconcile inert with a stable code. |
+| 4B-SPEC-007 | `RESOLVED` | Defines `INSERT ... ON CONFLICT DO NOTHING` then `SELECT ... FOR UPDATE`, persisted-winner UUID handling, zero-row/version/timestamp behavior, no automatic transaction retry, stable concurrency mapping and first-use barrier tests. |
+| 4B-SPEC-008 | `RESOLVED` | Requires database overwrite of the batch clock/date, exact reservation-to-day UUID/composite FK, account FKs, pristine day insertion, positive-delta-only update and reciprocal deferred sum/count/coherence tests. |
+| 4B-SPEC-009 | `RESOLVED` | Enumerates populated V12 entity/evidence/metric/budget preservation and every real operation state, including coherent SUBMITTING/RECONCILING STARTED attempts and reconciliation-terminal as `FAILED_TERMINAL` plus `PLATFORM_RECONCILIATION_TERMINAL`, with V12 constraint validity and HTTP inertness. |
+
+## Independent re-review cycle 1
+
+- Reviewed correction Head: `c37d0976b5250c55af7e72e25ab2b06404bf92f6`
+- Exact-head CI: Push `32019700707` Passed; PR `32019704703` Passed; both `quality-and-compose` and `secret-scan` executed required Backend, Frontend, Compose, Playwright, Smoke, actionlint and Gitleaks steps
+- Independent recommendation: `REQUEST_CHANGES`
+- Scope: still exactly the two specification/review Markdown files; no implementation
+
+| Finding | Severity | Independent evidence | Developer correction status |
+| --- | --- | --- | --- |
+| 4B-RR-001 | BLOCKING | Public API returned unmodified internal `PlatformOperationView`, contradicting the no-raw-ID/account/evidence boundary. | `RESOLVED_PENDING_RE_REVIEW`: adds exact `PlatformOperationApiView`, explicit mapping and forbidden-field serialization/BFF tests. |
+| 4B-RR-002 | BLOCKING | Plan/date validation preceded the authoritative batch date, replay followed mutable validation, and Plan version/payload equality was unspecified. | `RESOLVED_PENDING_RE_REVIEW`: durable replay now precedes mutable lookup, intent equality and validation-only Plan version are exact, and new commands validate dates only from the persisted batch anchor with midnight/barrier tests. |
+| 4B-RR-003 / 4B-SPEC-009 | BLOCKING/MAJOR | `RECONCILIATION_TERMINAL` was incorrectly named as a status and actual `SUBMITTING`/`RECONCILING` fixtures were absent. | `RESOLVED_PENDING_RE_REVIEW`: enumerates all real V12 states, matching STARTED/finalized attempts/evidence, and reconciliation-terminal as `FAILED_TERMINAL` plus its normalized code. |
+| 4B-RR-004 | MAJOR | Stage 4A local source codes lacked exhaustive route/public mapping and capacity classes were ambiguous. | `RESOLVED_PENDING_RE_REVIEW`: adds every Stage 4A local code, route-specific stale mapping, unreachable recovery rule, exact Plan/entity/batch/day distinctions, provider-outcome handling and tests. |
+
+The cycle-1 `REQUEST_CHANGES` decision is preserved. These corrections require a new exact Head, complete Push/PR CI and another independent re-review; they are not Manager approval.
+
+## Independent re-review cycle 2
+
+- Reviewed correction Head: `bd1f3eb337a4385712c472abdcdb2deafd2bf2b4`
+- Exact-head CI: Push `32020728131` Passed; PR `32020732104` Passed; both `quality-and-compose` and `secret-scan` executed required Backend, Frontend, Compose, Playwright, Smoke, actionlint and Gitleaks steps
+- Database/concurrency/migration recommendation: `APPROVE`; findings `4B-SPEC-005` through `4B-SPEC-009` showed no regression
+- Architecture/API/security recommendation: `REQUEST_CHANGES`
+- Scope: still exactly the two specification/review Markdown files; no implementation
+
+| Finding | Severity | Independent evidence | Developer correction status |
+| --- | --- | --- | --- |
+| 4B-RR2-001 | BLOCKING | Ad Set replay equality omitted the original parent `If-Match` version, so changed concurrency intent could appear to be an exact replay. | `RESOLVED_PENDING_RE_REVIEW`: exact replay comparison includes the original parent version and the acceptance matrix distinguishes original replay from changed intent. |
+| 4B-RR2-002 | BLOCKING | Shared state request did not require `/pause` to mean `PAUSED` and `/resume` to mean `ACTIVE`. | `RESOLVED_PENDING_RE_REVIEW`: route/target mismatch is rejected before lookup with 400 `PLATFORM_REQUEST_INVALID`, with Campaign and Ad Set preview/confirm coverage. |
+| 4B-RR2-003 | MAJOR | The exhaustive map exposed a nonexistent reconciliation code and omitted Campaign-state stale and retry-policy routes. | `RESOLVED_PENDING_RE_REVIEW`: removes the unsupported code and explicitly maps Campaign/Ad Set state stale and retry policy rejection, with exhaustive mapping tests. |
+
+The cycle-2 architecture `REQUEST_CHANGES` decision is preserved. These corrections require a new exact Head, complete Push/PR CI and another independent re-review; they are not Manager approval.
+
+## Independent re-review cycle 3
+
+- Reviewed correction Head: `8dfef4ee4cc34cbee0f14cfcc6df8845ac30e995`
+- Exact-head CI: Push `32021497931` Passed; PR `32021501115` Passed; both `quality-and-compose` and `secret-scan` executed required Backend, Frontend, Compose, Playwright, Smoke, actionlint and Gitleaks steps
+- Architecture/API/security recommendation: `APPROVE`
+- Database/concurrency/migration recommendation: `APPROVE`
+- Findings `4B-RR2-001` through `4B-RR2-003`: Resolved
+- Remaining CRITICAL/BLOCKING/required MAJOR findings: None
+- Human escalation trigger: None; the repository-owner Option A decision is recorded and remains narrowly bounded
+- Scope: exactly the two specification/review Markdown files; no runtime, migration, workflow, dependency, credential, network, provider, production or paid-service implementation
+- Warning: existing GitHub Actions Node 20 to Node 24 runtime-transition annotation; non-blocking. Playwright failure-artifact upload was conditionally skipped because Playwright passed
+
+The commit containing this approval record changes the PR Head. It must receive complete exact-head Push/PR CI and a final evidence-only Gate confirmation before Ready or merge; no further specification content change is authorized by this approval.
+
+## Known limitations
+
+- Account authorization is conservative and never released in 4B.
+- One confirmed batch contains exactly one operation.
+- Local/test fixed actor and two-step UI are not authentication or production role separation.
+- Real Meta, credentials, spend, production, and Auth/RBAC/Tenant remain separately gated.
+- Existing README Stage 04 progress text is stale relative to the merged Stage 4A implementation; this does not authorize changing runtime scope and should be corrected in a later approved documentation update.
+
+## Stage Gate decision
+
+- Decision: `APPROVE`
+- Decision rationale: The approved product settings and repository-owner Option A boundary are represented exactly; scope is documentation-only; both independent review disciplines found no remaining CRITICAL, BLOCKING, or required MAJOR finding; and exact reviewed-content Push/PR CI fully passed with required steps executed. No unauthorized runtime, migration, credential, network, real-provider, production, paid-service, Auth/RBAC/Tenant, or Stage 4C change exists.
+- Required next action: Commit only this formal approval record/status update, run complete exact-head Push/PR CI, confirm the new Head without changing content, then Ready/merge PR #61 and verify post-merge main CI before creating a separate Stage 4B runtime branch.
+- Human approval required: `No` additional approval
+- Human approval reason／evidence: Repository owner selected Option A on 2026-08-17. The exception is limited to deterministic FAKE LOCAL/TEST; every real path still requires operator/approver separation and a new human security approval.
+
+## Approval record
+
+- Manager Review: Passed
+- Manager Decision: APPROVE
+- Approved Commit: `8dfef4ee4cc34cbee0f14cfcc6df8845ac30e995` reviewed content; approval-record commit is the commit containing this record and requires exact-head CI confirmation
+- Approved CI Run: Push `32021497931`; PR `32021501115`
+- Commands actually executed: repository/branch/Head checks; base/merge-base and commit-history inspection; actual PR diff/scope review; `git diff --check`; pinned Gitleaks 8.28.0 history/worktree; exact-head Remote Backend, Frontend lint/typecheck/tests/build/audit, Compose cold start, Playwright, Smoke, actionlint and secret scan
+- Merge allowed: Yes, only after the approval-record commit's exact-head Push/PR CI passes and its scope/evidence are confirmed without another content change
+- Next Stage allowed: Only after merge and post-merge verification
