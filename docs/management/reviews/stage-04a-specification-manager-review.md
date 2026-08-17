@@ -24,13 +24,13 @@
 ## Developer resolution status
 
 - Resolution date: 2026-08-17
-- Status: Independent re-review completed for exact Head `ddf4d452c1aec09dcbaabe075da13250646a26f9`; Manager Decision remains `REQUEST_CHANGES`
-- Correction Head: `ddf4d452c1aec09dcbaabe075da13250646a26f9`
-- Remote CI for correction Head: Passed — Push Run `31981207234`; PR Run `31981211019`
-- Developer local validation: Passed — exact two-document scope, Markdown table sanity, `git diff --check`, Gitleaks 8.28.0 history (99 commits) and worktree; no leaks found
+- Status: Developer corrections for findings 4A-SPEC-012 through 014 are `RESOLVED_PENDING_RE_REVIEW`; Manager Decision remains `REQUEST_CHANGES`
+- Correction Head: Pending developer correction commit
+- Remote CI for correction Head: Pending new Push and PR runs
+- Developer local validation: Passed — exact two-document scope, Markdown table sanity, `git diff --check`, Gitleaks 8.28.0 history (101 commits) and worktree; no leaks found
 - Implementation: Not started
 - Migration/runtime/API/UI/adapter changes: None
-- Prior Manager Decisions: `REQUEST_CHANGES` for reviewed Head `d129df447f670a9f5b1faab230a06a64c8240438` and re-reviewed candidate `b8781c224748cceac7ec45706382e73c8f592825`; neither is approval of the correction Head
+- Prior Manager Decisions: `REQUEST_CHANGES` for reviewed Heads `d129df447f670a9f5b1faab230a06a64c8240438`, `b8781c224748cceac7ec45706382e73c8f592825`, and `ddf4d452c1aec09dcbaabe075da13250646a26f9`; none is approval of the correction Head
 - Merge: Blocked; PR #59 remains Draft through a final contract correction, new Push/PR CI, and another exact-head Independent Manager re-review
 
 ## Scope reviewed
@@ -168,6 +168,14 @@ These are Developer completion claims only. They do not alter the Manager findin
 | 4A-SPEC-012 | BLOCKING | `docs/stages/stage-04a-platform-foundation.md:315`, `:665`, `:762` | Mutation success has three incompatible external-ID rules: the outcome table permits it, the typed rule requires it absent, and the fake adapter says mutations return the existing entity ID. | Select one exact provider-neutral rule and align the table, record validation, evidence fingerprint, persisted result, fake behavior, and tests. Recommended: create requires an ID; mutation carries no returned ID and only uses/verifies the existing entity ID from durable state. |
 | 4A-SPEC-013 | BLOCKING | `docs/stages/stage-04a-platform-foundation.md:316`, `:326`, `:347`, `:466`, `:665`, `:702-739` | Attempt 3 converts a retryable outcome into terminal `PLATFORM_MAX_ATTEMPTS_EXCEEDED`, but the returned evidence remains retryable with retry seconds. Copying it violates the terminal status/error/evidence coherence rules. A fourth retry also matches both invalid-state and max-attempt local errors. | Define the exact application-generated terminal evidence transformation: finalized attempt/operation status, terminal code/result kind, retry-after removal, trace retention, treatment of the original retryable code, and persistence fields. Define fourth-retry error precedence and add DB/domain/fake tests. |
 | 4A-SPEC-014 | MAJOR | `docs/stages/stage-04a-platform-foundation.md:775-790` | The Audit enforcement layer is clear, but `PlatformAuditEvent` is still prose-only and Transaction A may create more than one durable aggregate, leaving event cardinality/content to implementation. | Define the exact typed Audit event record/enum and a transaction-by-transaction event matrix, including entity plus operation creation, claim, result, reconcile, and budget changes; retain rollback, no-false-Audit, and redaction tests. |
+
+### Developer resolution evidence for findings 4A-SPEC-012 through 014
+
+| ID | Developer resolution status | Correction evidence in Stage 4A specification |
+| --- | --- | --- |
+| 4A-SPEC-012 | `RESOLVED_PENDING_RE_REVIEW` | Selects one operation-type rule: create success requires a returned ID, matching entity/operation persistence, and exact evidence fingerprint; mutation command loads/verifies its existing durable ID but returns and persists no operation ID or fingerprint. Exact typed validation, fake behavior, deferred coherence, and positive/negative contract/direct-SQL tests are aligned. |
+| 4A-SPEC-013 | `RESOLVED_PENDING_RE_REVIEW` | Defines the application-generated attempt-3 terminal evidence and every finalized operation/attempt field: `FAILED_TERMINAL`, `PLATFORM_MAX_ATTEMPTS_EXCEEDED`, no retry seconds, retained safe trace, and discarded original retryable code/evidence. Fourth retry checks max attempts before state and has exact zero-side-effect tests. |
+| 4A-SPEC-014 | `RESOLVED_PENDING_RE_REVIEW` | Defines closed Audit subject/event enums and `PlatformAuditEvent`, fixed field validation/mapping/order, and exact per-transaction event cardinality/content for entity and operation creation, submit/reconcile claim/finalization, successful entity result/budget mutations, and attempt-3 conversion. Rollback-at-every-position, no-false-Audit, missing-binding, and redaction tests remain mandatory. |
 
 No escalation-policy trigger exists. These are ordinary specification corrections within the approved local/test-only Stage 4A boundary; implementation remains locked.
 

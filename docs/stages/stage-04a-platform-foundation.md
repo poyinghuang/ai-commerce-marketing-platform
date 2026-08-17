@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status: Technical specification corrections for findings 4A-SPEC-005 through 011 completed; implementation not started
+- Status: Technical specification corrections for findings 4A-SPEC-012 through 014 completed; implementation not started
 - Branch: `codex/stage-04a-platform-foundation-specification`
 - Base Commit: `a90f6e0bb20d23da10edb66712d85261dafe14e8`
 - Prerequisite: Stage 04 specification merged by PR #56; post-merge main CI Run `31921389709` passed
@@ -312,18 +312,20 @@ Write ports return exactly one closed `PlatformWriteOutcome` variant; reconcilia
 
 | Outcome record | Required fields | Optional fields | Operation transition |
 | --- | --- | --- | --- |
-| `WriteSucceeded` | `externalId` for create, `evidence` | `safeProviderTraceId`, `observedState`; `externalId` for non-create | `SUBMITTING -> SUCCEEDED` |
+| `WriteSucceeded` | `externalId` for create, `evidence` | `safeProviderTraceId`, `observedState`; mutation has no returned `externalId` | `SUBMITTING -> SUCCEEDED` |
 | `WriteRetryableFailure` | `errorCode`, `retryAfterSeconds`, `evidence` | `safeProviderTraceId` | `SUBMITTING -> FAILED_RETRYABLE` only when another attempt remains; otherwise `FAILED_TERMINAL` with `PLATFORM_MAX_ATTEMPTS_EXCEEDED` |
 | `WriteTerminalFailure` | `errorCode`, `evidence` | `safeProviderTraceId` | `SUBMITTING -> FAILED_TERMINAL` |
 | `WriteUnknownOutcome` | `errorCode`, `evidence` | `safeProviderTraceId` | `SUBMITTING -> UNKNOWN_OUTCOME` |
-| `ReconciliationFound` | `externalId`, `evidence` | `safeProviderTraceId`, `observedState` | `RECONCILING -> SUCCEEDED` |
+| `ReconciliationFound` | `externalId` for create, `evidence` | `safeProviderTraceId`, `observedState`; mutation has no returned `externalId` | `RECONCILING -> SUCCEEDED` |
 | `ReconciliationNotFound` | `errorCode=PLATFORM_RECONCILIATION_NOT_FOUND`, `evidence` | `safeProviderTraceId` | attempt `NOT_FOUND`; operation `RECONCILING -> UNKNOWN_OUTCOME` |
 | `ReconciliationStillUnknown` | `errorCode=PLATFORM_RECONCILIATION_INCONCLUSIVE`, `evidence` | `safeProviderTraceId` | `RECONCILING -> UNKNOWN_OUTCOME` |
 | `ReconciliationTerminalFailure` | `errorCode=PLATFORM_RECONCILIATION_TERMINAL`, `evidence` | `safeProviderTraceId` | `RECONCILING -> FAILED_TERMINAL` |
 
-`externalId` is 1–128 characters matching `^[A-Za-z0-9._:-]+$`. `safeProviderTraceId`, when present, uses the same safe character class and length. `observedState`, when present, is one of the normalized observed states. `retryAfterSeconds` is integer `1..3600`; the application computes `next_attempt_at = claimCompletionTime + retryAfterSeconds` and never accepts a provider timestamp.
+`externalId` is 1–128 characters matching `^[A-Za-z0-9._:-]+$`. A create success requires it; a mutation success (`PAUSE`, `RESUME`, or `UPDATE_BUDGET`) forbids it and verifies the entity's existing durable external ID before dispatch without copying that ID into the outcome. `safeProviderTraceId`, when present, uses the same safe character class and length. `observedState`, when present, is one of the normalized observed states. `retryAfterSeconds` is integer `1..3600`; the application computes `next_attempt_at = claimCompletionTime + retryAfterSeconds` and never accepts a provider timestamp.
 
-`NormalizedPlatformEvidence` serializes to a JSON object with required keys `schemaVersion` (number `1`), `providerKey` (exactly `FAKE`), `attemptKind` (`SUBMIT` or `RECONCILE`), and `resultKind` (`SUCCEEDED`, `FAILED_RETRYABLE`, `FAILED_TERMINAL`, `UNKNOWN_OUTCOME`, `FOUND`, `NOT_FOUND`, `STILL_UNKNOWN`). Optional keys are only `externalIdFingerprint` (lowercase SHA-256 of external ID), `observedState`, and `retryAfterSeconds`; their presence must agree with the outcome and typed declarations. No other key or nested object is allowed. V12 checks provider is FAKE and deferred triggers require it to equal the operation account provider. The exact object is at most 8 KiB and is copied to the finalized attempt; `platform_operations.outcome_evidence` stores the latest finalized normalized evidence. Raw response/body/message/status/header/URL/account identifier is never retained.
+`NormalizedPlatformEvidence` serializes to a JSON object with required keys `schemaVersion` (number `1`), `providerKey` (exactly `FAKE`), `attemptKind` (`SUBMIT` or `RECONCILE`), and `resultKind` (`SUCCEEDED`, `FAILED_RETRYABLE`, `FAILED_TERMINAL`, `UNKNOWN_OUTCOME`, `FOUND`, `NOT_FOUND`, `STILL_UNKNOWN`). Optional keys are only `externalIdFingerprint` (lowercase SHA-256 of the exact UTF-8 external ID), `observedState`, and `retryAfterSeconds`; their presence must agree with the outcome and typed declarations. Create success and create reconciliation-found require the fingerprint; every direct or reconciled mutation success forbids it because no returned ID exists. No other key or nested object is allowed. V12 checks provider is FAKE and deferred triggers require it to equal the operation account provider. The exact object is at most 8 KiB and is copied to the finalized attempt; `platform_operations.outcome_evidence` stores the latest finalized normalized evidence. Raw response/body/message/status/header/URL/account identifier is never retained.
+
+For a successful create, Transaction C copies the validated returned ID to both the created entity's write-once `external_id` and `platform_operations.external_id`; both values must match, while evidence stores only its fingerprint. For a successful mutation, the entity's existing `external_id` is unchanged, `platform_operations.external_id` remains NULL, and the attempt and operation evidence omit `externalIdFingerprint`. The deferred operation/attempt coherence trigger and domain constructor enforce this operation-type-specific rule; no mutation result may echo, replace, or newly persist an external ID.
 
 Stable error mapping is exhaustive for 4A:
 
@@ -526,6 +528,7 @@ enum PlatformDesiredState { DRAFT, PAUSED, ACTIVE, ARCHIVED }
 enum PlatformObservedState { UNKNOWN, PENDING, PAUSED, ACTIVE, COMPLETED, REJECTED, ERROR, DELETED }
 enum PlatformOperationStatus { CREATED, SUBMITTING, SUCCEEDED, FAILED_RETRYABLE, FAILED_TERMINAL, UNKNOWN_OUTCOME, RECONCILING }
 enum PlatformAttemptKind { SUBMIT, RECONCILE }
+enum PlatformAttemptStatus { STARTED, SUCCEEDED, FAILED_RETRYABLE, FAILED_TERMINAL, UNKNOWN_OUTCOME, NOT_FOUND }
 enum PlatformEvidenceResultKind { SUCCEEDED, FAILED_RETRYABLE, FAILED_TERMINAL, UNKNOWN_OUTCOME, FOUND, NOT_FOUND, STILL_UNKNOWN }
 enum PlatformStableErrorCode {
     PLATFORM_RATE_LIMITED, PLATFORM_TEMPORARILY_UNAVAILABLE,
@@ -588,12 +591,14 @@ record PlatformStateMutationCommand(
         PlatformCommandIdentity identity,
         PlatformEntityType entityType,
         UUID entityUuid,
+        String existingExternalId,
         long expectedEntityVersion,
         PlatformDesiredState targetDesiredState) {}
 
 record PlatformBudgetMutationCommand(
         PlatformCommandIdentity identity,
         UUID platformAdSetUuid,
+        String existingExternalId,
         long expectedEntityVersion,
         PlatformBudgetType budgetType,
         String currency,
@@ -610,7 +615,7 @@ record PlatformReconciliationQuery(
         Optional<String> knownExternalId) {}
 ```
 
-Every record reference, enum, UUID, String, BigDecimal, and Optional container is non-null. Absence is represented only by `Optional.empty()` in the explicitly Optional fields; raw null is rejected by the compact constructor with `IllegalArgumentException(PLATFORM_CONTRACT_INVALID)`. Schedule optionals are both empty or both present with end after start. `expectedEntityVersion >= 0`; submit/reconciliation counts are positive when dispatched; money is positive, scale `0..6`, and normalized without rounding. Hashes are exactly 64 lowercase hex; currency is exactly three uppercase ASCII letters; timezone/profile/mapping strings follow their persisted closed rules. Commands contain no actor credential, raw account ID, provider payload, URL, raw evidence, map, JSON node, fixture selector, or SDK type.
+Every record reference, enum, UUID, String, BigDecimal, and Optional container is non-null. Absence is represented only by `Optional.empty()` in the explicitly Optional fields; raw null is rejected by the compact constructor with `IllegalArgumentException(PLATFORM_CONTRACT_INVALID)`. Schedule optionals are both empty or both present with end after start. Mutation `existingExternalId` is required, matches `^[A-Za-z0-9._:-]{1,128}$`, and is loaded from the locked entity row rather than accepted in `request_payload`; it is an internal dispatch target, not a returned result. `expectedEntityVersion >= 0`; submit/reconciliation counts are positive when dispatched; money is positive, scale `0..6`, and normalized without rounding. Hashes are exactly 64 lowercase hex; currency is exactly three uppercase ASCII letters; timezone/profile/mapping strings follow their persisted closed rules. Commands contain no actor credential, raw account ID, provider payload, URL, raw evidence, map, JSON node, fixture selector, or SDK type.
 
 Every command is reconstructed from the immutable canonical operation payload and database row after Transaction A. No caller-supplied record instance crosses the persistence boundary unchanged.
 
@@ -649,7 +654,7 @@ record WriteUnknownOutcome(PlatformUnknownCode errorCode,
 
 sealed interface PlatformReconciliationOutcome permits ReconciliationFound,
         ReconciliationNotFound, ReconciliationStillUnknown, ReconciliationTerminalFailure {}
-record ReconciliationFound(String externalId,
+record ReconciliationFound(Optional<String> externalId,
         Optional<String> safeProviderTraceId,
         Optional<PlatformObservedState> observedState,
         NormalizedPlatformEvidence evidence) implements PlatformReconciliationOutcome {}
@@ -662,7 +667,7 @@ record ReconciliationTerminalFailure(PlatformReconciliationTerminalCode errorCod
         NormalizedPlatformEvidence evidence) implements PlatformReconciliationOutcome {}
 ```
 
-All outcome/evidence references and Optional containers are non-null. `WriteSucceeded.externalId` is present for create and absent for mutation; reconciliation found always has it. Other variants cannot carry an external ID. Retry seconds are `1..3600` and present in evidence only for retryable failure. Fingerprint is present exactly when an external ID is present. Observed state is permitted only for success/found. Evidence kind and attempt kind must match the enclosing variant/method. `schemaVersion=1` and `providerKey=FAKE` always.
+All outcome/evidence references and Optional containers are non-null. Validation is performed by `validateWriteOutcome(PlatformOperationType operationType, Optional<String> durableEntityExternalId, PlatformWriteOutcome outcome)` before Transaction C and by the analogous `validateReconciliationOutcome(...)` before reconciliation finalization. For `CREATE_*`, `durableEntityExternalId` is empty until success/found, `WriteSucceeded.externalId` or `ReconciliationFound.externalId` is present, and evidence contains exactly its SHA-256 fingerprint. For `PAUSE`, `RESUME`, and `UPDATE_BUDGET`, `durableEntityExternalId` is present and valid before dispatch, both success variants have empty `externalId`, and evidence has no fingerprint; the durable ID is used only to verify the target and is never copied into the returned or persisted operation result. Other variants cannot carry an external ID. Retry seconds are `1..3600` and present in evidence only for retryable failure before max-attempt conversion. Observed state is permitted only for success/found. Evidence kind and attempt kind must match the enclosing variant/method. `schemaVersion=1` and `providerKey=FAKE` always. Any mismatch is `PLATFORM_CONTRACT_INVALID` before result persistence; because a provider call has already occurred, orchestration then follows the ambiguous-result rule rather than persisting a malformed success.
 
 Internal orchestration methods are also exact and are not web endpoints:
 
@@ -699,7 +704,15 @@ record PlatformOperationView(
 
 All view fields/Optional containers are non-null and reflect the committed row after the method returns. `entityUuid` is the one typed FK flattened for local callers; no raw canonical payload or actor/account reference is exposed.
 
-`submit` accepts only `CREATED`; `retry` accepts only due `FAILED_RETRYABLE`, uses the same operation/entity/payload/idempotency identity, and never creates a replacement row; `reconcile` accepts only `UNKNOWN_OUTCOME`. Every operation is inserted with `max_attempts=3`; the first submit is attempt 1 and at most two explicit retries create attempts 2 and 3. A retryable outcome on attempt 3 becomes terminal `PLATFORM_MAX_ATTEMPTS_EXCEEDED`. Reconciliation claims are separately capped at 3; a fourth explicit request fails `PLATFORM_MAX_RECONCILIATIONS_EXCEEDED` and leaves the operation unknown. There is no unattended scheduler or automatic retry.
+`submit` accepts only `CREATED`; `retry` accepts only due `FAILED_RETRYABLE`, uses the same operation/entity/payload/idempotency identity, and never creates a replacement row; `reconcile` accepts only `UNKNOWN_OUTCOME`. Every operation is inserted with `max_attempts=3`; the first submit is attempt 1 and at most two explicit retries create attempts 2 and 3. Reconciliation claims are separately capped at 3; a fourth explicit request fails `PLATFORM_MAX_RECONCILIATIONS_EXCEEDED` and leaves the operation unknown. There is no unattended scheduler or automatic retry.
+
+If the adapter returns `WriteRetryableFailure` for SUBMIT attempt 3, orchestration does not persist that retryable outcome. It constructs a new application-owned `NormalizedPlatformEvidence(1, FAKE, SUBMIT, FAILED_TERMINAL, Optional.empty(), Optional.empty(), Optional.empty())` and atomically finalizes the attempt and operation as follows:
+
+- attempt: `status=FAILED_TERMINAL`, `normalized_error_code=PLATFORM_MAX_ATTEMPTS_EXCEEDED`, `safe_provider_trace_id` copied from the adapter outcome when present, the application-generated terminal evidence, `completed_at=claimCompletionTime`, and `version=1`;
+- operation: `status=FAILED_TERMINAL`, `attempt_count=3`, `normalized_error_code=PLATFORM_MAX_ATTEMPTS_EXCEEDED`, the same retained safe trace and byte-equivalent terminal evidence, `external_id=NULL`, `next_attempt_at=NULL`, `completed_at=claimCompletionTime`, and the normal single version increment from its claimed version;
+- the original retryable code, retry seconds, and retryable evidence are input-only test observations and are not persisted in any operation, attempt, Audit change, or log. No `retryAfterSeconds`, external-ID fingerprint, or observed state survives the transformation.
+
+`retry` evaluates local eligibility in this exact order: operation existence, expected version, `attempt_count >= max_attempts`, accepted `FAILED_RETRYABLE` state, due time, account/policy/evidence, and claim. Therefore a fourth retry against the terminal attempt-3 row returns `PLATFORM_MAX_ATTEMPTS_EXCEEDED`, not `PLATFORM_INVALID_OPERATION_STATE`; it creates no attempt, Audit, entity change, or adapter invocation. Not-found and stale-version retain precedence over the max check.
 
 Local entry failures throw one provider-neutral `PlatformOperationException` containing non-null `PlatformStableErrorCode code`, `Optional<UUID> operationUuid`, and a fixed generic message equal to the enum name; it has no raw cause/message in its public representation. Only the local subset below may be thrown before dispatch; provider/reconciliation subsets appear in persisted results/views according to the outcome tables.
 
@@ -736,7 +749,7 @@ final class PlatformOperationException extends RuntimeException {
 | `PLATFORM_IDEMPOTENCY_CONFLICT` | repeated request identity differs in any immutable contract field |
 | `PLATFORM_EVIDENCE_INVALID` | current Ad evidence fails creation/dispatch checks |
 
-Local entry codes are not persisted. The sole overlap is `PLATFORM_MAX_ATTEMPTS_EXCEEDED`: it is returned locally for an ineligible fourth submit request, and it is also persisted when the provider returns a retryable outcome for already-claimed attempt 3 under the explicit conversion rule. Pre-insert/pre-claim rejection returns the exception and writes no false operation/Audit. All methods use compare-and-set version claims. Tests cover every table row above, including unchanged DB/Audit/adapter counters.
+Local entry codes are not persisted. The sole overlap is `PLATFORM_MAX_ATTEMPTS_EXCEEDED`: it is returned locally for an ineligible fourth retry request, and it is also persisted under the exact application-generated terminal transformation when the provider returns a retryable outcome for already-claimed attempt 3. Pre-insert/pre-claim rejection returns the exception and writes no false operation/Audit. All methods use compare-and-set version claims. Tests cover every table row above, including the fourth-retry precedence and unchanged DB/Audit/adapter counters.
 
 Server-owned policy contracts are exact and fail closed:
 
@@ -759,27 +772,75 @@ The returned records are exact: `PlatformAccountPolicy(UUID platformAccountUuid,
 - Registered only under `(local | test) & !production` and an explicit fake-platform profile/property.
 - Uses no HTTP/library SDK, filesystem credential, environment secret, random timing, DNS, socket, or paid service.
 - Validates the same normalized request limits as the application port contract.
-- Derives create IDs exactly as `prefix + first24(lowercaseHex(SHA-256(UTF-8("fake-platform-id-v1\n" + lowercase(operationUuid) + "\n" + idempotencyKey + "\n" + requestSha256))))`. Prefix is `fake-campaign-` for Campaign, `fake-adset-` for Ad Set, and `fake-ad-` for Ad. State and budget mutations return the entity's existing ID and never derive a replacement.
+- Derives create IDs exactly as `prefix + first24(lowercaseHex(SHA-256(UTF-8("fake-platform-id-v1\n" + lowercase(operationUuid) + "\n" + idempotencyKey + "\n" + requestSha256))))`. Prefix is `fake-campaign-` for Campaign, `fake-adset-` for Ad Set, and `fake-ad-` for Ad. State and budget mutations first verify the supplied command target against the entity's existing durable ID, then return `WriteSucceeded(Optional.empty(), ...)` with no external-ID fingerprint; they never echo or derive an ID.
 - Repeated submit with the same identity returns the same external ID; a different payload for the same identity returns an idempotency conflict.
-- Server-owned fixtures map exactly: `SUCCESS -> WriteSucceeded`; `RETRYABLE_RATE_LIMIT -> WriteRetryableFailure(PLATFORM_RATE_LIMITED, 60)`; `RETRYABLE_TEMPORARILY_UNAVAILABLE -> WriteRetryableFailure(PLATFORM_TEMPORARILY_UNAVAILABLE, 30)`; `TERMINAL_VALIDATION -> WriteTerminalFailure(PLATFORM_VALIDATION_FAILED)`; `TERMINAL_PERMISSION -> WriteTerminalFailure(PLATFORM_PERMISSION_DENIED)`; `MALFORMED_RESULT -> WriteUnknownOutcome(PLATFORM_RESPONSE_AMBIGUOUS)`; `AMBIGUOUS_TIMEOUT -> WriteUnknownOutcome(PLATFORM_RESPONSE_AMBIGUOUS)`; `RECONCILE_FOUND -> ReconciliationFound` with the same deterministic ID; `RECONCILE_NOT_FOUND -> ReconciliationNotFound`; `RECONCILE_STILL_UNKNOWN -> ReconciliationStillUnknown`; and `RECONCILE_TERMINAL -> ReconciliationTerminalFailure(PLATFORM_RECONCILIATION_TERMINAL)`.
+- Server-owned fixtures map exactly: `SUCCESS -> WriteSucceeded`; `RETRYABLE_RATE_LIMIT -> WriteRetryableFailure(PLATFORM_RATE_LIMITED, 60)`; `RETRYABLE_TEMPORARILY_UNAVAILABLE -> WriteRetryableFailure(PLATFORM_TEMPORARILY_UNAVAILABLE, 30)`; `TERMINAL_VALIDATION -> WriteTerminalFailure(PLATFORM_VALIDATION_FAILED)`; `TERMINAL_PERMISSION -> WriteTerminalFailure(PLATFORM_PERMISSION_DENIED)`; `MALFORMED_RESULT -> WriteUnknownOutcome(PLATFORM_RESPONSE_AMBIGUOUS)`; `AMBIGUOUS_TIMEOUT -> WriteUnknownOutcome(PLATFORM_RESPONSE_AMBIGUOUS)`; `RECONCILE_FOUND -> ReconciliationFound` with the same deterministic ID and fingerprint for create, but empty ID/fingerprint after verifying `knownExternalId` for mutation; `RECONCILE_NOT_FOUND -> ReconciliationNotFound`; `RECONCILE_STILL_UNKNOWN -> ReconciliationStillUnknown`; and `RECONCILE_TERMINAL -> ReconciliationTerminalFailure(PLATFORM_RECONCILIATION_TERMINAL)`.
 - Fixture selection is constructor/test configuration, not persisted arbitrary input and never a Browser/provider-origin field.
 - Records invocation count and whether a Spring transaction was active so tests prove single submission and transaction separation.
 - Default and production profiles expose no usable write adapter; startup or operation dispatch fails closed with `PLATFORM_ADAPTER_UNAVAILABLE`.
 
 Contract tests must run the same test suite against every implementation of a write or reconciliation port. A future Meta adapter cannot weaken the fake contract.
 
-The shared contract suite asserts each exact method, record nesting/type, enum exhaustiveness, Optional/null rule, canonical hash and idempotency replay, the three exact ID prefixes and 24-hex suffix, every fixture above, both retryable codes and exact retry seconds, both write-terminal codes, ambiguous malformed/null/exception mapping, all four reconciliation variants including terminal, provider/evidence coherence, max-attempt conversion on attempt 3, max-reconciliation rejection, no replacement ID on mutation, reconciliation identity reuse, one invocation for concurrent/replayed commands, and absence of provider/secret/network types. An unexpected exception or null/unrecognized result is normalized to `PLATFORM_RESPONSE_AMBIGUOUS`; it can never become a retryable result after dispatch.
+The shared contract suite asserts each exact method, record nesting/type, enum exhaustiveness, Optional/null rule, canonical hash and idempotency replay, the three exact ID prefixes and 24-hex suffix, every fixture above, both retryable codes and exact retry seconds, both write-terminal codes, ambiguous malformed/null/exception mapping, all four reconciliation variants including terminal, provider/evidence coherence, max-reconciliation rejection, reconciliation identity reuse, one invocation for concurrent/replayed commands, and absence of provider/secret/network types. Create tests require returned ID, matching entity/operation persistence, and its evidence fingerprint. Mutation tests require a pre-existing durable ID, returned/persisted operation ID absence, fingerprint absence, unchanged entity ID, and rejection of an adapter result that echoes or substitutes an ID. Attempt-3 tests inject each retryable code and retry seconds, then assert the exact application-generated terminal attempt/operation fields, retained safe trace, discarded original code/retry seconds, terminal evidence, no fourth invocation, and fourth-retry `PLATFORM_MAX_ATTEMPTS_EXCEEDED` precedence. An unexpected exception or null/unrecognized result is normalized to `PLATFORM_RESPONSE_AMBIGUOUS`; it can never become a retryable result after dispatch.
 
 ## Audit, logging, and redaction boundary
 
-Audit is explicitly an **application transaction invariant**, not a V12 deferred database constraint. V12 does not inspect `audit_logs` and the budget/evidence/attempt coherence triggers do not claim to prove Audit presence. The application must use the existing `AuditService`, `AuditOperationContext`, and `AuditValueSanitizer` behind one mandatory internal `PlatformAuditWriter.write(PlatformAuditEvent event, AuditOperationContext context)` collaborator. `PlatformAuditEvent` is a closed internal value containing operation/entity UUID, `CREATE` or `UPDATE`, old/new normalized status/value fields, attempt number when applicable, and no arbitrary map.
+Audit is explicitly an **application transaction invariant**, not a V12 deferred database constraint. V12 does not inspect `audit_logs` and the budget/evidence/attempt coherence triggers do not claim to prove Audit presence. The application must use the existing `AuditService`, `AuditOperationContext`, and `AuditValueSanitizer` behind one mandatory internal `PlatformAuditWriter.write(PlatformAuditEvent event, AuditOperationContext context)` collaborator. The closed internal contract is exact:
 
-Each Transaction A/B/C and reconciliation transaction is owned by one orchestration method that performs the state mutation and calls `PlatformAuditWriter` before commit. An Audit writer exception propagates and rolls back the entire state/attempt/entity mutation. Effective mutations write Audit in the same transaction; stale optimistic attempts, local validation failures, duplicate replays, and idempotency conflicts write no false state-change Audit.
+```java
+enum PlatformAuditSubjectType {
+    PLATFORM_CAMPAIGN, PLATFORM_AD_SET, PLATFORM_AD,
+    PLATFORM_OPERATION, PLATFORM_OPERATION_ATTEMPT
+}
+enum PlatformAuditEventKind {
+    ENTITY_CREATED, OPERATION_CREATED, ATTEMPT_CREATED,
+    OPERATION_TRANSITIONED, ATTEMPT_FINALIZED, ENTITY_RESULT_APPLIED
+}
 
-Allowed Audit content:
+record PlatformAuditEvent(
+        PlatformAuditSubjectType subjectType,
+        UUID subjectUuid,
+        AuditAction action,
+        PlatformAuditEventKind eventKind,
+        UUID operationUuid,
+        PlatformOperationType operationType,
+        PlatformEntityType entityType,
+        UUID entityUuid,
+        Optional<PlatformOperationStatus> previousOperationStatus,
+        Optional<PlatformOperationStatus> newOperationStatus,
+        Optional<PlatformAttemptKind> attemptKind,
+        Optional<Integer> attemptNumber,
+        Optional<PlatformAttemptStatus> previousAttemptStatus,
+        Optional<PlatformAttemptStatus> newAttemptStatus,
+        Optional<PlatformDesiredState> previousDesiredState,
+        Optional<PlatformDesiredState> newDesiredState,
+        Optional<BigDecimal> previousBudgetAmount,
+        Optional<BigDecimal> newBudgetAmount,
+        Optional<String> externalIdFingerprint,
+        Optional<PlatformStableErrorCode> normalizedErrorCode,
+        Optional<String> safeProviderTraceId) {}
+```
 
-- operation/entity UUID, normalized entity/operation/status, request ID, actor type/ID, attempt number, normalized error code, safe trace ID, timestamps, and bounded checksum/fingerprint;
-- `CREATE` for newly persisted foundation records and `UPDATE` for effective transitions.
+Every reference and Optional container is non-null. `subjectUuid` is the exact entity, operation, or attempt UUID selected by `subjectType`; the correlation `operationUuid`, `operationType`, `entityType`, and `entityUuid` are always present. `CREATE` is permitted only for `ENTITY_CREATED`, `OPERATION_CREATED`, and `ATTEMPT_CREATED`; the other kinds require `UPDATE`. Operation status fields are present only for operation subjects, attempt kind/number/status only for attempt subjects, desired state/budget/external-ID fingerprint only for entity subjects, and result code/trace only on finalized attempt and matching finalized-operation events. CREATE kinds require the applicable previous value empty and new value present; UPDATE kinds require both previous and new applicable values. Budget values have the canonical currency/scale rules but currency itself remains derivable from the immutable entity/account and is not repeated. The fingerprint is lowercase SHA-256 and raw external ID is forbidden. Constructors reject every other field combination with `PLATFORM_CONTRACT_INVALID`; there is no arbitrary map, free-form message, or provider payload.
+
+The writer maps the typed record to existing `AuditEvent`/`AuditChange` deterministically. `entityType` is the stable `PlatformAuditSubjectType` enum name, `entityUuid=subjectUuid`, and `productUuid` is the Ad's Product UUID only for `PLATFORM_AD`, otherwise NULL. Changes use only the present values in this fixed order and exact field names: `operationStatus`, `attemptKind`, `attemptNumber`, `attemptStatus`, `desiredState`, `budgetAmount`, `externalIdFingerprint`, `normalizedErrorCode`, `safeProviderTraceId`. Enum/code values use their names, UUIDs are lowercase, money is canonical plain decimal, absent old/new is SQL NULL, and the existing `AuditValueSanitizer` runs before append. The writer generates one UUID per Audit event, `AuditOperationContext` supplies request/actor/source context, and the transaction clock supplies `occurredAt`.
+
+Each orchestration transaction owns the following exact event cardinality and content; no event is collapsed across subjects:
+
+| Transaction/effective result | Exact events in the same transaction |
+| --- | --- |
+| Transaction A, `CREATE_*` | Exactly 2: entity `CREATE/ENTITY_CREATED` with its initial `desiredState` as new value; operation `CREATE/OPERATION_CREATED` with new operation status `CREATED` |
+| Transaction A, mutation operation | Exactly 1: operation `CREATE/OPERATION_CREATED` with new operation status `CREATED`; the pre-existing entity is unchanged |
+| Transaction B submit claim | Exactly 2: operation `UPDATE/OPERATION_TRANSITIONED` from `CREATED` or `FAILED_RETRYABLE` to `SUBMITTING`; matching attempt `CREATE/ATTEMPT_CREATED` with kind `SUBMIT`, number `attempt_count`, and new attempt status `STARTED` |
+| Transaction C submit finalization, any normalized result | Exactly 2 baseline events: attempt `UPDATE/ATTEMPT_FINALIZED` from `STARTED` to the persisted result status, plus operation `UPDATE/OPERATION_TRANSITIONED` from `SUBMITTING` to the matching operation status; both carry the same persisted normalized code/trace when present |
+| Transaction C successful create | The 2 baseline events plus exactly 1 entity `UPDATE/ENTITY_RESULT_APPLIED` carrying only the newly recorded external-ID fingerprint; total 3 |
+| Transaction C successful `PAUSE`/`RESUME` | The 2 baseline events plus exactly 1 entity `UPDATE/ENTITY_RESULT_APPLIED` carrying the exact previous/new desired state and no external-ID field; total 3 |
+| Transaction C successful `UPDATE_BUDGET` | The 2 baseline events plus exactly 1 entity `UPDATE/ENTITY_RESULT_APPLIED` carrying exact previous/new budget amount and no external-ID field; total 3 |
+| Reconcile claim | Exactly 2: operation `UPDATE/OPERATION_TRANSITIONED` from `UNKNOWN_OUTCOME` to `RECONCILING`; matching attempt `CREATE/ATTEMPT_CREATED` with kind `RECONCILE`, reconciliation number, and new status `STARTED` |
+| Reconcile finalization, any normalized result | Exactly 2 baseline events: reconcile attempt `UPDATE/ATTEMPT_FINALIZED` and operation `UPDATE/OPERATION_TRANSITIONED` from `RECONCILING` to the matching status, with identical persisted code/trace when present |
+| Reconciliation-found for a create whose ID was previously unknown | The 2 reconcile-finalization events plus exactly 1 entity `UPDATE/ENTITY_RESULT_APPLIED` carrying the found external-ID fingerprint; total 3. Mutation found must match the unchanged durable ID and emits no entity event because no entity value changes |
+
+Attempt-3 retryable-to-terminal conversion uses the Transaction C baseline with `FAILED_TERMINAL` and `PLATFORM_MAX_ATTEMPTS_EXCEEDED`; Audit receives the retained safe trace but neither the original retryable code nor retry seconds. A Transaction A duplicate identity replay, stale optimistic loser, local validation/eligibility failure, idempotency conflict, fourth retry, or no-op replay emits zero events. An Audit writer exception at any position propagates and rolls back all database mutations and all earlier Audit appends in that transaction. A missing writer binding fails construction/startup.
 
 Forbidden everywhere, including logs, Audit, exceptions, JSON evidence, test snapshots, and completion reports:
 
@@ -787,7 +848,7 @@ Forbidden everywhere, including logs, Audit, exceptions, JSON evidence, test sna
 
 The existing sanitizer marker list is the minimum. Platform canonicalizers reject keys containing `authorization`, `cookie`, `credential`, `password`, `secret`, or `token`, case-insensitively, before persistence. Tests use sentinel secrets and capture logs/Audit/database rows to prove absence. Safe trace IDs are length/character bounded and never trusted as URLs.
 
-Required Audit tests distinguish the enforcement layer: transaction integration tests assert every effective create/claim/finalize/reconcile/budget mutation commits exactly one expected Audit operation; a test `PlatformAuditWriter` that throws before returning proves the corresponding database mutation and attempt finalization roll back; a transaction-level test intentionally invokes the orchestration mutation with a missing/disabled writer binding and requires startup/constructor failure, not a silent commit. Direct SQL may bypass Audit by design and is used only to test database constraints; this limitation is recorded and must not be presented as database-level Audit enforcement.
+Required Audit tests distinguish the enforcement layer: transaction integration tests assert the exact matrix cardinality, subject UUID, action/kind, old/new typed fields, fixed change ordering, and correlation for create/mutation Transaction A, submit/reconcile claim, every final outcome, successful desired-state/budget change, successful create/found ID recording, and attempt-3 conversion. A parameterized throwing writer fails before event 1, between every event pair, and after the final append but before commit, proving entity/operation/attempt plus all Audit rows roll back. Missing/disabled writer binding requires startup/constructor failure. Duplicate/invalid/no-op paths assert zero Audit rows, and sentinel-secret tests assert redaction across every optional field. Direct SQL may bypass Audit by design and is used only to test database constraints; this limitation is recorded and must not be presented as database-level Audit enforcement.
 
 ## Verification matrix
 
@@ -799,17 +860,17 @@ Required Audit tests distinguish the enforcement layer: transaction integration 
 | Migration atomicity | A deliberate V12 object-name collision causes the migration to roll back with none of the other V12 objects left behind |
 | Hibernate | `ddl-auto=validate` passes against V12; all enum lengths, JSONB, `CHAR`, money precision/scale, nullability, composite relationships, timestamps, and `@Version` mappings match |
 | Direct SQL identity/evidence | Reject META/PRODUCTION accounts and mismatched/non-FAKE operation/attempt evidence. Reject mutation of every account/entity/operation identity, write-once external ID, canonical payload/hash, or attempt identity. Ad insert rejects mismatched Asset/output (`23503` or semantic `23514`), TEXT output, pending/rejected review, rejected decision, blocked preservation, inactive Product/Asset, null/mismatched checksums, and later Ad evidence substitution. Snapshot test proves later upstream lifecycle/type/checksum divergence leaves the historical Ad unchanged but blocks a new Ad insert |
-| Direct SQL lifecycle | Reject non-CREATED operation INSERT, nonzero counters/version or prefilled result fields; reject missing/mismatched latest SUBMIT/RECONCILE attempt for each operation state, including pre-succeeded INSERT and success without finalized attempt; reject invalid desired/observed/operation/attempt transitions, counter drift, terminal updates, account restore, and version jumps |
+| Direct SQL lifecycle | Reject non-CREATED operation INSERT, nonzero counters/version or prefilled result fields; reject missing/mismatched latest SUBMIT/RECONCILE attempt for each operation state, including pre-succeeded INSERT and success without finalized attempt; require create success ID/entity/operation/fingerprint coherence and mutation success NULL operation ID/no fingerprint; reject invalid desired/observed/operation/attempt transitions, counter drift, terminal updates, account restore, and version jumps. Attempt-3 terminal rows require `PLATFORM_MAX_ATTEMPTS_EXCEEDED`, FAILED_TERMINAL evidence with no retry seconds, and matching trace/evidence across operation and attempt |
 | Budget mutation | Initial provenance is null; exact successful per-entity-bounded `UPDATE_BUDGET` changes only amount/provenance/version; stale version, type/currency/policy change, missing/wrong/reused/non-success operation, unchanged/out-of-bound amount, direct amount update, and Audit-writer rollback fail; replay is no-op and concurrent changes have one winner. Assert batch/account-day aggregates are absent/deferred, not partially enforced |
 | Delete protection | DELETE from each of seven tables fails; referenced V1–V11 records remain protected by `ON DELETE RESTRICT`; Audit remains append-only |
 | Metric append-only revisions | Revision 1 and changed revision 2 coexist; latest/as-of selection deterministic; skipped/repeated revision, non-monotonic fetch time, exact duplicate fingerprint, negative/base invalid values, update, and delete fail; nullable metrics remain NULL. Direct SQL rejects currency/timezone mismatch and inactive account; matched active account succeeds |
-| Domain unit | All valid/invalid state edges; exact Java nesting/types/Optional/null rules; every local error; exact payload keys/formats; canonical bytes/hash; per-entity budget bounds/increase/decrease/replay; evidence checksum; metric account/fingerprint/revision; provider/profile matrix; exhaustive normalized outcome/error mapping; max attempts/reconciliations |
-| Port contract | Every exact method/record field/enum and required/optional rule; three fake ID prefixes and 24-hex suffix; success, both retryable fixtures, both write-terminal fixtures, malformed/null/exception ambiguity, idempotent replay/conflict, retry identity/max-attempt conversion, reconcile found/not-found/unknown/terminal, stable FAKE evidence/provider coherence, LOCAL/TEST dispatch matrix, and no provider/secret/network types escaping |
+| Domain unit | All valid/invalid state edges; exact Java nesting/types/Optional/null rules; every local error and precedence; exact payload keys/formats; canonical bytes/hash; per-entity budget bounds/increase/decrease/replay; create-versus-mutation returned/persisted ID and fingerprint rules; attempt-3 application-generated terminal fields; metric account/fingerprint/revision; provider/profile matrix; exhaustive normalized outcome/error mapping; max attempts/reconciliations |
+| Port contract | Every exact method/record field/enum and required/optional rule; three fake ID prefixes and 24-hex suffix; create returned-ID/fingerprint coherence; mutation durable-target verification with absent returned/persisted ID/fingerprint; both retryable fixtures and exact attempt-3 terminal transformation; both write-terminal fixtures; malformed/null/exception ambiguity; idempotent replay/conflict; reconcile found/not-found/unknown/terminal; stable FAKE evidence/provider coherence; LOCAL/TEST dispatch matrix; and no provider/secret/network types escaping |
 | Persistence before call | A separate connection can read the operation and STARTED attempt inside fake invocation; adapter observes no active Spring transaction |
 | Concurrency | Concurrent duplicate create returns one operation/entity and one submit call; concurrent claim has one winner; stale versions fail; max attempts cannot be exceeded |
-| Retry | Retry reuses operation UUID, canonical payload, idempotency key, and entity; creates the next attempt row only; no replacement entity/operation |
+| Retry | Retry reuses operation UUID, canonical payload, idempotency key, and entity; creates the next attempt row only; no replacement entity/operation. Each retryable fixture on attempt 3 yields the exact terminal attempt/operation/evidence fields, retains only safe trace, discards original code/retry seconds, and a fourth request returns max-attempt before invalid-state with zero mutation/call/Audit |
 | Ambiguous recovery | Timeout/crash produces UNKNOWN; submit count remains one; only reconcile is called; restart recovery never blindly submits; NOT_FOUND remains unresolved |
-| Audit | Application transaction invariant: every effective create/claim/result/reconcile/budget transition has expected Audit; Audit writer exception rolls back state and attempt; missing writer binding fails construction/startup; duplicate/invalid paths write none; sentinel secret absent. Do not claim direct-SQL Audit enforcement |
+| Audit | Application transaction invariant: assert the exact typed event contract and transaction matrix cardinality/content for entity plus operation creation, submit/reconcile claim/finalization, successful create/state/budget/found entity result, and attempt-3 conversion. Throw before/between/after appends rolls back all state/Audit; missing binding fails construction/startup; duplicate/invalid/no-op paths write none; sentinel secret is absent. Do not claim direct-SQL Audit enforcement |
 | Profile/security | Only FAKE/LOCAL under local and FAKE/TEST under test dispatch; cross-environment, META, default/production, missing explicit fake config, unsupported provider, and evidence mismatch fail closed; no network-capable dependency or credential implementation |
 | Regression | Full Backend Testcontainers suite; Frontend lint/typecheck/tests/build/audit even though unchanged; Compose config/cold health; Smoke; Playwright; actionlint; Gitleaks history/worktree; `git diff --check` |
 
