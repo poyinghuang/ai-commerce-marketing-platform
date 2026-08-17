@@ -6,7 +6,7 @@ final class PlatformContractSupport {
  static <T>Optional<T> opt(Optional<T> v){return Objects.requireNonNull(v,"PLATFORM_CONTRACT_INVALID");}
  static String safe(String v){if(v==null||!SAFE.matcher(v).matches())throw invalid();return v;}
  static String hash(String v){if(v==null||!HASH.matcher(v).matches())throw invalid();return v;}
- static BigDecimal money(BigDecimal v){req(v);if(v.signum()<=0||v.scale()>6)throw invalid();return v.stripTrailingZeros();}
+ static BigDecimal money(BigDecimal v){req(v);if(v.signum()<=0||v.scale()>6)throw invalid();BigDecimal normalized=v.stripTrailingZeros();return normalized.scale()<0?normalized.setScale(0):normalized;}
  static IllegalArgumentException invalid(){return new IllegalArgumentException("PLATFORM_CONTRACT_INVALID");}
  private PlatformContractSupport(){}
 }

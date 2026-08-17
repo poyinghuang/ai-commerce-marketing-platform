@@ -361,9 +361,12 @@ class MigrationCompatibilityTest {
         String schema = "v12_upgrade_case";
         assertThat(flyway(schema, MigrationVersion.fromVersion("11")).migrate().migrationsExecuted).isEqualTo(12);
         JdbcTemplate jdbc = jdbcTemplate(schema);
-        UUID product=UUID.randomUUID(), template=UUID.randomUUID(), templateVersion=UUID.randomUUID();
+        UUID product=UUID.randomUUID(), campaignPlan=UUID.randomUUID(), campaignProduct=UUID.randomUUID(), asset=UUID.randomUUID(), template=UUID.randomUUID(), templateVersion=UUID.randomUUID();
         UUID batch=UUID.randomUUID(), job=UUID.randomUUID(), output=UUID.randomUUID(), decision=UUID.randomUUID();
-        jdbc.update("INSERT INTO products(product_uuid,product_id,product_name,lifecycle_status,version) VALUES (?,'PROD-00000412','V12 Upgrade','ACTIVE',0)",product);
+        jdbc.update("INSERT INTO products(product_uuid,product_id,product_name,lifecycle_status,version) VALUES (?,'PROD-00000412','V12 Upgrade','ACTIVE',5)",product);
+        jdbc.update("INSERT INTO campaign_plans(campaign_uuid,campaign_name,objective,budget_daily,currency,version) VALUES (?,'Preserved Campaign','sales',12.3456,'TWD',7)",campaignPlan);
+        jdbc.update("INSERT INTO campaign_products(campaign_product_uuid,campaign_uuid,product_uuid,version) VALUES (?,?,?,6)",campaignProduct,campaignPlan,product);
+        jdbc.update("INSERT INTO assets(asset_uuid,product_uuid,campaign_uuid,asset_type,purpose,checksum_sha256,version) VALUES (?,?,?,'IMAGE','PRESERVED',?,8)",asset,product,campaignPlan,"d".repeat(64));
         jdbc.update("INSERT INTO ai_prompt_templates(prompt_template_uuid,template_key,generation_type,display_name) VALUES (?,'v12.upgrade','TEXT','V12')",template);
         jdbc.update("INSERT INTO ai_prompt_template_versions(prompt_template_version_uuid,prompt_template_uuid,version_number,template_text,input_schema,content_sha256,created_by) VALUES (?,?,1,'copy','{}'::jsonb,?,'tester')",templateVersion,template,"a".repeat(64));
         jdbc.update("INSERT INTO ai_generation_batches(generation_batch_uuid,product_uuid,status,currency,estimated_cost,reserved_cost,requested_job_count,succeeded_job_count,created_by) VALUES (?,?,'COMPLETED','TWD',0,0,1,1,'tester')",batch,product);
@@ -380,6 +383,9 @@ class MigrationCompatibilityTest {
         assertThat(latest.migrate().migrationsExecuted).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT review_status FROM ai_generation_outputs WHERE generation_output_uuid=?",String.class,output)).isEqualTo("APPROVED");
         assertThat(jdbc.queryForObject("SELECT decision FROM ai_review_decisions WHERE review_decision_uuid=?",String.class,decision)).isEqualTo("APPROVED");
+        assertThat(jdbc.queryForMap("SELECT campaign_name,objective,budget_daily,currency,version FROM campaign_plans WHERE campaign_uuid=?",campaignPlan)).containsEntry("campaign_name","Preserved Campaign").containsEntry("objective","sales").containsEntry("currency","TWD").containsEntry("version",7L);
+        assertThat(jdbc.queryForMap("SELECT product_uuid,campaign_uuid,asset_type,purpose,checksum_sha256,version FROM assets WHERE asset_uuid=?",asset)).containsEntry("product_uuid",product).containsEntry("campaign_uuid",campaignPlan).containsEntry("asset_type","IMAGE").containsEntry("purpose","PRESERVED").containsEntry("checksum_sha256","d".repeat(64)).containsEntry("version",8L);
+        assertThat(jdbc.queryForObject("SELECT version FROM products WHERE product_uuid=?",Long.class,product)).isEqualTo(5L);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM information_schema.tables WHERE table_schema=? AND table_name LIKE 'platform_%'",Integer.class,schema)).isEqualTo(7);
         assertThat(latest.info().pending()).isEmpty();
     }

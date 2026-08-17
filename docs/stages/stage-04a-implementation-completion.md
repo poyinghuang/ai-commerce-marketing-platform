@@ -6,7 +6,7 @@
 - Base: `681a51e7cca769e579bddc3f8157f2ab52c19497`
 - Scope: internal PostgreSQL/provider-neutral foundation only
 - Migration: additive `V12__create_platform_operation_foundation.sql`; V1-V11 unchanged
-- Status: Manager findings resolved by Developer; full local and Remote CI re-verification passed
+- Status: Manager re-review findings resolved by Developer; full local verification passed and exact-head Remote CI pending
 - Manager Decision: `REQUEST_CHANGES` at reviewed Head `85832f0be732bf50f5196fea0994c730fb70e184`; preserved pending independent re-review
 - Merge: Not started
 - Stage 4B: Locked
@@ -41,12 +41,27 @@ Developer resolution status: `RESOLVED_PENDING_RE_REVIEW`. This is not a Manager
 | 4A-IMPL-008 | V12 rejects early retry claims using the server-controlled claim timestamp and accepts exactly-due/late claims. |
 | 4A-IMPL-009 | V12 correlates entity mutations to the exact operation identity/version/provenance rather than timestamp equality. |
 | 4A-IMPL-010 | Command references are non-null at construction and persisted actor identity is NFC-normalized; canonical-equivalent replay is tested. |
+| 4A-IMPL-011 | V12 partial unique provenance indexes permit only one successful CREATE per durable entity and one successful PAUSE/RESUME per entity version. `PlatformOperationIntegrationTest#directSqlCannotReplayCreateOrStateSuccessWithoutItsOwnEntityMutation` proves second-operation replay and success-without-own-mutation fail, while `PlatformOperationSameInstantIntegrationTest` preserves valid sequential same-Instant changes. |
+| 4A-IMPL-012 | The executable acceptance matrix is case-exact below: Ad evidence/snapshot, all seven hard-delete guards, direct/reconciled budget reciprocity, metric revisions/account/concurrency, populated V11 preservation, successful reconciled mutation, Audit rollback positions/event cardinality, and deterministic fake/profile fixtures. |
+| 4A-IMPL-013 | V12 overwrites caller-supplied claim time with PostgreSQL statement time and checks retry eligibility against server time; `Milestone4ASchemaIntegrationTest#exactOutcomeEvidenceMatrixAndRetryDueTimeAreDatabaseEnforced` covers forged-future, early, due, and late claims. |
+| 4A-IMPL-014 | The deferred attempt-coherence trigger proves `next_attempt_at = completed_at + retryAfterSeconds`; `Milestone4ASchemaIntegrationTest#exactOutcomeEvidenceMatrixAndRetryDueTimeAreDatabaseEnforced` covers exact, one-second early, and one-second late schedules. |
+| 4A-IMPL-015 | Money canonicalization converts negative stripped scales to scale zero without rounding, and Campaign construction accepts only `PAUSED`; `DeterministicFakePlatformAdapterTest#commandMoneyUsesScaleZeroThroughSixAndCampaignCreateIsPausedOnly` covers integer, trailing-zero, fractional, and rejected ACTIVE cases. |
+
+### Case-exact acceptance evidence
+
+- `Milestone4AAdEvidenceAcceptanceIntegrationTest#adRequiresExactActiveProductGeneratedImageApprovalPreservationAndChecksumSnapshot` exercises a valid immutable Ad snapshot plus wrong Product, archived Product, missing/wrong Asset, non-image Asset, missing/rejected review, wrong output Product, checksum mismatch, immutable evidence, and Ad hard-delete rejection.
+- `Milestone4ASchemaIntegrationTest` exercises all seven table hard-delete guards, pristine inserts, deferred operation/attempt/outcome/evidence matrices, exact due/schedule boundaries, collision rollback, and schema/Hibernate constraints.
+- `PlatformOperationIntegrationTest#directAndReconciledBudgetSuccessRequireReciprocalAmountAndProvenanceMutation` covers direct and reconciled budget increase/decrease success and missing entity/provenance, amount, currency/pointer negatives; `#reconciledFoundSuccessfullyAppliesPauseResumeAndBudgetIncreaseDecreaseAtomically` covers reconciled PAUSE, RESUME, budget increase, and budget decrease with exact attempt/entity/Audit evidence.
+- `Milestone4AMetricAcceptanceIntegrationTest` covers revision 1/2 coexistence, latest/as-of selection, nullable metrics, skipped/repeated/nonmonotonic revisions, fingerprint duplicates, negative metrics, immutability/delete, account currency/timezone/activity coherence, and one-winner concurrent next-revision insertion.
+- `MigrationCompatibilityTest#populatedV11RowsAndApprovedEvidenceSurviveUpgradeToV12` preserves Product, Campaign Plan, campaign-product, Asset checksum/version, AI output, and review evidence; `#failedV12MigrationRollsBackEveryPartialV12Object` proves collision atomicity and `#canonicalV1ThroughV11ContentRemainsStable` proves V1-V11 byte preservation.
+- `PlatformOperationAuditRollbackIntegrationTest#auditFailureBeforeBetweenAndAfterFinalAppendRollsBackAttemptOperationEntityAndAudit` covers failures before, between, and after final Audit append with operation, attempt, entity, and event rollback. Operation integration tests cover exact successful/failure/no-event cardinality and concurrent finalizer one-winner behavior.
+- `DeterministicFakePlatformAdapterTest` covers every submit outcome, reconciliation result, deterministic Campaign/Ad Set/Ad ID prefix, canonical money, and Campaign PAUSED boundary. `PlatformAdapterProfileTest` proves the adapter exists only with explicit enablement under local/test and is absent under default/production or missing configuration.
 
 ## Local verification record
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| Backend/Testcontainers | Passed | 325 tests; 0 failures, 0 errors, 0 skipped; exact changed-area rerun 35/35 after the final evidence edits |
+| Backend/Testcontainers | Passed | 337 tests; 0 failures, 0 errors, 0 skipped |
 | V12 migration/direct SQL/Hibernate | Passed | Included in the full Backend suite; only V12 is added and V1-V11 are unchanged |
 | Frontend lint | Passed | Existing unchanged frontend |
 | Frontend typecheck | Passed | Existing unchanged frontend |
@@ -60,13 +75,14 @@ Developer resolution status: `RESOLVED_PENDING_RE_REVIEW`. This is not a Manager
 | Gitleaks | Passed | Pinned v8.28.0 history and worktree scans |
 | `git diff --check` | Passed | No whitespace errors |
 
-Known non-blocking warnings: Mockito/Byte Buddy reports its existing dynamic-agent deprecation warning. Windows Git reports that V12's LF working-tree line endings may be converted to CRLF when Git next rewrites that file. Maven Surefire reported a fork-JVM shutdown timeout after publishing the successful 325-test result; Maven exited successfully and no test failed or was skipped. The first local Compose attempt could not bind host port 8080 because an unrelated local process owned it; the incomplete stack was removed and the required cold-health, Playwright, and Smoke checks passed with the repository's supported `BACKEND_PORT=18080` and `FRONTEND_PORT=13000` overrides.
+Known non-blocking warnings: Mockito/Byte Buddy reports its existing dynamic-agent deprecation warning. Windows Git reports that V12's LF working-tree line endings may be converted to CRLF when Git next rewrites that file. Maven Surefire reported a fork-JVM shutdown timeout after publishing the successful 337-test result; Maven exited successfully and no test failed or was skipped. npm reports the existing `unrs-resolver@1.12.2` allow-scripts warning. The first Playwright attempt used an isolated Compose project name while DB-assertion fixtures intentionally address the repository's default project, producing six environment-only DB lookup failures; that stack was removed, the supported default project was started on `BACKEND_PORT=18080` and `FRONTEND_PORT=13000`, and the complete 14-test suite then passed.
 
 ## Remote delivery status
 
 - Draft PR: #60 (remains Draft)
-- Push CI: Run `31990405676` passed at implementation Head `a6add8534e2d8dbc45c5c6b12b1aef1e47e60a96`
-- Pull Request CI: Run `31990407839` passed at implementation Head `a6add8534e2d8dbc45c5c6b12b1aef1e47e60a96`
+- Prior Push/PR evidence is superseded by the current correction set.
+- Push CI: Pending the new exact Head.
+- Pull Request CI: Pending the new exact Head.
 - Independent Manager Review: Re-review pending after exact-head CI
 - Manager Decision: `REQUEST_CHANGES` preserved
 - Merge and post-merge verification: Not started

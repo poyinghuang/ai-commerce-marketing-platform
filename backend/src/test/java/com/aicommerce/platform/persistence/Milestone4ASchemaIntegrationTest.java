@@ -94,28 +94,37 @@ import java.sql.Timestamp;
    assertThat(validAttemptResult(wrongKind,(String)row[1],(String)row[2],(String)row[3])).as("wrong attempt kind "+java.util.Arrays.toString(row)).isFalse();
   }
 
-  Instant due=Instant.parse("2026-08-17T03:00:00Z");
-  UUID early=failedRetryableOperation(due,submitRetry);
-  assertThatThrownBy(()->jdbc.update("update platform_operations set status='SUBMITTING',attempt_count=2,claimed_at=?,normalized_error_code=null,safe_provider_trace_id=null,outcome_evidence=null,next_attempt_at=null,updated_at=?,version=3 where operation_uuid=?",Timestamp.from(due.minusNanos(1)),Timestamp.from(due.minusNanos(1)),early)).isInstanceOf(RuntimeException.class);
-  UUID exact=failedRetryableOperation(due,submitRetry);
-  claimRetryDirect(exact,due);
-  UUID late=failedRetryableOperation(due,submitRetry);
-  claimRetryDirect(late,due.plusSeconds(1));
+  Instant serverNow=serverNow();
+  Instant futureDue=serverNow.plusSeconds(30);
+  UUID early=failedRetryableOperation(futureDue,submitRetry);
+  Instant forgedFuture=futureDue.plusSeconds(60);
+  assertThatThrownBy(()->jdbc.update("update platform_operations set status='SUBMITTING',attempt_count=2,claimed_at=?,normalized_error_code=null,safe_provider_trace_id=null,outcome_evidence=null,next_attempt_at=null,updated_at=?,version=3 where operation_uuid=?",Timestamp.from(forgedFuture),Timestamp.from(forgedFuture),early)).isInstanceOf(RuntimeException.class);
+  UUID exact=failedRetryableOperation(serverNow(),submitRetry);
+  claimRetryDirect(exact,forgedFuture);
+  UUID late=failedRetryableOperation(serverNow().minusSeconds(1),submitRetry);
+  claimRetryDirect(late,forgedFuture);
+  Instant storedClaim=jdbc.queryForObject("select claimed_at from platform_operations where operation_uuid=?",Timestamp.class,exact).toInstant();
+  assertThat(storedClaim).isBefore(forgedFuture).isBetween(serverNow.minusSeconds(1),serverNow().plusSeconds(1));
   assertThat(jdbc.queryForObject("select count(*) from platform_operation_attempts where operation_uuid in (?,?) and attempt_number=2 and status='STARTED'",Integer.class,exact,late)).isEqualTo(2);
+
+  assertThatThrownBy(()->failedRetryableOperation(serverNow(),submitRetry,1)).isInstanceOf(RuntimeException.class);
+  assertThatThrownBy(()->failedRetryableOperation(serverNow(),submitRetry,-1)).isInstanceOf(RuntimeException.class);
  }
  private UUID account(){UUID id=UUID.randomUUID();String fingerprint=id.toString().replace("-","")+"c".repeat(32);jdbc.update("insert into platform_accounts(platform_account_uuid,provider_key,environment,account_reference,external_account_fingerprint,currency,timezone) values (?,'FAKE','TEST',?,?, 'TWD','Asia/Taipei')",id,"acct-"+id,fingerprint);return id;}
  private boolean validAttemptResult(String kind,String status,String code,String evidence){return Boolean.TRUE.equals(jdbc.queryForObject("select is_valid_platform_attempt_result(?,?,?,?::jsonb)",Boolean.class,kind,status,code,evidence));}
  private String evidence(String kind,String result,Integer retry){return "{\"schemaVersion\":1,\"providerKey\":\"FAKE\",\"attemptKind\":\""+kind+"\",\"resultKind\":\""+result+"\""+(retry==null?"":",\"retryAfterSeconds\":"+retry)+"}";}
  private UUID insertOperation(UUID account,UUID campaign,String payload){UUID operation=UUID.randomUUID();jdbc.update("insert into platform_operations(operation_uuid,platform_account_uuid,operation_type,entity_type,platform_campaign_uuid,client_request_uuid,idempotency_key,request_payload,request_sha256,requested_actor_type,requested_actor_id,request_id,max_attempts) values (?,?, 'CREATE_CAMPAIGN','CAMPAIGN',?,?,?, ?::jsonb,?,'LOCAL_ADMIN','strict-tester',?,3)",operation,account,campaign,UUID.randomUUID(),UUID.randomUUID().toString().replace("-","").repeat(2),payload,UUID.randomUUID().toString().replace("-","").repeat(2),"strict-"+operation);return operation;}
- private UUID failedRetryableOperation(Instant due,String evidence){
+ private UUID failedRetryableOperation(Instant due,String evidence){return failedRetryableOperation(due,evidence,0);}
+ private UUID failedRetryableOperation(Instant due,String evidence,int scheduleDeltaSeconds){
   UUID account=account(),plan=UUID.randomUUID(),campaign=UUID.randomUUID();
   jdbc.update("insert into campaign_plans(campaign_uuid,campaign_name) values (?,'Due')",plan);
   jdbc.update("insert into platform_campaigns(platform_campaign_uuid,campaign_uuid,platform_account_uuid,objective,account_timezone) values (?,?,?,'OUTCOME_SALES','Asia/Taipei')",campaign,plan,account);
   String payload="{\"schemaVersion\":1,\"operationType\":\"CREATE_CAMPAIGN\",\"entityType\":\"CAMPAIGN\",\"entityUuid\":\""+campaign+"\",\"platformCampaignUuid\":\""+campaign+"\",\"campaignUuid\":\""+plan+"\",\"objective\":\"OUTCOME_SALES\",\"desiredState\":\"PAUSED\",\"accountTimezone\":\"Asia/Taipei\"}";
-  UUID operation=insertOperation(account,campaign,payload),attempt=UUID.randomUUID(); Instant started=due.minusSeconds(120);
+  UUID operation=insertOperation(account,campaign,payload),attempt=UUID.randomUUID(); Instant completed=due.minusSeconds(60); Instant started=completed.minusSeconds(1);
   new TransactionTemplate(transactionManager).executeWithoutResult(s->{jdbc.update("update platform_operations set status='SUBMITTING',attempt_count=1,claimed_at=?,updated_at=?,version=1 where operation_uuid=?",Timestamp.from(started),Timestamp.from(started),operation);jdbc.update("insert into platform_operation_attempts(operation_attempt_uuid,operation_uuid,attempt_kind,attempt_number,status,started_at,version) values (?,?,'SUBMIT',1,'STARTED',?,0)",attempt,operation,Timestamp.from(started));});
-  new TransactionTemplate(transactionManager).executeWithoutResult(s->{jdbc.update("update platform_operation_attempts set status='FAILED_RETRYABLE',normalized_error_code='PLATFORM_RATE_LIMITED',evidence=?::jsonb,completed_at=?,version=1 where operation_attempt_uuid=?",evidence,Timestamp.from(started.plusSeconds(1)),attempt);jdbc.update("update platform_operations set status='FAILED_RETRYABLE',normalized_error_code='PLATFORM_RATE_LIMITED',outcome_evidence=?::jsonb,next_attempt_at=?,updated_at=?,version=2 where operation_uuid=?",evidence,Timestamp.from(due),Timestamp.from(started.plusSeconds(1)),operation);});
+  new TransactionTemplate(transactionManager).executeWithoutResult(s->{jdbc.update("update platform_operation_attempts set status='FAILED_RETRYABLE',normalized_error_code='PLATFORM_RATE_LIMITED',evidence=?::jsonb,completed_at=?,version=1 where operation_attempt_uuid=?",evidence,Timestamp.from(completed),attempt);jdbc.update("update platform_operations set status='FAILED_RETRYABLE',normalized_error_code='PLATFORM_RATE_LIMITED',outcome_evidence=?::jsonb,next_attempt_at=?,updated_at=?,version=2 where operation_uuid=?",evidence,Timestamp.from(due.plusSeconds(scheduleDeltaSeconds)),Timestamp.from(completed),operation);});
   return operation;
  }
- private void claimRetryDirect(UUID operation,Instant claimed){new TransactionTemplate(transactionManager).executeWithoutResult(s->{jdbc.update("update platform_operations set status='SUBMITTING',attempt_count=2,claimed_at=?,normalized_error_code=null,safe_provider_trace_id=null,outcome_evidence=null,next_attempt_at=null,updated_at=?,version=3 where operation_uuid=?",Timestamp.from(claimed),Timestamp.from(claimed),operation);jdbc.update("insert into platform_operation_attempts(operation_attempt_uuid,operation_uuid,attempt_kind,attempt_number,status,started_at,version) values (?,?,'SUBMIT',2,'STARTED',?,0)",UUID.randomUUID(),operation,Timestamp.from(claimed));});}
+ private void claimRetryDirect(UUID operation,Instant claimed){new TransactionTemplate(transactionManager).executeWithoutResult(s->{jdbc.update("update platform_operations set status='SUBMITTING',attempt_count=2,claimed_at=?,normalized_error_code=null,safe_provider_trace_id=null,outcome_evidence=null,next_attempt_at=null,updated_at=?,version=3 where operation_uuid=?",Timestamp.from(claimed),Timestamp.from(claimed),operation);Instant persisted=jdbc.queryForObject("select claimed_at from platform_operations where operation_uuid=?",Timestamp.class,operation).toInstant();jdbc.update("insert into platform_operation_attempts(operation_attempt_uuid,operation_uuid,attempt_kind,attempt_number,status,started_at,version) values (?,?,'SUBMIT',2,'STARTED',?,0)",UUID.randomUUID(),operation,Timestamp.from(persisted));});}
+ private Instant serverNow(){return jdbc.queryForObject("select clock_timestamp()",Timestamp.class).toInstant();}
 }

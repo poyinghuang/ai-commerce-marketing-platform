@@ -151,10 +151,12 @@ public class PlatformOperationTransactions {
         try {
             operation.claim(Objects.requireNonNull(claimTime));
             operations.saveAndFlush(operation);
+            entityManager.refresh(operation);
+            Instant serverClaimedAt=operation.getClaimedAt();
             UUID attemptUuid=UUID.randomUUID(); jdbc.update("""
                     INSERT INTO platform_operation_attempts(operation_attempt_uuid,operation_uuid,attempt_kind,
                       attempt_number,status,started_at,version) VALUES (?,?,'SUBMIT',?,'STARTED',?,0)
-                    """, attemptUuid, operationUuid, operation.getAttemptCount(), ts(claimTime));
+                    """, attemptUuid, operationUuid, operation.getAttemptCount(), ts(serverClaimedAt));
             platformAudit.write(PlatformAuditEvent.attempt(operation,attemptUuid,PlatformAttemptKind.SUBMIT,
                     operation.getAttemptCount(),null,com.aicommerce.platform.delivery.domain.PlatformAttemptStatus.STARTED,
                     null,null,true),context);
@@ -194,11 +196,13 @@ public class PlatformOperationTransactions {
                 WHERE operation_uuid=? AND version=? AND status='UNKNOWN_OUTCOME'
                 """, ts(claimTime), ts(claimTime), operationUuid, expectedVersion);
         if (updated != 1) throw stale(operationUuid);
+        Instant serverClaimedAt=jdbc.queryForObject("SELECT claimed_at FROM platform_operations WHERE operation_uuid=?",
+                (resultSet,rowNumber)->resultSet.getTimestamp(1).toInstant(),operationUuid);
         int reconciliationNumber = operation.getReconciliationCount() + 1;
         UUID attemptUuid=UUID.randomUUID(); jdbc.update("""
                 INSERT INTO platform_operation_attempts(operation_attempt_uuid,operation_uuid,attempt_kind,
                   attempt_number,status,started_at,version) VALUES (?,?,'RECONCILE',?,'STARTED',?,0)
-                """, attemptUuid, operationUuid, reconciliationNumber, ts(claimTime));
+                """, attemptUuid, operationUuid, reconciliationNumber, ts(serverClaimedAt));
         entityManager.clear();
         PlatformOperation claimed = require(operationUuid);
         platformAudit.write(PlatformAuditEvent.attempt(claimed,attemptUuid,PlatformAttemptKind.RECONCILE,

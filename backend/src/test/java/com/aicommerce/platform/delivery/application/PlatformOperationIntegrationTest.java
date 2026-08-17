@@ -33,6 +33,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -50,6 +52,7 @@ class PlatformOperationIntegrationTest {
     @Autowired AuditOperationContextFactory contexts;
     @Autowired DeterministicFakePlatformAdapter fake;
     @Autowired JdbcTemplate jdbc;
+    @Autowired PlatformTransactionManager transactionManager;
 
     UUID accountUuid;
 
@@ -83,12 +86,63 @@ class PlatformOperationIntegrationTest {
     }
 
     @Test
+    void directSqlCannotReplayCreateOrStateSuccessWithoutItsOwnEntityMutation() {
+        UUID firstCreateId=UUID.randomUUID();
+        var firstCreateCommand=createCampaign(firstCreateId,UUID.randomUUID()); UUID campaign=firstCreateCommand.entityUuid();
+        var firstCreate=service.create(firstCreateCommand,contexts.forCurrentActor("provenance-create-1"));
+        var created=service.submit(firstCreateId,firstCreate.getVersion());
+
+        UUID replayCreateId=UUID.randomUUID();
+        insertRawCampaignOperation(new CreatePlatformOperationCommand(replayCreateId,accountUuid,PlatformOperationType.CREATE_CAMPAIGN,PlatformEntityType.CAMPAIGN,campaign,UUID.randomUUID(),firstCreateCommand.normalizedRequestJson(),3));
+        claimDirect(replayCreateId);
+        assertDirectReplayRejected(replayCreateId,created.externalId().orElseThrow(),jdbc.queryForObject("select outcome_evidence::text from platform_operations where operation_uuid=?",String.class,firstCreateId));
+
+        long version=jdbc.queryForObject("select version from platform_campaigns where platform_campaign_uuid=?",Long.class,campaign);
+        UUID resumeId=UUID.randomUUID();
+        var resume=service.create(stateCommand(resumeId,UUID.randomUUID(),campaign,version,PlatformOperationType.RESUME),contexts.forCurrentActor("provenance-state-1"));
+        service.submit(resumeId,resume.getVersion());
+
+        UUID replayStateId=UUID.randomUUID();
+        insertRawCampaignOperation(stateCommand(replayStateId,UUID.randomUUID(),campaign,version,PlatformOperationType.RESUME));
+        claimDirect(replayStateId);
+        String stateEvidence=jdbc.queryForObject("select outcome_evidence::text from platform_operations where operation_uuid=?",String.class,resumeId);
+        assertDirectReplayRejected(replayStateId,null,stateEvidence);
+        assertThat(jdbc.queryForObject("select desired_state from platform_campaigns where platform_campaign_uuid=?",String.class,campaign)).isEqualTo("ACTIVE");
+        UUID attempt=jdbc.queryForObject("select operation_attempt_uuid from platform_operation_attempts where operation_uuid=?",UUID.class,replayStateId);
+        assertThatThrownBy(()->jdbc.update("delete from platform_operation_attempts where operation_attempt_uuid=?",attempt)).isInstanceOf(RuntimeException.class);
+    }
+
+    private void insertRawCampaignOperation(CreatePlatformOperationCommand command) {
+        String randomHash=UUID.randomUUID().toString().replace("-","").repeat(2);
+        jdbc.update("insert into platform_operations(operation_uuid,platform_account_uuid,operation_type,entity_type,platform_campaign_uuid,client_request_uuid,idempotency_key,request_payload,request_sha256,requested_actor_type,requested_actor_id,request_id,max_attempts) values (?,?,?,?,?,?,?,?::jsonb,?,'LOCAL_ADMIN','direct-provenance',?,3)",command.operationUuid(),command.platformAccountUuid(),command.operationType().name(),command.entityType().name(),command.entityUuid(),command.clientRequestUuid(),randomHash,command.normalizedRequestJson(),UUID.randomUUID().toString().replace("-","").repeat(2),"direct-"+command.operationUuid());
+    }
+
+    private void claimDirect(UUID operationUuid) {
+        new TransactionTemplate(transactionManager).executeWithoutResult(status->{
+            jdbc.update("update platform_operations set status='SUBMITTING',attempt_count=1,claimed_at=current_timestamp,updated_at=current_timestamp,version=1 where operation_uuid=?",operationUuid);
+            Instant claimed=jdbc.queryForObject("select claimed_at from platform_operations where operation_uuid=?",java.sql.Timestamp.class,operationUuid).toInstant();
+            jdbc.update("insert into platform_operation_attempts(operation_attempt_uuid,operation_uuid,attempt_kind,attempt_number,status,started_at,version) values (?,?, 'SUBMIT',1,'STARTED',?,0)",UUID.randomUUID(),operationUuid,java.sql.Timestamp.from(claimed));
+        });
+    }
+
+    private void assertDirectReplayRejected(UUID operationUuid,String externalId,String evidence) {
+        UUID attempt=jdbc.queryForObject("select operation_attempt_uuid from platform_operation_attempts where operation_uuid=?",UUID.class,operationUuid);
+        assertThatThrownBy(()->new TransactionTemplate(transactionManager).executeWithoutResult(status->{
+            jdbc.update("update platform_operation_attempts set status='SUCCEEDED',evidence=?::jsonb,completed_at=current_timestamp,version=1 where operation_attempt_uuid=?",evidence,attempt);
+            jdbc.update("update platform_operations set status='SUCCEEDED',external_id=?,outcome_evidence=?::jsonb,completed_at=current_timestamp,updated_at=current_timestamp,version=2 where operation_uuid=?",externalId,evidence,operationUuid);
+        })).isInstanceOf(RuntimeException.class);
+        assertThat(jdbc.queryForObject("select status from platform_operations where operation_uuid=?",String.class,operationUuid)).isEqualTo("SUBMITTING");
+        assertThat(jdbc.queryForObject("select status from platform_operation_attempts where operation_attempt_uuid=?",String.class,attempt)).isEqualTo("STARTED");
+    }
+
+    @Test
     void staleSubmittingRecoveryIsCompareAndSetAndNeverCallsAdapter() {
         UUID operationUuid = UUID.randomUUID();
         var context = contexts.forCurrentActor("stage4a-recovery-" + operationUuid);
         var created = service.create(createCampaign(operationUuid, UUID.randomUUID()), context);
         Instant claimedAt = Instant.parse("2026-08-17T00:00:00Z");
         transactions.claim(operationUuid, created.getVersion(), claimedAt, context);
+        claimedAt = transactions.get(operationUuid).getClaimedAt();
         long version = transactions.get(operationUuid).getVersion();
         int calls = fake.invocationCount();
 
@@ -168,6 +222,7 @@ class PlatformOperationIntegrationTest {
         var unknown = transactions.recordWriteOutcome(operationUuid, unknownSubmit(), context);
         Instant claimedAt = Instant.parse("2026-08-17T00:00:00Z");
         transactions.claimReconciliation(operationUuid, unknown.getVersion(), claimedAt, context);
+        claimedAt = transactions.get(operationUuid).getClaimedAt();
         long version = transactions.get(operationUuid).getVersion();
         int calls = fake.invocationCount();
 
@@ -206,14 +261,15 @@ class PlatformOperationIntegrationTest {
         var operation=service.create(createCampaign(operationUuid,UUID.randomUUID()),context);
         Instant first=Instant.parse("2026-08-17T01:00:00Z");
         transactions.claimSubmit(operationUuid,operation.getVersion(),first,context);
-        operation=transactions.recordWriteOutcome(operationUuid,retryable(60),context);
+        operation=transactions.recordWriteOutcome(operationUuid,retryable(1),context);
         String identity=operation.getIdempotencyKey(); String payload=operation.getRequestPayload();
         for(int attempt=2;attempt<=3;attempt++){
+            jdbc.queryForObject("select pg_sleep(1.5)",Object.class);
             Instant due=operation.getNextAttemptAt();
             transactions.claimRetry(operationUuid,operation.getVersion(),due,context);
             var claimed=jdbc.queryForMap("SELECT normalized_error_code,safe_provider_trace_id,outcome_evidence,next_attempt_at FROM platform_operations WHERE operation_uuid=?",operationUuid);
             assertThat(claimed.values()).allMatch(java.util.Objects::isNull);
-            operation=transactions.recordWriteOutcome(operationUuid,retryable(attempt==2?30:60),context);
+            operation=transactions.recordWriteOutcome(operationUuid,retryable(1),context);
         }
         assertThat(operation.getStatus()).isEqualTo(PlatformOperationStatus.FAILED_TERMINAL);
         assertThat(operation.getNormalizedErrorCode()).isEqualTo("PLATFORM_MAX_ATTEMPTS_EXCEEDED");
@@ -303,11 +359,68 @@ class PlatformOperationIntegrationTest {
     }
 
     @Test
+    void directAndReconciledBudgetSuccessRequireReciprocalAmountAndProvenanceMutation() {
+        UUID campaignId=UUID.randomUUID();var campaignContext=contexts.forCurrentActor("budget-reciprocal-campaign-"+campaignId);var campaignCommand=createCampaign(campaignId,UUID.randomUUID());var campaign=service.create(campaignCommand,campaignContext);service.submit(campaignId,campaign.getVersion());
+        UUID adSetId=UUID.randomUUID(),adSetCreateId=UUID.randomUUID();var adSetContext=contexts.forCurrentActor("budget-reciprocal-adset-"+adSetCreateId);var adSet=service.create(createAdSet(adSetCreateId,UUID.randomUUID(),adSetId,campaignCommand.entityUuid()),adSetContext);service.submit(adSetCreateId,adSet.getVersion());
+        assertThatThrownBy(()->jdbc.update("update platform_ad_sets set budget_amount=30,version=version+1,updated_at=current_timestamp where platform_ad_set_uuid=?",adSetId)).isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(()->jdbc.update("update platform_ad_sets set last_budget_operation_uuid=?,version=version+1,updated_at=current_timestamp where platform_ad_set_uuid=?",adSetCreateId,adSetId)).isInstanceOf(RuntimeException.class);
+
+        UUID directId=UUID.randomUUID();var directContext=contexts.forCurrentActor("budget-reciprocal-direct-"+directId);var direct=service.create(budgetCommand(directId,UUID.randomUUID(),adSetId,1,"20","30"),directContext);transactions.claimSubmit(directId,direct.getVersion(),Instant.now(),directContext);
+        assertBudgetSuccessWithoutEntityRejected(directId,"{\"schemaVersion\":1,\"providerKey\":\"FAKE\",\"attemptKind\":\"SUBMIT\",\"resultKind\":\"SUCCEEDED\",\"observedState\":\"PAUSED\"}");
+
+        UUID reconciledId=UUID.randomUUID();var reconciledContext=contexts.forCurrentActor("budget-reciprocal-reconcile-"+reconciledId);var reconciled=service.create(budgetCommand(reconciledId,UUID.randomUUID(),adSetId,1,"20","10"),reconciledContext);transactions.claimSubmit(reconciledId,reconciled.getVersion(),Instant.now(),reconciledContext);var unknown=transactions.recordWriteOutcome(reconciledId,unknownSubmit(),reconciledContext);transactions.claimReconciliation(reconciledId,unknown.getVersion(),Instant.now(),reconciledContext);
+        assertBudgetSuccessWithoutEntityRejected(reconciledId,"{\"schemaVersion\":1,\"providerKey\":\"FAKE\",\"attemptKind\":\"RECONCILE\",\"resultKind\":\"FOUND\",\"observedState\":\"PAUSED\"}");
+    }
+
+    private void assertBudgetSuccessWithoutEntityRejected(UUID operationUuid,String evidence) {
+        String kind=jdbc.queryForObject("select case when status='RECONCILING' then 'RECONCILE' else 'SUBMIT' end from platform_operations where operation_uuid=?",String.class,operationUuid);
+        UUID attempt=jdbc.queryForObject("select operation_attempt_uuid from platform_operation_attempts where operation_uuid=? and attempt_kind=? and status='STARTED'",UUID.class,operationUuid,kind);
+        assertThatThrownBy(()->new TransactionTemplate(transactionManager).executeWithoutResult(status->{jdbc.update("update platform_operation_attempts set status='SUCCEEDED',evidence=?::jsonb,completed_at=current_timestamp,version=1 where operation_attempt_uuid=?",evidence,attempt);jdbc.update("update platform_operations set status='SUCCEEDED',outcome_evidence=?::jsonb,completed_at=current_timestamp,updated_at=current_timestamp,version=version+1 where operation_uuid=?",evidence,operationUuid);})).isInstanceOf(RuntimeException.class);
+        assertThat(jdbc.queryForObject("select status from platform_operation_attempts where operation_attempt_uuid=?",String.class,attempt)).isEqualTo("STARTED");
+    }
+
+    @Test
     void reconciledFoundStaleMutationsUseExactAmbiguousRepresentationAtomically() {
         assertStaleStateReconciliation(PlatformOperationType.RESUME);
         assertStaleStateReconciliation(PlatformOperationType.PAUSE);
         assertStaleBudgetReconciliation("20", "30", "25");
         assertStaleBudgetReconciliation("20", "10", "15");
+    }
+
+    @Test
+    void reconciledFoundSuccessfullyAppliesPauseResumeAndBudgetIncreaseDecreaseAtomically() {
+        assertSuccessfulStateReconciliation(PlatformOperationType.RESUME);
+        assertSuccessfulStateReconciliation(PlatformOperationType.PAUSE);
+        assertSuccessfulBudgetReconciliation("30");
+        assertSuccessfulBudgetReconciliation("10");
+    }
+
+    private void assertSuccessfulStateReconciliation(PlatformOperationType type) {
+        UUID createId=UUID.randomUUID(); var createContext=contexts.forCurrentActor("reconcile-success-state-create-"+createId);
+        var createCommand=createCampaign(createId,UUID.randomUUID()); var create=service.create(createCommand,createContext); service.submit(createId,create.getVersion());
+        long version=1;
+        if(type==PlatformOperationType.PAUSE){UUID resumeId=UUID.randomUUID();var resumeContext=contexts.forCurrentActor("reconcile-success-state-prime-"+resumeId);var resume=service.create(stateCommand(resumeId,UUID.randomUUID(),createCommand.entityUuid(),version,PlatformOperationType.RESUME),resumeContext);service.submit(resumeId,resume.getVersion());version=2;}
+        UUID operationId=UUID.randomUUID();var context=contexts.forCurrentActor("reconcile-success-state-"+operationId);var operation=service.create(stateCommand(operationId,UUID.randomUUID(),createCommand.entityUuid(),version,type),context);
+        transactions.claimSubmit(operationId,operation.getVersion(),Instant.now(),context);var unknown=transactions.recordWriteOutcome(operationId,unknownSubmit(),context);transactions.claimReconciliation(operationId,unknown.getVersion(),Instant.now(),context);
+        int auditBefore=jdbc.queryForObject("select count(*) from audit_logs where operation_uuid=?",Integer.class,operationId);
+        var completed=transactions.recordReconciliationOutcome(operationId,foundMutation(),Instant.now(),context);
+        assertThat(completed.getStatus()).isEqualTo(PlatformOperationStatus.SUCCEEDED);
+        assertThat(jdbc.queryForObject("select desired_state from platform_campaigns where platform_campaign_uuid=?",String.class,createCommand.entityUuid())).isEqualTo(type==PlatformOperationType.PAUSE?"PAUSED":"ACTIVE");
+        assertThat(jdbc.queryForList("select attempt_kind||':'||status from platform_operation_attempts where operation_uuid=? order by created_at",String.class,operationId)).containsExactly("SUBMIT:UNKNOWN_OUTCOME","RECONCILE:SUCCEEDED");
+        assertThat(jdbc.queryForObject("select count(*) from audit_logs where operation_uuid=?",Integer.class,operationId)).isEqualTo(auditBefore+3);
+    }
+
+    private void assertSuccessfulBudgetReconciliation(String requested) {
+        UUID campaignId=UUID.randomUUID();var campaignContext=contexts.forCurrentActor("reconcile-success-budget-campaign-"+campaignId);var campaignCommand=createCampaign(campaignId,UUID.randomUUID());var campaign=service.create(campaignCommand,campaignContext);service.submit(campaignId,campaign.getVersion());
+        UUID adSetId=UUID.randomUUID(),createAdSetId=UUID.randomUUID();var adSetContext=contexts.forCurrentActor("reconcile-success-budget-adset-"+createAdSetId);var adSet=service.create(createAdSet(createAdSetId,UUID.randomUUID(),adSetId,campaignCommand.entityUuid()),adSetContext);service.submit(createAdSetId,adSet.getVersion());
+        UUID operationId=UUID.randomUUID();var context=contexts.forCurrentActor("reconcile-success-budget-"+operationId);var operation=service.create(budgetCommand(operationId,UUID.randomUUID(),adSetId,1,"20",requested),context);
+        transactions.claimSubmit(operationId,operation.getVersion(),Instant.now(),context);var unknown=transactions.recordWriteOutcome(operationId,unknownSubmit(),context);transactions.claimReconciliation(operationId,unknown.getVersion(),Instant.now(),context);
+        int auditBefore=jdbc.queryForObject("select count(*) from audit_logs where operation_uuid=?",Integer.class,operationId);
+        var completed=transactions.recordReconciliationOutcome(operationId,foundMutation(),Instant.now(),context);
+        assertThat(completed.getStatus()).isEqualTo(PlatformOperationStatus.SUCCEEDED);
+        assertThat(jdbc.queryForObject("select budget_amount from platform_ad_sets where platform_ad_set_uuid=?",java.math.BigDecimal.class,adSetId)).isEqualByComparingTo(requested);
+        assertThat(jdbc.queryForObject("select last_budget_operation_uuid from platform_ad_sets where platform_ad_set_uuid=?",UUID.class,adSetId)).isEqualTo(operationId);
+        assertThat(jdbc.queryForObject("select count(*) from audit_logs where operation_uuid=?",Integer.class,operationId)).isEqualTo(auditBefore+3);
     }
 
     private void assertStaleStateReconciliation(PlatformOperationType type) {
