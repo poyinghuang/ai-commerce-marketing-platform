@@ -9,6 +9,7 @@
 - Branch: `codex/stage-04a-platform-foundation-specification`
 - Base Commit: `a90f6e0bb20d23da10edb66712d85261dafe14e8`
 - Reviewed Head Commit: `d129df447f670a9f5b1faab230a06a64c8240438`
+- Re-reviewed Candidate Head Commit: `b8781c224748cceac7ec45706382e73c8f592825`
 - Pull Request: #59
 
 ## Status before review
@@ -22,11 +23,11 @@
 ## Developer resolution status
 
 - Resolution date: 2026-08-17
-- Status: `REQUEST_CHANGES` findings resolved by specification-only edits; pending a fresh Independent Manager Review on the new exact Head
+- Status: Independent re-review completed for exact Head `b8781c224748cceac7ec45706382e73c8f592825`; decision remains `REQUEST_CHANGES`
 - Implementation: Not started
 - Migration/runtime/API/UI/adapter changes: None
 - Prior Manager Decision: Remains `REQUEST_CHANGES` for reviewed Head `d129df447f670a9f5b1faab230a06a64c8240438`; it is not an approval of the revised Head
-- Merge: Blocked; PR #59 must remain Draft through revised Push/PR CI and new exact-head re-review
+- Merge: Blocked; PR #59 must remain Draft through another specification-only correction, revised Push/PR CI, and new exact-head re-review
 
 ## Scope reviewed
 
@@ -87,6 +88,17 @@
 - Required steps skipped: None. `Upload Playwright failure artifacts` was conditionally skipped because Playwright passed.
 - Warnings/annotations: npm reported the existing `unrs-resolver@1.12.2` allow-scripts warning. GitHub Actions reported the existing Node.js 20 action-runtime deprecation/forced Node.js 24 transition. Both are non-blocking for this documentation PR.
 
+### Exact-head re-review evidence
+
+- Candidate Head: `b8781c224748cceac7ec45706382e73c8f592825`
+- Push Workflow/Run ID: `31979786417` — Passed at the candidate Head
+- Pull Request Workflow/Run ID: `31979788160` — Passed at the candidate Head
+- `quality-and-compose`: Passed in both runs; Backend 288 tests, Frontend 22 files / 134 tests, lint, typecheck, production build, dependency audit, Compose, Smoke, Playwright 14/14, and actionlint actually executed
+- `secret-scan`: Passed in both runs; independent local Gitleaks 8.28.0 history/worktree scans also found no leaks
+- Required steps skipped: None. `Upload Playwright failure artifacts` was conditionally skipped because Playwright passed.
+- Scope: Candidate diff against `main` remains exactly the Stage 4A specification and this Manager Review document; no runtime, migration, API, UI, adapter, dependency, workflow, or parent Stage 04 specification change exists.
+- Local exact-head verification: clean worktree before review; local/upstream/PR Head matched; base and merge-base matched `a90f6e0bb20d23da10edb66712d85261dafe14e8`; `git diff --check` and Gitleaks passed.
+
 ## Findings
 
 | ID | Severity | File/Evidence | Finding | Required fix/test |
@@ -107,6 +119,22 @@
 
 These statuses are a Developer Agent completion claim only. An independent reviewer must compare the new exact Head, diff, CI, and all four contracts before changing the Stage Gate decision.
 
+### Exact-head re-review findings
+
+Independent Manager, Software Architect, and Database specialist review of `b8781c224748cceac7ec45706382e73c8f592825` confirmed that the revision materially improves all four original areas, but it does not yet eliminate every implementation choice. Findings 4A-SPEC-003's append-only metric revision model is internally consistent. Findings 4A-SPEC-001, 002, and 004 remain only partially resolved, and the following exact corrections are required.
+
+| ID | Severity | File/Evidence | Finding | Required fix/test |
+| --- | --- | --- | --- | --- |
+| 4A-SPEC-005 | BLOCKING | `docs/stages/stage-04a-platform-foundation.md:91-113`, `:294-306`, `:530`, `:536-544` | Accounts permit `FAKE` and `META`, only a fake adapter exists, and normalized evidence permits `FAKE or future approved provider`. Provider dispatch and persisted provider/evidence coherence therefore have no closed 4A contract. | Define the exact provider/account/environment/adapter matrix, dispatch rejection behavior, and closed V12 evidence-provider allowlist/coherence rule. Add contract and direct-SQL tests for permitted and rejected combinations. |
+| 4A-SPEC-006 | BLOCKING | `docs/stages/stage-04a-platform-foundation.md:239`, `:296-326`, `:429-448`, `:494-530`, `:541-548`, `:580` | Retry and provider contracts still omit exact Java types/nullability/nesting, `PlatformOperationView`, local orchestration error types/codes, a deterministic 4A `max_attempts` rule, closed outcome-to-error-code sets, and fake fixtures/tests for every declared outcome. | Provide exact typed declarations and required/optional representation for commands, identities, policies, query/view, outcomes, evidence, and local errors. Define exact max attempts, every invalid-entry result/error, closed per-outcome code mappings, and deterministic fixtures/tests including temporary-unavailable and reconciliation-terminal outcomes. |
+| 4A-SPEC-007 | BLOCKING | `docs/stages/stage-04a-platform-foundation.md:176`, `:272`, `:460`, `:526-530` | Batch and account-business-day budget ceilings do not define the consumed amount, included operation types, decrease behavior, date/timezone derivation, or concurrency-safe reservation. Several incompatible implementations satisfy the text. | Define exact accounting measure, window/date source, included operations, decrease/replay semantics, and concurrency enforcement with deterministic tests, or explicitly defer aggregate ceilings while retaining the exact per-entity bound. |
+| 4A-SPEC-008 | BLOCKING | `docs/stages/stage-04a-platform-foundation.md:199-216`; existing V1/V4 Product and Asset mutation rules | The Ad constraint trigger revalidates only Ad insert/evidence-column updates. Later direct-SQL Product lifecycle or Asset type/checksum/lifecycle changes can invalidate a previously valid chain without firing it, while the text claims transaction-boundary full-chain integrity. | Choose and state ongoing-current-row coherence or creation-time snapshot semantics. For ongoing coherence, add reciprocal V12 deferred triggers or mutation prevention plus post-insert upstream-mutation negative tests. For snapshot semantics, narrow the invariant and define later divergence deterministically. |
+| 4A-SPEC-009 | BLOCKING | `docs/stages/stage-04a-platform-foundation.md:174`, `:426-452`, `:574-576` | Reciprocal budget coherence covers operation status updates but does not explicitly reject inserting an `UPDATE_BUDGET` operation already `SUCCEEDED`; a constructed final row can bypass the intended transition evidence. | Require every operation INSERT to be `CREATED` with version/counters zero and claim/result/completion fields null. Require successful operations to have a matching finalized `SUBMIT` attempt, and add direct-SQL negatives for pre-succeeded INSERT and missing/mismatched attempt evidence. |
+| 4A-SPEC-010 | MAJOR | `docs/stages/stage-04a-platform-foundation.md:174`, `:460-463`, `:576`, `:585` | Same-transaction Audit is stated, but database budget coherence does not require matching Audit and the matrix does not explicitly test omission. The current wording can be read as database enforcement. | Either define deferred database enforcement for matching Audit content, or label Audit as an application transaction invariant and require a transaction-level missing-Audit rollback/failure test. |
+| 4A-SPEC-011 | MAJOR | `docs/stages/stage-04a-platform-foundation.md:357-391`; approved Stage 04 account-currency rule | Revision numbering, uniqueness, monotonic time, latest, and as-of semantics are consistent, but snapshot currency/timezone are not database-coherent with the referenced account. | Define a composite FK/deferred trigger for account currency/timezone coherence, or state the exact limitation and add application/direct-SQL coherence tests. A future as-of performance index is a nonblocking limitation while reads remain inert. |
+
+No finding changes the approved Stage 04 human/security boundaries, and no escalation-policy trigger is present. Stage 4A implementation remains locked.
+
 ## Known limitations
 
 - Remote CI validates the current repository baseline only; it cannot execute the proposed V12 or future 4A implementation in this documentation-only PR.
@@ -118,8 +146,8 @@ These statuses are a Developer Agent completion claim only. An independent revie
 ## Stage Gate decision
 
 - Decision: REQUEST_CHANGES
-- Decision rationale: Exact Head and all required CI passed, scope is documentation-only, and no human escalation trigger is present. However, four blocking specification contradictions/omissions would permit invalid durable evidence or force unapproved design decisions during implementation. The technical specification is not yet an executable exact contract.
-- Required next action: Keep PR #59 Draft. The Developer Agent must correct only the Stage 4A technical specification and pending review scaffold as necessary, run documentation scope/diff/Gitleaks checks, push a new Head, and pass full Push/PR CI. Then start a fresh independent exact-head Manager Review. Do not create V12 or any runtime implementation.
+- Decision rationale: Candidate Head `b8781c224748cceac7ec45706382e73c8f592825` and all required CI passed, scope remains documentation-only, and no human escalation trigger is present. Findings 4A-SPEC-005 through 011 nevertheless leave provider dispatch/types/errors, aggregate budget policy, durable Ad evidence, operation creation evidence, Audit enforcement semantics, and account snapshot coherence under-specified. Implementation would still require unapproved design choices or permit direct-SQL bypasses.
+- Required next action: Keep PR #59 Draft. The specification Developer Agent must correct only the Stage 4A technical specification and pending review status, validate documentation scope/diff/Gitleaks, push a new exact Head, and pass full Push/PR CI. Then perform another independent exact-head Manager Review. Do not create V12 or any runtime implementation.
 - Human approval required: No for the required corrections if they remain within the approved deterministic local/test-only 4A scope.
 - Human approval reason/evidence: The findings are technical consistency and verification-contract corrections within the already approved Stage 04 boundaries. Escalate if resolution would change product cardinality, security/tenant authority, credentials/access, spend, production, destructive data behavior, or Stage 4B+ scope.
 
