@@ -95,10 +95,13 @@ Known local warnings are the existing Mockito/Byte Buddy dynamic-agent deprecati
 ## Remote implementation-head evidence
 
 - Draft PR: `#62`
+- Cycle-4 Implementation Head: `9dd4d12e53e9006a8fb3200215d14241ff27a1bb`.
+- Cycle-4 Push CI Run: `32043711329` — Passed; Backend, Frontend, Compose, Playwright, Smoke, actionlint, and Gitleaks executed successfully.
+- Cycle-4 Pull Request CI Run: `32043714471` — Passed; Backend, Frontend, Compose, Playwright, Smoke, actionlint, and Gitleaks executed successfully.
 - Cycle-3 Implementation Head: `223b7b484e33ce29bc904c86943bf7956462072e`.
 - Cycle-3 Push CI Run: `32040909708` — Passed on attempt 2. Attempt 1 stopped during GitHub-hosted `setup-java` preparation after `codeload.github.com` returned HTTP 429 twice and HTTP 503 once, before any repository validation step ran; attempt 2 executed and passed Backend, Frontend, Compose, Playwright, Smoke, actionlint, and Gitleaks.
 - Cycle-3 Pull Request CI Run: `32040912428` — Passed; Backend, Frontend, Compose, Playwright, Smoke, actionlint, and Gitleaks executed successfully.
-- The prior cycle-2 evidence remains `2d7970ead97cefc1e9a81aa6884952b18b073831`, Push `32037948132`, and Pull Request `32037950437`; it is superseded for the next Manager review.
+- The cycle-3 evidence and prior cycle-2 evidence (`2d7970ead97cefc1e9a81aa6884952b18b073831`, Push `32037948132`, Pull Request `32037950437`) are superseded for the next Manager review.
 - GitHub reported the existing non-blocking Actions Node.js 20 deprecation annotation for pinned `actions/checkout`; only the conditional Playwright failure-artifact upload was skipped after Playwright passed, and no Stage 4B validation or acceptance step was skipped.
 
 This evidence-only documentation commit creates a superseding Head. Its exact Push and Pull Request CI Run IDs are reported in the Developer handoff after both runs complete successfully; the completion report remains clean rather than creating an infinite evidence-commit cycle.
