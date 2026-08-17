@@ -23,11 +23,14 @@
 ## Developer resolution status
 
 - Resolution date: 2026-08-17
-- Status: Independent re-review completed for exact Head `b8781c224748cceac7ec45706382e73c8f592825`; decision remains `REQUEST_CHANGES`
+- Status: Developer corrections for findings 4A-SPEC-005 through 011 are `RESOLVED_PENDING_RE_REVIEW`; Manager Decision remains `REQUEST_CHANGES`
+- Correction Head: Pending this specification-only commit, Push/PR CI, and independent exact-head verification
+- Remote CI for correction Head: Pending
+- Developer local validation: Passed — exact two-document scope, Markdown table sanity, `git diff --check`, Gitleaks 8.28.0 history (99 commits) and worktree; no leaks found
 - Implementation: Not started
 - Migration/runtime/API/UI/adapter changes: None
-- Prior Manager Decision: Remains `REQUEST_CHANGES` for reviewed Head `d129df447f670a9f5b1faab230a06a64c8240438`; it is not an approval of the revised Head
-- Merge: Blocked; PR #59 must remain Draft through another specification-only correction, revised Push/PR CI, and new exact-head re-review
+- Prior Manager Decisions: `REQUEST_CHANGES` for reviewed Head `d129df447f670a9f5b1faab230a06a64c8240438` and re-reviewed candidate `b8781c224748cceac7ec45706382e73c8f592825`; neither is approval of the correction Head
+- Merge: Blocked; PR #59 remains Draft through correction Push/PR CI and new exact-head Independent Manager re-review
 
 ## Scope reviewed
 
@@ -134,6 +137,20 @@ Independent Manager, Software Architect, and Database specialist review of `b878
 | 4A-SPEC-011 | MAJOR | `docs/stages/stage-04a-platform-foundation.md:357-391`; approved Stage 04 account-currency rule | Revision numbering, uniqueness, monotonic time, latest, and as-of semantics are consistent, but snapshot currency/timezone are not database-coherent with the referenced account. | Define a composite FK/deferred trigger for account currency/timezone coherence, or state the exact limitation and add application/direct-SQL coherence tests. A future as-of performance index is a nonblocking limitation while reads remain inert. |
 
 No finding changes the approved Stage 04 human/security boundaries, and no escalation-policy trigger is present. Stage 4A implementation remains locked.
+
+### Developer resolution evidence for findings 4A-SPEC-005 through 011
+
+| ID | Developer resolution status | Correction evidence in Stage 4A specification |
+| --- | --- | --- |
+| 4A-SPEC-005 | `RESOLVED_PENDING_RE_REVIEW` | Closes V12/4A to `provider_key=FAKE`, environment `LOCAL`/`TEST`, exact profile/environment dispatch, no fallback, FAKE-only persisted evidence, reciprocal account/evidence DB coherence, and positive/negative contract/direct-SQL tests. |
+| 4A-SPEC-006 | `RESOLVED_PENDING_RE_REVIEW` | Defines exact Java enums, nested records, Optional/null rules, sealed outcomes, evidence, `PlatformOperationView`, `PlatformOperationException`, closed stable/local codes, entry errors, `max_attempts=3`, reconciliation cap 3, fake temporary-unavailable and reconciliation-terminal fixtures, and exhaustive tests. |
+| 4A-SPEC-007 | `RESOLVED_PENDING_RE_REVIEW` | Chooses explicit aggregate deferral: 4A enforces only current per-entity TWD bounds (`DAILY <= 100`, `LIFETIME <= 300`) and exact increase/decrease/replay/version-concurrency rules. Batch/account-day accounting and its required ledger/date/release semantics are locked to a new 4B review. |
+| 4A-SPEC-008 | `RESOLVED_PENDING_RE_REVIEW` | Chooses creation-time snapshot semantics. PostgreSQL validates/locks the evidence chain at Ad INSERT; later allowed upstream divergence preserves the immutable historical row, blocks new Ad creation and future dispatch, and has explicit positive/negative direct-SQL tests. |
+| 4A-SPEC-009 | `RESOLVED_PENDING_RE_REVIEW` | Requires every operation INSERT to be pristine `CREATED` with zero counters/version and null result fields; reciprocal deferred triggers require status-consistent latest finalized SUBMIT/RECONCILE attempts, including direct and reconciled success. Direct-SQL bypass cases are enumerated. |
+| 4A-SPEC-010 | `RESOLVED_PENDING_RE_REVIEW` | Labels Audit as an application transaction invariant, not DB enforcement; requires a mandatory typed Audit writer, expected Audit per effective transaction, throwing-writer rollback, missing-writer construction/startup failure, and explicit direct-SQL limitation. |
+| 4A-SPEC-011 | `RESOLVED_PENDING_RE_REVIEW` | Adds a deferred metric/account trigger that locks the account and requires matching immutable currency/timezone plus ACTIVE lifecycle, with matched/mismatched direct-SQL cases. |
+
+These are Developer completion claims only. They do not alter the Manager findings, Decision, approval record, or Stage 4A lock. The Independent Manager must review the correction exact Head and full Remote CI before changing any decision.
 
 ## Known limitations
 
