@@ -6,7 +6,7 @@
 - Base: `681a51e7cca769e579bddc3f8157f2ab52c19497`
 - Scope: internal PostgreSQL/provider-neutral foundation only
 - Migration: additive `V12__create_platform_operation_foundation.sql`; V1-V11 unchanged
-- Status: Manager re-review cycle 2 finding resolved by Developer; full local verification passed and exact-head Remote CI pending
+- Status: Manager re-review cycle 3 finding resolved by Developer; full local verification and correction implementation-head Remote CI passed; evidence-only exact-head CI pending
 - Manager Decision: `REQUEST_CHANGES`; preserved pending independent re-review
 - Merge: Not started
 - Stage 4B: Locked
@@ -82,9 +82,9 @@ Known non-blocking warnings: Mockito/Byte Buddy reports its existing dynamic-age
 ## Remote delivery status
 
 - Draft PR: #60 (remains Draft)
-- 4A-IMPL-017 correction implementation Head: Pending the implementation commit and push.
-- Push CI: Pending at the correction implementation Head.
-- Pull Request CI: Pending at the correction implementation Head.
+- 4A-IMPL-017 correction implementation Head: `db53f3e4975dc52137c3f3376ddcdd8c6201d609`.
+- Push CI: Run `31997125161` passed at the correction implementation Head. `quality-and-compose` and `secret-scan` passed; Backend 359/359, frontend lint/typecheck/22 files and 134 tests/build/audit, Compose, Playwright 14/14, Smoke, actionlint, and Gitleaks executed. The failure-artifact upload step was correctly skipped because Playwright passed.
+- Pull Request CI: Run `31997127676` passed at the same correction implementation Head with the same required jobs and execution evidence; the failure-artifact upload step was correctly skipped because Playwright passed.
 - Required local execution: Backend 359/359, frontend lint/typecheck/22 files and 134 tests/build/audit, isolated Compose cold start, Smoke, Playwright 14/14, pinned actionlint 1.7.7, and pinned Gitleaks 8.28.0 history/worktree scans all executed and passed.
 - Evidence-only Head CI: Pending after the exact correction-head Remote CI results are recorded; that Head will supersede the correction implementation Head for independent review.
 - Independent Manager Review: Re-review pending after exact-head CI
