@@ -392,7 +392,49 @@ Manager Decision: `REQUEST_CHANGES`
 
 There is no human-escalation trigger. PR #62 remains Draft; merge and Stage 4C remain locked.
 
-Developer resolution status: `RESOLVED_PENDING_RE_REVIEW`. The Cycle-6 Manager decision and history remain authoritative until a new independent review evaluates the superseding exact Head and CI evidence.
+## Re-review cycle 7
+
+### Identity and evidence
+
+- Correction commit: `9f00d358ecb8514dc19d525823c72bac75941127`
+- Reviewed superseding Head: `d7a02a1600813726d29fa133f43f0a677d9f92dc`
+- Exact-head Push CI `32050792518` and Pull Request CI `32050794478` — Passed.
+- Both runs executed Backend 446/446, Frontend 149 tests, Compose, Playwright 16/16, Smoke, actionlint, dependency audit, and Gitleaks; only conditional failure-artifact upload was skipped.
+- Branch, base, upstream, clean worktree, diff check, V1-V12 immutability, additive V13, and all provider/security boundaries were independently verified.
+
+Actual deterministic FAKE retryable submit outcomes now cross MockMvc, transactions, persistence, adapter normalization, and the safe DTO for every legally applicable initial-submit route family. The approved reconciliation union contains no retryable outcome and retry remains database-time due-gated; no illegal outcome is required. Three acceptance gaps remain.
+
+### 4B-RR7-001 — BLOCKING — deterministic FAKE safe DTO and persisted records are not fully value-exact
+
+The end-to-end helper asserts the safe key set and selected status/error values, but not every route-specific operation type, entity type/UUID, reconciliation/max-attempt counts, due time, timestamps, body version, and complete persisted operation/attempt record.
+
+Required correction: pass independently expected route/entity identifiers and assert every safe DTO field/value plus the complete persisted operation/attempt/evidence record for both legal retryable outcomes across the five applicable initial-submit route families. Use database-consistent timestamp bounds; do not add an illegal reconciliation retryable or bypass the retry due gate.
+
+### 4B-RR7-002 / 4B-DB-005 — BLOCKING — concurrency graphs remain partly derived and loser preservation is not byte-compared
+
+The helper accepts operation and reservation kinds from allowlists or persisted values, omits exact operation/entity/day/Audit timestamps and version transitions, and reduces AuditChange to a positive count. The above-cap case proves deterministic loser UUID absence but does not snapshot the committed winner graph immediately before the loser and byte-compare it afterward.
+
+Required correction: construct independent case-specific expected complete rows and relationships for below/exact/above/decrease-first, including monetary values, kinds, versions, timestamp relationships, Audit, and every AuditChange. At the database critical-section latch or an equivalent stable boundary, capture the committed winner/day graph before loser execution and prove byte-equivalent preservation plus absence of every loser-owned row afterward.
+
+### 4B-RR7-003 / 4B-DB-004 — BLOCKING — all-five Audit expected records remain partial and partly tautological
+
+Some expected batch/reservation/day UUIDs are assigned from the audited row itself. AuditChange verification checks continuity and non-null metadata rather than the independently expected field, value type, old value, and new value for every event.
+
+Required correction: independently resolve subject UUIDs from entity/operation/batch/reservation/day ownership and compare explicit ordered expected Audit and AuditChange lists for every ordinal and change order across all five Transaction A command shapes, including exact action, subject, actor/source/request, field/type, and old/new values. Retain the no-event snapshot matrix.
+
+### 4B-RR7-004 — MAJOR — completion report remains overstated
+
+The report describes complete safe DTO, concurrency graph/timestamp, and exact Audit evidence while the assertions above remain partial.
+
+Required correction: make those claims case-exact after the tests pass and record final superseding-head CI.
+
+### Cycle-7 decision
+
+Manager Decision: `REQUEST_CHANGES`
+
+There is no human-escalation trigger. PR #62 remains Draft; merge and Stage 4C remain locked.
+
+Developer resolution status: `RESOLVED_PENDING_RE_REVIEW`. The Cycle-7 Manager decision and history remain authoritative until a new independent review evaluates the superseding exact Head and CI evidence.
 
 ## Stage Gate decision
 
