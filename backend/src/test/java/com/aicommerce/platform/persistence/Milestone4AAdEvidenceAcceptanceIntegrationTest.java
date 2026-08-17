@@ -15,6 +15,9 @@ import com.aicommerce.platform.ai.infrastructure.provider.LocalImagePromptBootst
 import com.aicommerce.platform.ai.infrastructure.provider.StubAssetBinaryStore;
 import com.aicommerce.platform.audit.application.AuditOperationContextFactory;
 import java.sql.SQLException;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,18 +45,20 @@ class Milestone4AAdEvidenceAcceptanceIntegrationTest {
   ImageFixture valid=imageFixture(true); PlatformFixture platform=platformFixture();
   UUID ad=insertAd(platform,valid.product(),valid.generatedAsset(),valid.output(),valid.decision(),valid.checksum());
   assertThat(jdbc.queryForObject("select count(*) from platform_ads where platform_ad_uuid=?",Integer.class,ad)).isOne();
-  assertThatThrownBy(()->jdbc.update("update platform_ads set approved_checksum_sha256=? where platform_ad_uuid=?","f".repeat(64),ad)).isInstanceOf(RuntimeException.class);
+  var immutableBefore=databaseSnapshot();
+  assertThatThrownBy(()->jdbc.update("update platform_ads set approved_checksum_sha256=? where platform_ad_uuid=?","f".repeat(64),ad)).isInstanceOf(DataAccessException.class).satisfies(error->{assertThat(sqlState(error)).isEqualTo("23514");assertThat(sqlMessage(error)).contains("ad evidence is immutable");});
+  assertThat(databaseSnapshot()).isEqualTo(immutableBefore);
   assertThatThrownBy(()->jdbc.update("delete from platform_ads where platform_ad_uuid=?",ad)).isInstanceOf(RuntimeException.class);
 
-  assertAdRejected(platform,valid.product(),valid.sourceAsset(),valid.output(),valid.decision(),valid.checksum());
-  assertAdRejected(platform,valid.product(),valid.generatedAsset(),valid.output(),valid.decision(),"e".repeat(64));
-  assertAdRejected(platform,UUID.randomUUID(),valid.generatedAsset(),valid.output(),valid.decision(),valid.checksum());
+  assertAdSqlState(platform,valid.product(),valid.sourceAsset(),valid.output(),valid.decision(),valid.checksum(),"23514","platform ad evidence snapshot is invalid");
+  assertAdSqlState(platform,valid.product(),valid.generatedAsset(),valid.output(),valid.decision(),"e".repeat(64),"23514","platform ad evidence snapshot is invalid");
+  assertAdSqlState(platform,UUID.randomUUID(),valid.generatedAsset(),valid.output(),valid.decision(),valid.checksum(),"23503");
   ImageFixture rejected=imageFixture(false);
-  assertAdRejected(platform,rejected.product(),rejected.generatedAsset(),rejected.output(),rejected.decision(),rejected.checksum());
+  assertAdSqlState(platform,rejected.product(),rejected.generatedAsset(),rejected.output(),rejected.decision(),rejected.checksum(),"23514","platform ad evidence snapshot is invalid");
 
   jdbc.update("update products set lifecycle_status='ARCHIVED',archived_at=current_timestamp,updated_at=current_timestamp,version=version+1 where product_uuid=?",valid.product());
   assertThat(jdbc.queryForObject("select approved_checksum_sha256 from platform_ads where platform_ad_uuid=?",String.class,ad).trim()).isEqualTo(valid.checksum());
-  assertAdRejected(platform,valid.product(),valid.generatedAsset(),valid.output(),valid.decision(),valid.checksum());
+  assertAdSqlState(platform,valid.product(),valid.generatedAsset(),valid.output(),valid.decision(),valid.checksum(),"23514","platform ad evidence snapshot is invalid");
  }
 
  @Test void productAssetOutputReviewAndPreservationFailuresExposeExactSqlStateAndLeaveNoAd(){
@@ -86,11 +91,13 @@ class Milestone4AAdEvidenceAcceptanceIntegrationTest {
   }
  }
 
- private void assertAdRejected(PlatformFixture p,UUID product,UUID asset,UUID output,UUID decision,String checksum){assertThatThrownBy(()->insertAd(p,product,asset,output,decision,checksum)).isInstanceOf(RuntimeException.class);}
- private void assertAdSqlState(PlatformFixture p,UUID product,UUID asset,UUID output,UUID decision,String checksum,String state){int before=adCount();assertThatThrownBy(()->insertAd(p,product,asset,output,decision,checksum)).isInstanceOf(DataAccessException.class).satisfies(error->assertThat(sqlState(error)).isEqualTo(state));assertThat(adCount()).isEqualTo(before);}
+ private void assertAdSqlState(PlatformFixture p,UUID product,UUID asset,UUID output,UUID decision,String checksum,String state){assertAdSqlState(p,product,asset,output,decision,checksum,state,null);}
+ private void assertAdSqlState(PlatformFixture p,UUID product,UUID asset,UUID output,UUID decision,String checksum,String state,String invariant){var before=databaseSnapshot();assertThatThrownBy(()->insertAd(p,product,asset,output,decision,checksum)).isInstanceOf(DataAccessException.class).satisfies(error->{assertThat(sqlState(error)).isEqualTo(state);if(invariant!=null)assertThat(sqlMessage(error)).contains(invariant);});assertThat(databaseSnapshot()).isEqualTo(before);}
  private void assertSyntheticDecisionRejected(PlatformFixture p,ImageFixture fixture,boolean approveOutput){int before=adCount();assertThatThrownBy(()->new TransactionTemplate(transactionManager).executeWithoutResult(status->{UUID decision=UUID.randomUUID();jdbc.update("insert into ai_review_decisions(review_decision_uuid,generation_output_uuid,decision,reviewer_type,reviewer_id,request_id,reviewed_output_version,decided_at) values (?,?,'APPROVED','LOCAL_ADMIN','stage4a','stage4a-synthetic',0,current_timestamp)",decision,fixture.output());if(approveOutput)jdbc.update("update ai_generation_outputs set review_status='APPROVED',updated_at=current_timestamp,version=1 where generation_output_uuid=?",fixture.output());insertAd(p,fixture.product(),fixture.generatedAsset(),fixture.output(),decision,fixture.checksum());jdbc.execute("set constraints trg_platform_ad_evidence_snapshot immediate");})).isInstanceOf(DataAccessException.class).satisfies(error->assertThat(sqlState(error)).isEqualTo("23514"));assertThat(adCount()).isEqualTo(before);assertThat(jdbc.queryForObject("select review_status from ai_generation_outputs where generation_output_uuid=?",String.class,fixture.output())).isEqualTo("PENDING_REVIEW");}
  private int adCount(){return jdbc.queryForObject("select count(*) from platform_ads",Integer.class);}
  private String sqlState(Throwable error){Throwable current=error;while(current!=null){if(current instanceof SQLException sql)return sql.getSQLState();current=current.getCause();}throw new AssertionError("missing SQLException",error);}
+ private String sqlMessage(Throwable error){Throwable current=error;while(current!=null){if(current instanceof SQLException sql)return sql.getMessage();current=current.getCause();}throw new AssertionError("missing SQLException",error);}
+ private Map<String,List<Map<String,Object>>> databaseSnapshot(){Map<String,List<Map<String,Object>>> snapshot=new LinkedHashMap<>();snapshot.put("platform_ads",jdbc.queryForList("select * from platform_ads order by platform_ad_uuid"));snapshot.put("products",jdbc.queryForList("select * from products order by product_uuid"));snapshot.put("assets",jdbc.queryForList("select * from assets order by asset_uuid"));snapshot.put("outputs",jdbc.queryForList("select * from ai_generation_outputs order by generation_output_uuid"));snapshot.put("reviews",jdbc.queryForList("select * from ai_review_decisions order by review_decision_uuid"));return snapshot;}
  private UUID insertAd(PlatformFixture p,UUID product,UUID asset,UUID output,UUID decision,String checksum){UUID ad=UUID.randomUUID();jdbc.update("insert into platform_ads(platform_ad_uuid,platform_ad_set_uuid,platform_account_uuid,product_uuid,asset_uuid,generation_output_uuid,review_decision_uuid,approved_checksum_sha256,creative_mapping_key) values (?,?,?,?,?,?,?,?,?)",ad,p.adSet(),p.account(),product,asset,output,decision,checksum,"IMAGE_PRIMARY_V1");return ad;}
  private PlatformFixture platformFixture(){UUID account=UUID.randomUUID(),plan=UUID.randomUUID(),campaign=UUID.randomUUID(),adSet=UUID.randomUUID();jdbc.update("insert into platform_accounts(platform_account_uuid,provider_key,environment,account_reference,external_account_fingerprint,currency,timezone) values (?,'FAKE','TEST',?,?, 'TWD','Asia/Taipei')",account,"ad-"+account,account.toString().replace("-","").repeat(2));jdbc.update("insert into campaign_plans(campaign_uuid,campaign_name) values (?,'Ad Evidence')",plan);jdbc.update("insert into platform_campaigns(platform_campaign_uuid,campaign_uuid,platform_account_uuid,objective,account_timezone) values (?,?,?,'OUTCOME_SALES','Asia/Taipei')",campaign,plan,account);jdbc.update("insert into platform_ad_sets(platform_ad_set_uuid,platform_campaign_uuid,platform_account_uuid,budget_type,budget_amount,currency,account_timezone,optimization_goal,targeting_profile_key,placement_profile_key) values (?,?,?,'DAILY',50,'TWD','Asia/Taipei','SALES','TW_BROAD_FEEDS_V1','TW_BROAD_FEEDS_V1')",adSet,campaign,account);return new PlatformFixture(account,adSet);}
  private ImageFixture imageFixture(boolean approve){return imageFixture(approve?"APPROVED":"REJECTED");}
