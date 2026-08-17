@@ -56,3 +56,14 @@ Remote CI Run IDs will be recorded only after the implementation commit is pushe
 | Push/PR CI | Pending |
 
 Known local warnings are the existing Mockito/Byte Buddy dynamic-agent deprecation, the existing Maven Surefire fork shutdown-after-success warning, and the package-approved `unrs-resolver` install-script warning. The first Playwright run correctly failed because the runtime-only frontend feature flag had been evaluated during static generation; the page was changed to runtime dynamic rendering, the stack was rebuilt, and the complete 15-test suite then passed without retry. The PR must remain Draft until independent Manager review.
+
+## Remote implementation-head evidence
+
+- Draft PR: `#62`
+- Implementation Head: `196c68562b1aeb9fc333de376488044794ff6ed1`
+- Push CI Run: `32027687040` — Passed
+- Pull Request CI Run: `32027707059` — Passed
+- Both runs completed `quality-and-compose` and `secret-scan`. Backend Testcontainers, Frontend verification, Compose build/health, all 15 Playwright scenarios, Smoke, actionlint, and Gitleaks executed successfully; only the conditional failure-artifact upload was correctly skipped.
+- GitHub reported the existing non-blocking Actions Node.js 20 deprecation annotation for pinned `actions/checkout`; no Stage 4B check or acceptance step was skipped.
+
+This evidence-only documentation commit creates a superseding Head. Its exact Push and Pull Request CI Run IDs remain pending until both runs complete successfully.
