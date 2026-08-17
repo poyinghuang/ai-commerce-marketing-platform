@@ -290,6 +290,66 @@ Manager Decision: `REQUEST_CHANGES`
 
 There is no human-escalation trigger. PR #62 remains Draft; merge and Stage 4C remain locked.
 
+## Re-review cycle 5
+
+### Identity and evidence
+
+- Correction commit: `9dd4d12e53e9006a8fb3200215d14241ff27a1bb`
+- Reviewed superseding Head: `762066ba237f92adde52e0b3ab1041d176d6db6d`
+- Exact-head Push CI `32044180703` and Pull Request CI `32044183082` — Passed.
+- Both runs executed Backend 437/437, Frontend 24 files / 149 tests, Compose, Playwright 16/16, Smoke, actionlint, dependency audit, and Gitleaks; only conditional failure-artifact upload was skipped.
+- Branch, base, upstream, clean worktree, diff check, V1-V12 immutability, additive V13, and forbidden-boundary exclusions were independently verified.
+
+Durable Audit ordinal, route-level serialization/deadlock propagation, valid V12 CREATE_AD/AD evidence, committed zero release, database-derived date, stale-preview invalidation, BFF limits, fixed-account scope, replay identity, and post-final Audit rollback are materially resolved. The following evidence and contract gaps remain.
+
+### 4B-RR5-001 — BLOCKING — canonical policy amounts are mapped to the wrong error class
+
+The controller now rejects canonical DAILY/LIFETIME amounts above policy bounds as HTTP 400 field validation. The approved contract reserves field validation for malformed canonical money and requires valid-but-out-of-policy amounts to reach policy enforcement and return HTTP 409 `PLATFORM_POLICY_REJECTED`.
+
+Required correction: make route-boundary validation lexical/structural only while preserving exact money field attribution. Test DAILY and LIFETIME create and budget-update boundary and over-bound cases with the approved 400-versus-409 distinction.
+
+### 4B-RR5-002 — BLOCKING — provider outcome and safe DTO matrix is not route-specific
+
+Current tests pass a generic mocked UPDATE_BUDGET/AD_SET operation through the shared response mapper for multiple route labels. They do not execute the applicable Campaign/Ad Set create/state/budget/retry/reconciliation operation/entity combinations, both retryable codes, deterministic outcomes, or exact serialized key/value/absence snapshots.
+
+Required correction: parameterize the actual route-specific operation/entity combinations and deterministic FAKE outcomes; assert exact status, headers, body keys/values, and forbidden-field absence for every approved route family and outcome, including HTTP 429.
+
+### 4B-RR5-003 / 4B-DB-005 — BLOCKING — concurrency graphs remain incompletely asserted
+
+Fresh account/day identities and separate parents are now used, but tests chiefly assert aggregates, counts, IDs returned, and loose timestamp ordering. They do not compare the complete deterministic winner and loser entity, operation, attempt, batch, reservation, day, Audit, and AuditChange graph, exact cross-row UUID relationships, timestamp anchors, or version transitions for below, exact, above, and decrease-first.
+
+Required correction: capture transaction candidates and database time bounds and assert the complete expected persistent graph and byte-equivalent loser rollback for all four scenarios.
+
+### 4B-RR5-004 — BLOCKING — isolated direct-SQL and full rollback matrix remains incomplete
+
+The matrix lacks isolated extra-aggregate-update and distinguishable day/batch ceiling mismatch cases. Some wrong-account and forged-bootstrap failures do not compare the complete pre/post graph, and the forged row can fail as an orphan rather than proving the intended ceiling invariant.
+
+Required correction: add isolated cases that reach the target constraint, assert exact SQLSTATE/invariant, and compare full pre/post state for extra aggregate mutation, ceiling/cap mismatch, and every remaining malformed transaction.
+
+### 4B-RR5-005 — BLOCKING — populated V12 snapshot omits seeded tables and repeated inert-route proof
+
+The rich fixture seeds additional account, Campaign Plan/product, prompt, generation, and related rows, but the before/after snapshot list omits several of them. Post-GET/retry/reconciliation inert snapshots cover a narrower subset.
+
+Required correction: snapshot and compare the complete seeded V12 graph before/after V13 and before/after every inert route family, including accounts, Campaign Plans/products, prompt templates/versions, generation batches/jobs, all platform entities/evidence/metrics/operations/attempts, and applicable Audit data.
+
+### 4B-RR5-006 / 4B-DB-004 — BLOCKING — exact Audit records, context, and no-event matrix remain incomplete
+
+Durable ordinals and budget ledger values are sound, but all five commands are not asserted as complete expected records. Tests do not compare every action, subject UUID/type, actor/source/request correlation, old/new value, and change order; request IDs are only regex-validated. Replay, invalid, stale, cap, concurrency-loser, and legacy zero-Audit evidence is distributed and incomplete.
+
+Required correction: assert complete ordered records for all five commands with exact inbound request correlation and add explicit before/after Audit snapshots for every required no-event path.
+
+### 4B-RR5-007 — MAJOR — completion report remains overstated
+
+The report claims policy field errors, exhaustive provider route snapshots, complete concurrency graphs, full seeded V12 preservation, and exact Audit context beyond the executable evidence.
+
+Required correction: make claims case-exact only after each executable case exists and record final superseding-head CI.
+
+### Cycle-5 decision
+
+Manager Decision: `REQUEST_CHANGES`
+
+There is no human-escalation trigger. PR #62 remains Draft; merge and Stage 4C remain locked.
+
 ## Stage Gate decision
 
 Manager Decision: `REQUEST_CHANGES`
