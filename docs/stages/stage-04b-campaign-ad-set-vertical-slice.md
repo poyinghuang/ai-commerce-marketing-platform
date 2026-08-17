@@ -2,15 +2,17 @@
 
 ## Gate status
 
-- Status: Specification drafted; Independent Manager Review pending
+- Status: Independent Manager Review completed; human decision required
 - Branch: `codex/stage-04b-campaign-adset-specification`
 - Base: `4d89448cb48520c14f6ce991d803a0221503ebeb`
 - Stage 4A prerequisite: Passed; PR #60 merged at `4d89448cb48520c14f6ce991d803a0221503ebeb`; post-merge CI Run `31998731088` passed
 - Product settings: Approved by the repository owner on 2026-08-17
-- Implementation: Not started
-- Manager Decision: Pending
+- Implementation: Blocked; not started
+- Manager Decision: `ESCALATE_TO_HUMAN`
 - Merge: Not started
 - Stage 4C: Locked
+
+The reviewed content Head is `2b0dba3bc94b0e9be9d699f23a42880da3e0fee7`. Exact-head Push CI `32007307611` and PR CI `32007310578` passed, but CI does not resolve the authorization-boundary conflict or the implementation-contract findings recorded in `docs/management/reviews/stage-04b-specification-manager-review.md`. PR #61 must remain Draft. Specification merge and all Stage 4B runtime work are frozen until the repository owner records the required human decision and a corrected exact Head passes re-review.
 
 ## Objective
 
