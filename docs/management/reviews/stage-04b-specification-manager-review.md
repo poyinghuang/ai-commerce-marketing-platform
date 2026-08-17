@@ -122,6 +122,22 @@
 
 The cycle-1 `REQUEST_CHANGES` decision is preserved. These corrections require a new exact Head, complete Push/PR CI and another independent re-review; they are not Manager approval.
 
+## Independent re-review cycle 2
+
+- Reviewed correction Head: `bd1f3eb337a4385712c472abdcdb2deafd2bf2b4`
+- Exact-head CI: Push `32020728131` Passed; PR `32020732104` Passed; both `quality-and-compose` and `secret-scan` executed required Backend, Frontend, Compose, Playwright, Smoke, actionlint and Gitleaks steps
+- Database/concurrency/migration recommendation: `APPROVE`; findings `4B-SPEC-005` through `4B-SPEC-009` showed no regression
+- Architecture/API/security recommendation: `REQUEST_CHANGES`
+- Scope: still exactly the two specification/review Markdown files; no implementation
+
+| Finding | Severity | Independent evidence | Developer correction status |
+| --- | --- | --- | --- |
+| 4B-RR2-001 | BLOCKING | Ad Set replay equality omitted the original parent `If-Match` version, so changed concurrency intent could appear to be an exact replay. | `RESOLVED_PENDING_RE_REVIEW`: exact replay comparison includes the original parent version and the acceptance matrix distinguishes original replay from changed intent. |
+| 4B-RR2-002 | BLOCKING | Shared state request did not require `/pause` to mean `PAUSED` and `/resume` to mean `ACTIVE`. | `RESOLVED_PENDING_RE_REVIEW`: route/target mismatch is rejected before lookup with 400 `PLATFORM_REQUEST_INVALID`, with Campaign and Ad Set preview/confirm coverage. |
+| 4B-RR2-003 | MAJOR | The exhaustive map exposed a nonexistent reconciliation code and omitted Campaign-state stale and retry-policy routes. | `RESOLVED_PENDING_RE_REVIEW`: removes the unsupported code and explicitly maps Campaign/Ad Set state stale and retry policy rejection, with exhaustive mapping tests. |
+
+The cycle-2 architecture `REQUEST_CHANGES` decision is preserved. These corrections require a new exact Head, complete Push/PR CI and another independent re-review; they are not Manager approval.
+
 ## Known limitations
 
 - Account authorization is conservative and never released in 4B.

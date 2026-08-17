@@ -179,7 +179,7 @@ Preview is read-only. It canonicalizes and validates the same DTO and policies a
 5. Insert the Stage 4A entity/operation, budget reservation when applicable, aggregate delta and exact typed Audit in the same transaction.
 6. Commit before adapter dispatch.
 
-Replay equality is exact and does not recompute server-derived schedule/policy from current rows. It compares the durable identity plus: Campaign create — operation type and `campaignUuid`; Ad Set create — operation type, parent Platform Campaign UUID, budget type and canonical amount; state — operation type, entity type/UUID, target desired state and the original entity `If-Match` version; budget — entity UUID, canonical new amount and the original entity `If-Match` version. `expectedCampaignPlanVersion` is confirmation-time validation-only, is not added to the closed V12 canonical operation payload/hash, and is ignored after an operation with the durable identity exists. The previously persisted canonical schedule/payload remains authoritative. An exact replay therefore succeeds after Plan version change/archive or an Asia/Taipei date rollover; a changed business intent conflicts.
+Replay equality is exact and does not recompute server-derived schedule/policy from current rows. It compares the durable identity plus: Campaign create — operation type and `campaignUuid`; Ad Set create — operation type, parent Platform Campaign UUID, budget type, canonical amount and the original parent `If-Match` version; state — operation type, entity type/UUID, target desired state and the original entity `If-Match` version; budget — entity UUID, canonical new amount and the original entity `If-Match` version. `expectedCampaignPlanVersion` is confirmation-time validation-only, is not added to the closed V12 canonical operation payload/hash, and is ignored after an operation with the durable identity exists. The previously persisted canonical schedule/payload remains authoritative. An exact replay therefore succeeds after Plan version change/archive or an Asia/Taipei date rollover; a changed business intent conflicts.
 
 V13 defines immutable SQL function `platform_taipei_business_date(timestamptz)` and both the batch trigger and eligibility query use it. Boundary tests assert the dates immediately before/at/after Asia/Taipei midnight. A barrier test pauses a transaction after the batch insert and proves later eligibility reads the persisted batch date even if another clock statement observes a different date; rollback leaves no batch.
 
@@ -204,7 +204,7 @@ record StateMutationRequest(UUID clientRequestUuid,
 record BudgetMutationRequest(UUID clientRequestUuid, String newBudgetAmount) {}
 ```
 
-Every field is required and non-null. Both confirm-record occurrences of `expectedCampaignPlanVersion` must be `>= 0`; state target is only `PAUSED` or `ACTIVE` and must differ from the locked desired state. `clientRequestUuid` is generated once before preview and reused at confirmation. Ad Set parent UUID is path-owned and confirmation carries the exact Plan version returned by preview. State and budget requests are shared by preview/confirm; entity UUID is path-owned. Equal budget is invalid. No request contains an entity type discriminator, so Stage 4C `AD` cannot enter any 4B path.
+Every field is required and non-null. Both confirm-record occurrences of `expectedCampaignPlanVersion` must be `>= 0`; state target is only `PAUSED` or `ACTIVE` and must differ from the locked desired state. On confirmation, `/pause` requires `targetDesiredState=PAUSED` and `/resume` requires `ACTIVE`; mismatch is 400 `PLATFORM_REQUEST_INVALID` before lookup. `clientRequestUuid` is generated once before preview and reused at confirmation. Ad Set parent UUID is path-owned and confirmation carries the exact Plan version returned by preview. State and budget requests are shared by preview/confirm; entity UUID is path-owned. Equal budget is invalid. No request contains an entity type discriminator, so Stage 4C `AD` cannot enter any 4B path.
 
 The exact response records are additive API DTOs, not JPA entities:
 
@@ -279,7 +279,7 @@ All Backend errors use exact `ApiError(code,message,requestId,timestamp,path,fie
 | --- | --- |
 | 400 | `PLATFORM_REQUEST_INVALID`, `PLATFORM_CONTRACT_INVALID` |
 | 404 | `PLATFORM_RESOURCE_NOT_FOUND`; outside-gate controller/Route Handler absence |
-| 409 | `PLATFORM_IDEMPOTENCY_CONFLICT`, `PLATFORM_INVALID_OPERATION_STATE`, `PLATFORM_RETRY_NOT_DUE`, `PLATFORM_MAX_ATTEMPTS_EXCEEDED`, `PLATFORM_MAX_RECONCILIATIONS_EXCEEDED`, `PLATFORM_RECONCILIATION_INELIGIBLE`, `PLATFORM_POLICY_REJECTED`, `PLATFORM_EVIDENCE_INVALID`, `PLATFORM_CAMPAIGN_PLAN_INELIGIBLE`, `PLATFORM_CAMPAIGN_ALREADY_MAPPED`, `PLATFORM_BUDGET_CAP_EXCEEDED`, `PLATFORM_LEDGER_CONCURRENCY_CONFLICT`, `PLATFORM_LEGACY_OPERATION_INERT` |
+| 409 | `PLATFORM_IDEMPOTENCY_CONFLICT`, `PLATFORM_INVALID_OPERATION_STATE`, `PLATFORM_RETRY_NOT_DUE`, `PLATFORM_MAX_ATTEMPTS_EXCEEDED`, `PLATFORM_MAX_RECONCILIATIONS_EXCEEDED`, `PLATFORM_POLICY_REJECTED`, `PLATFORM_EVIDENCE_INVALID`, `PLATFORM_CAMPAIGN_PLAN_INELIGIBLE`, `PLATFORM_CAMPAIGN_ALREADY_MAPPED`, `PLATFORM_BUDGET_CAP_EXCEEDED`, `PLATFORM_LEDGER_CONCURRENCY_CONFLICT`, `PLATFORM_LEGACY_OPERATION_INERT` |
 | 412 | `PLATFORM_ENTITY_STALE`, `PLATFORM_OPERATION_STALE`, `PLATFORM_CAMPAIGN_PLAN_STALE` |
 | 428 | `PLATFORM_IF_MATCH_REQUIRED` |
 | 429 | `PLATFORM_PROVIDER_RETRYABLE`; safe operation `Location`, no provider body |
@@ -298,7 +298,6 @@ The exact public message map is immutable in 4B:
 | `PLATFORM_RETRY_NOT_DUE` | `The operation is not yet eligible for retry` |
 | `PLATFORM_MAX_ATTEMPTS_EXCEEDED` | `The operation has no retry attempts remaining` |
 | `PLATFORM_MAX_RECONCILIATIONS_EXCEEDED` | `The operation has no reconciliation attempts remaining` |
-| `PLATFORM_RECONCILIATION_INELIGIBLE` | `The operation is not eligible for reconciliation` |
 | `PLATFORM_POLICY_REJECTED` | `Platform policy rejected the request` |
 | `PLATFORM_EVIDENCE_INVALID` | `Platform evidence is inconsistent` |
 | `PLATFORM_CAMPAIGN_PLAN_INELIGIBLE` | `The Campaign Plan is not eligible for platform creation` |
@@ -322,14 +321,14 @@ The exhaustive Stage 4A source mapping is:
 | `PLATFORM_CONTRACT_INVALID` | any | 400 / same code |
 | `PLATFORM_OPERATION_NOT_FOUND` | operation GET/retry/reconcile | 404 / `PLATFORM_RESOURCE_NOT_FOUND` |
 | `PLATFORM_INVALID_OPERATION_STATE` | confirm/retry/reconcile | 409 / same code |
-| `PLATFORM_STALE_VERSION` | Ad Set create/state/budget | 412 / `PLATFORM_ENTITY_STALE` |
+| `PLATFORM_STALE_VERSION` | Campaign state; Ad Set create/state/budget | 412 / `PLATFORM_ENTITY_STALE` |
 | `PLATFORM_STALE_VERSION` | retry/reconcile | 412 / `PLATFORM_OPERATION_STALE` |
 | `PLATFORM_RETRY_NOT_DUE` | retry | 409 / same code |
 | `PLATFORM_RECOVERY_NOT_DUE` | none | recovery has no HTTP route; controller contract test proves unreachable |
 | `PLATFORM_MAX_ATTEMPTS_EXCEEDED` | retry | 409 / same code |
 | `PLATFORM_MAX_RECONCILIATIONS_EXCEEDED` | reconcile | 409 / same code |
 | `PLATFORM_ACCOUNT_INACTIVE`, `PLATFORM_ACCOUNT_ENVIRONMENT_MISMATCH`, `PLATFORM_PROVIDER_UNSUPPORTED` | any 4B route | 503 / `PLATFORM_ACCOUNT_CONFIGURATION_INVALID` |
-| `PLATFORM_POLICY_REJECTED` | preview/confirm | 409 / same code |
+| `PLATFORM_POLICY_REJECTED` | preview/confirm/retry | 409 / same code |
 | `PLATFORM_ADAPTER_UNAVAILABLE` | confirm/retry/reconcile | 503 / same code |
 | `PLATFORM_IDEMPOTENCY_CONFLICT` | confirm | 409 / same code |
 | `PLATFORM_EVIDENCE_INVALID` | confirm/retry/reconcile | 409 / same code |
@@ -420,11 +419,13 @@ Audit/log/response redaction forbids account references/UUID disclosure in publi
 - Direct-SQL identity, append-only, hard-delete, reciprocal batch/operation/reservation/day aggregate, exact delta, forged date/time, ceiling, replay, zero-release, and transaction rollback tests.
 - Policy unit tests for exact account/objective/profile/schedule/currency/entity/batch/day bounds.
 - Preview/confirm equivalence and confirmation-time revalidation.
+- Replay-before-validation tests cover changed/archived Campaign Plan, changed business date, original-vs-changed If-Match intent and payload conflict; SQL-function and barrier tests cover Asia/Taipei midnight anchoring.
 - Campaign and Ad Set create/read/pause/resume; budget increase/decrease; ETag 428/412; idempotent replay/conflict.
 - Transaction A atomicity and Audit order/content/rollback; separate-connection persistence before fake call; no active provider transaction.
 - Concurrent duplicate confirmation, stale state/budget mutation, retry claim, finalization, and reconciliation have deterministic one-winner behavior. Barrier-controlled first-ever same-account/day transactions cover totals below, exactly at, and above the ceiling plus a decrease-only first row; they prove bootstrap has no spurious uniqueness failure/lost update, exact committed UUID/amount/version/timestamps, and full loser rollback.
 - Fake success, rate limit, temporary failure, validation/permission failure, ambiguity, malformed/null/exception, attempt-3 conversion, and reconciliation outcomes.
 - Secret-marker, unknown-key, URL/origin, raw provider/account field, log/Audit/response redaction tests.
+- Exhaustive internal-source/public-error mapping tests plus operation JSON/BFF snapshots prove account UUID, raw external ID, trace, evidence, canonical payload and forbidden keys never cross the web boundary.
 
 ### Frontend/BFF/browser
 
