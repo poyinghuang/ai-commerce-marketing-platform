@@ -79,7 +79,7 @@ The implementation commit was pushed and both exact-head runs finished successfu
 | actionlint | Passed — 1.7.7 container |
 | Gitleaks | Passed — pinned 8.28.0 history and working-tree scans, no leaks |
 | `git diff --check` / V1-V12 immutability | Passed |
-| Push/PR CI | Pending for the cycle-5 implementation Head; prior evidence is retained below as superseded history |
+| Push/PR CI | Passed at cycle-5 implementation Head `8648d1eb8ad7e49337ed070df8055cb6357d88b5`: Push `32046626855`; Pull Request `32046629354` |
 
 Known local warnings are the existing Mockito/Byte Buddy dynamic-agent deprecation, the existing Maven Surefire fork shutdown-after-success warning, and the package-approved `unrs-resolver` install-script warning. During this cycle's local verification, a pre-baseline full Playwright run received the expected AI budget 503 because the README-required fixed AI budget variables were omitted; after correcting the test environment, all 16 cases passed. A focused Stage 4B run also exposed an over-restrictive normalized Ad Set GET BFF allowlist, which was corrected and covered by a route-specific unit test before the complete rerun. The PR must remain Draft until independent Manager review.
 
@@ -125,3 +125,12 @@ This evidence-only documentation commit creates a superseding Head. Its exact Pu
 - `4B-RR5-005`: the populated V12 compatibility fixture snapshots account, Campaign Plan, Product ownership, source/generated Assets, prompt template/version, generation batch/job/output, review evidence, Campaign/Ad Set/Ad, metrics, all eight operation/attempt/evidence states, and applicable Audit state. It byte-compares every seeded V12 row through V13 and takes the complete post-upgrade graph before and after every individual GET, retry, and reconciliation route, with zero fake-provider calls.
 - `4B-RR5-006`: all five Transaction A command shapes use exact inbound request IDs and assert durable ordinal, subject sequence, actor/source/request context, subject UUID ownership, typed change order, batch/reservation/day UUID relationships, dates, currency, reservation kind, budget old/new/delta, and aggregate arithmetic. Replay, malformed input, stale mutation, cap rejection, deterministic concurrency loser, SQL-state rollback, and every legacy GET/retry/reconciliation path assert byte-equivalent Audit/AuditChange state or exact request-scoped absence.
 - `4B-RR5-007`: the current local evidence is Backend 444/444, Frontend 24 files / 149 tests, Compose cold health, Playwright 16/16, Smoke, actionlint 1.7.7, Gitleaks 8.28.0 history/worktree, dependency audit, diff check, and V1-V12 immutability. Exact implementation-head and superseding evidence-head CI are recorded only after those workflows finish; the preserved Manager Decision remains `REQUEST_CHANGES` pending independent re-review.
+
+## Remote cycle-5 implementation-head evidence
+
+- Draft PR: `#62`.
+- Implementation Head: `8648d1eb8ad7e49337ed070df8055cb6357d88b5`.
+- Push CI Run `32046626855` — Passed. `quality-and-compose` executed actionlint, Backend 444/444, frontend install/lint/typecheck/149 tests/build/audit, Compose build/health, Playwright 16/16, Smoke, and cleanup; `secret-scan` executed the pinned Gitleaks history scan.
+- Pull Request CI Run `32046629354` — Passed with the same required jobs and validation steps.
+- The conditional Playwright failure-artifact upload was skipped because Playwright passed. The existing GitHub Actions Node.js deprecation annotation remains non-blocking; no required validation step was skipped.
+- This evidence-only documentation update creates the superseding candidate Head. Its exact Push and Pull Request CI Run IDs are reported in the Developer handoff after both workflows complete, without another report mutation.
