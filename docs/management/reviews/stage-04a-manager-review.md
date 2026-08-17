@@ -108,3 +108,33 @@
 ## Approval record
 
 - Not applicable. Manager Decision is not `APPROVE`.
+
+## Re-review cycle 1 — 2026-08-17
+
+### Exact-head evidence
+
+- Candidate Head: `9d06823f3f999e78259569a69828b0dfb1a0329d`
+- Implementation correction commit: `a6add8534e2d8dbc45c5c6b12b1aef1e47e60a96`
+- Evidence-only commit: `9d06823f3f999e78259569a69828b0dfb1a0329d`
+- Push CI: `31990824278` — Passed at the exact candidate Head
+- Pull Request CI: `31990826957` — Passed at the exact candidate Head
+- Scope: Stage 4A only; PR remained Draft/Open and V1-V11 remained unchanged.
+- Independent Code Review: `REQUEST_CHANGES`
+- Independent Database Review: `REQUEST_CHANGES`
+
+Developer changes materially resolved the principal defects recorded as 4A-IMPL-001 through 006 and 010: retry result clearing, disjoint submit/retry entry eligibility, locked mutation validation before claim, typed outcome validation and ambiguous-result handling, stale reconciled-found representation, CAS finalization, and input/NFC boundary validation are present. The following exact-head findings remain; prior Manager findings and Decision remain authoritative until a later independent review explicitly approves a new exact Head.
+
+| ID | Severity | File／Evidence | Finding | Required fix／test |
+| --- | --- | --- | --- | --- |
+| 4A-IMPL-011 | BLOCKING | V12 operation/entity coherence around lines 436-473 | Create and desired-state success checks prove only that the entity currently has a matching result/version. A second distinct operation can reuse the result already applied by the first operation and commit SUCCEEDED without its own entity mutation. Timestamp correlation was removed, but exact-operation provenance is still absent. | Add an exact operation-identity/provenance or uniqueness mechanism for CREATE and PAUSE/RESUME equivalent to the budget provenance guarantee. Add direct-SQL negatives for second CREATE and state operations reusing an already-consumed result/version, plus success without an entity tuple change by that operation. Retain the valid same-Instant sequential test. |
+| 4A-IMPL-012 | BLOCKING | Stage 4A completion report; Stage 4A schema, migration, Audit, fake/profile and orchestration tests | The approved acceptance matrix is still materially incomplete, while the completion report marks broad coverage resolved. Missing evidence includes the full Ad Product/Asset/output/review/checksum/snapshot matrix; all seven DELETE guards; direct/reconciled budget reciprocity negatives; metric revisions/coherence/concurrency; V11 fixture preservation for Campaign Plan/Asset/checksum/version; full successful reconciled mutation matrix; Audit failure before/between/after append positions; exact event/no-event matrix; and exhaustive fake/profile/fixture cases. | Implement the approved matrix with parameterized tests where appropriate. Exercise actual deferred triggers, not only helper functions. Revise the completion report to enumerate actual test classes/cases without unsupported broad claims. |
+| 4A-IMPL-013 | MAJOR | V12 retry claim transition around line 362 | Due-time enforcement compares the old schedule with caller-controlled `NEW.claimed_at`; direct SQL can forge a future claim timestamp while PostgreSQL server time is still before due. | Enforce eligibility against PostgreSQL server time independently of the supplied timestamp; test forged-future, early, exact-due, and late cases. |
+| 4A-IMPL-014 | MAJOR | V12 retry result/coherence functions | PostgreSQL does not prove `next_attempt_at = finalized SUBMIT attempt completed_at + evidence.retryAfterSeconds`; valid retry evidence can be paired with an arbitrary schedule. | Add deferred operation/attempt schedule coherence and negative tests for earlier/later schedules plus the exact valid schedule. |
+| 4A-IMPL-015 | MAJOR | `PlatformContractSupport.money`; `PlatformCampaignCommand` | `stripTrailingZeros()` can return negative BigDecimal scale for integer amounts, violating the declared 0..6 money contract. Campaign create commands do not enforce `desiredState=PAUSED`. | Normalize negative scale to zero without rounding and test integer/trailing-zero/fractional values. Enforce PAUSED for campaign create and test invalid states. |
+
+### Re-review decision
+
+- Decision: `REQUEST_CHANGES`
+- Decision rationale: Both exact-head CI runs passed and most initial findings improved, but exact-operation database provenance and the required acceptance evidence remain BLOCKING. Retry schedule integrity and typed money/create-state contracts also retain unresolved MAJOR findings.
+- Required next action: Keep PR #60 Draft. Correct 4A-IMPL-011 through 015 within Stage 4A, run full local verification, push a new exact Head, wait for complete Push and PR CI, and repeat independent Code, Database, and Manager review. Do not merge or begin Stage 4B.
+- Human approval required: `No`; no escalation-policy trigger exists.
