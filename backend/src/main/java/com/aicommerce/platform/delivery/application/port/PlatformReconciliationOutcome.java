@@ -1,0 +1,2 @@
+package com.aicommerce.platform.delivery.application.port;
+public sealed interface PlatformReconciliationOutcome permits ReconciliationFound,ReconciliationNotFound,ReconciliationStillUnknown,ReconciliationTerminalFailure {}

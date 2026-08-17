@@ -1,75 +1,10 @@
 package com.aicommerce.platform.delivery.infrastructure.provider;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.time.Clock;
-import java.util.UUID;
-
-import com.aicommerce.platform.delivery.application.port.PlatformCommand;
-import com.aicommerce.platform.delivery.domain.OperationOutcome;
-import com.aicommerce.platform.delivery.domain.PlatformEntityType;
-import com.aicommerce.platform.delivery.domain.PlatformOperationType;
-import com.aicommerce.platform.delivery.domain.ReconciliationResult;
-import org.junit.jupiter.api.Test;
-
+import static org.assertj.core.api.Assertions.assertThat; import java.time.Instant; import java.util.*; import org.junit.jupiter.api.Test;
+import com.aicommerce.platform.delivery.application.port.*; import com.aicommerce.platform.delivery.domain.*;
 class DeterministicFakePlatformAdapterTest {
-    private final DeterministicFakePlatformAdapter adapter = new DeterministicFakePlatformAdapter(Clock.systemUTC());
-
-    @Test
-    void returnsStableSuccessForReplay() {
-        PlatformCommand command = command();
-        assertThat(adapter.submit(command)).isEqualTo(adapter.submit(command))
-                .isInstanceOf(OperationOutcome.Success.class);
-    }
-
-    @Test
-    void exposesBoundedRetryableValidationAndPermissionFailures() {
-        assertScenario(DeterministicFakePlatformAdapter.Scenario.RETRYABLE_FAILURE,
-                OperationOutcome.RetryableFailure.class);
-        assertScenario(DeterministicFakePlatformAdapter.Scenario.TERMINAL_VALIDATION_FAILURE,
-                OperationOutcome.TerminalFailure.class);
-        assertScenario(DeterministicFakePlatformAdapter.Scenario.TERMINAL_PERMISSION_FAILURE,
-                OperationOutcome.TerminalFailure.class);
-    }
-
-    @Test
-    void supportsAllAmbiguousReconciliationResults() {
-        assertReconciliation(DeterministicFakePlatformAdapter.Scenario.TIMEOUT_RECONCILE_SUCCESS,
-                ReconciliationResult.FoundSuccess.class);
-        assertReconciliation(DeterministicFakePlatformAdapter.Scenario.TIMEOUT_RECONCILE_FAILURE,
-                ReconciliationResult.FoundFailure.class);
-        assertReconciliation(DeterministicFakePlatformAdapter.Scenario.TIMEOUT_RECONCILE_UNRESOLVED,
-                ReconciliationResult.Unresolved.class);
-    }
-
-    @Test
-    void preservesEntityTypeAcrossProviderNeutralReads() {
-        UUID account = UUID.randomUUID();
-        assertThat(adapter.readCampaign(account, UUID.randomUUID()).entityType())
-                .isEqualTo(PlatformEntityType.CAMPAIGN);
-        assertThat(adapter.readAdSet(account, UUID.randomUUID()).entityType())
-                .isEqualTo(PlatformEntityType.AD_SET);
-        assertThat(adapter.readAd(account, UUID.randomUUID()).entityType())
-                .isEqualTo(PlatformEntityType.AD);
-    }
-
-    private void assertScenario(DeterministicFakePlatformAdapter.Scenario scenario,
-            Class<? extends OperationOutcome> expected) {
-        PlatformCommand command = command();
-        adapter.setScenario(command.operationUuid(), scenario);
-        assertThat(adapter.submit(command)).isInstanceOf(expected);
-    }
-
-    private void assertReconciliation(DeterministicFakePlatformAdapter.Scenario scenario,
-            Class<? extends ReconciliationResult> expected) {
-        PlatformCommand command = command();
-        adapter.setScenario(command.operationUuid(), scenario);
-        assertThat(adapter.submit(command)).isInstanceOf(OperationOutcome.Unknown.class);
-        assertThat(adapter.reconcile(command.operationUuid())).isInstanceOf(expected);
-    }
-
-    private PlatformCommand command() {
-        return new PlatformCommand(UUID.randomUUID(), UUID.randomUUID(), PlatformOperationType.CREATE_CAMPAIGN,
-                PlatformEntityType.CAMPAIGN, UUID.randomUUID(), "{}", "a".repeat(64));
-    }
+ private final UUID operation=UUID.fromString("00000000-0000-0000-0000-000000000001"); private final PlatformCommandIdentity identity=new PlatformCommandIdentity(operation,UUID.randomUUID(),"a".repeat(64),"b".repeat(64));
+ @Test void createIsDeterministicAndTransactionFree(){var adapter=new DeterministicFakePlatformAdapter();var command=new PlatformCampaignCommand(identity,UUID.randomUUID(),UUID.randomUUID(),PlatformObjective.OUTCOME_SALES,PlatformDesiredState.PAUSED,Optional.empty(),Optional.empty(),"Asia/Taipei");var first=(WriteSucceeded)adapter.submitCampaign(command);var second=(WriteSucceeded)adapter.submitCampaign(command);assertThat(first.externalId()).isEqualTo(second.externalId());assertThat(first.externalId().orElseThrow()).matches("fake-campaign-[0-9a-f]{24}");assertThat(adapter.transactionObserved()).isFalse();}
+ @Test void mutationReturnsNoIdOrFingerprint(){var adapter=new DeterministicFakePlatformAdapter();var out=(WriteSucceeded)adapter.changeCampaignState(new PlatformStateMutationCommand(identity,PlatformEntityType.CAMPAIGN,UUID.randomUUID(),"fake-campaign-abc",0,PlatformDesiredState.ACTIVE));assertThat(out.externalId()).isEmpty();assertThat(out.evidence().externalIdFingerprint()).isEmpty();}
+ @Test void allNormalizedFixturesAreStable(){assertThat(new DeterministicFakePlatformAdapter(DeterministicFakePlatformAdapter.Scenario.RETRYABLE_RATE_LIMIT).submitCampaign(command())).isInstanceOf(WriteRetryableFailure.class);assertThat(new DeterministicFakePlatformAdapter(DeterministicFakePlatformAdapter.Scenario.TERMINAL_PERMISSION).submitCampaign(command())).isInstanceOf(WriteTerminalFailure.class);assertThat(new DeterministicFakePlatformAdapter(DeterministicFakePlatformAdapter.Scenario.AMBIGUOUS_TIMEOUT).submitCampaign(command())).isInstanceOf(WriteUnknownOutcome.class);}
+ private PlatformCampaignCommand command(){return new PlatformCampaignCommand(identity,UUID.randomUUID(),UUID.randomUUID(),PlatformObjective.OUTCOME_SALES,PlatformDesiredState.PAUSED,Optional.empty(),Optional.empty(),"Asia/Taipei");}
 }

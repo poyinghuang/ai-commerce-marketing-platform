@@ -1,0 +1,3 @@
+package com.aicommerce.platform.delivery.application.port;
+import java.util.*; import com.aicommerce.platform.delivery.domain.PlatformReconciliationTerminalCode;
+public record ReconciliationTerminalFailure(PlatformReconciliationTerminalCode errorCode,Optional<String> safeProviderTraceId,NormalizedPlatformEvidence evidence) implements PlatformReconciliationOutcome{public ReconciliationTerminalFailure{PlatformContractSupport.req(errorCode);safeProviderTraceId=PlatformContractSupport.opt(safeProviderTraceId);PlatformContractSupport.req(evidence);safeProviderTraceId.ifPresent(PlatformContractSupport::safe);}}

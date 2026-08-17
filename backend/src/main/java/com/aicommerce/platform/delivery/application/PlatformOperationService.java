@@ -1,87 +1,32 @@
 package com.aicommerce.platform.delivery.application;
-
-import java.time.Duration;
-import java.util.UUID;
-
-import com.aicommerce.platform.audit.domain.AuditOperationContext;
-import com.aicommerce.platform.delivery.application.port.PlatformAdPort;
-import com.aicommerce.platform.delivery.application.port.PlatformAdSetPort;
-import com.aicommerce.platform.delivery.application.port.PlatformCampaignPort;
-import com.aicommerce.platform.delivery.application.port.PlatformCommand;
-import com.aicommerce.platform.delivery.domain.OperationOutcome;
-import com.aicommerce.platform.delivery.domain.PlatformEntityType;
-import com.aicommerce.platform.delivery.domain.PlatformOperation;
-import com.aicommerce.platform.delivery.domain.PlatformOperationStatus;
-import com.aicommerce.platform.delivery.domain.ReconciliationResult;
-import org.springframework.stereotype.Service;
-
-@Service
-public class PlatformOperationService {
-    static final Duration SUBMISSION_LEASE = Duration.ofMinutes(5);
-    private final PlatformOperationTransactions transactions;
-    private final PlatformOperationInputCanonicalizer canonicalizer;
-    private final PlatformCampaignPort campaigns;
-    private final PlatformAdSetPort adSets;
-    private final PlatformAdPort ads;
-
-    public PlatformOperationService(PlatformOperationTransactions transactions,
-            PlatformOperationInputCanonicalizer canonicalizer, PlatformCampaignPort campaigns,
-            PlatformAdSetPort adSets, PlatformAdPort ads) {
-        this.transactions = transactions;
-        this.canonicalizer = canonicalizer;
-        this.campaigns = campaigns;
-        this.adSets = adSets;
-        this.ads = ads;
-    }
-
-    public PlatformOperation create(CreatePlatformOperationCommand command, AuditOperationContext context) {
-        var input = canonicalizer.canonicalize(command.normalizedRequestJson());
-        String scope = command.platformAccountUuid() + ":" + context.actor().type() + ":"
-                + context.actor().id() + ":" + command.clientRequestUuid();
-        return transactions.createOrReplay(command, input, canonicalizer.idempotencyKey(scope), context);
-    }
-
-    public PlatformOperation execute(UUID operationUuid, long expectedVersion, AuditOperationContext context) {
-        PlatformCommand command = transactions.claim(operationUuid, expectedVersion, context);
-        OperationOutcome outcome;
-        try {
-            outcome = submit(command);
-            if (outcome == null) outcome = new OperationOutcome.Unknown("fake-null-outcome");
-        } catch (RuntimeException exception) {
-            // Once submission starts, an unclassified adapter exception is ambiguous and must reconcile.
-            outcome = new OperationOutcome.Unknown("provider-exception");
-        }
-        return transactions.recordOutcome(operationUuid, outcome, context);
-    }
-
-    public PlatformOperation reconcile(UUID operationUuid, AuditOperationContext context) {
-        PlatformOperation operation = transactions.get(operationUuid);
-        if (operation.getStatus() != PlatformOperationStatus.UNKNOWN_OUTCOME) {
-            throw new PlatformOperationConflictException("PLATFORM_RECONCILIATION_NOT_REQUIRED",
-                    "Only an unknown outcome may be reconciled");
-        }
-        ReconciliationResult result = reconcile(operation.getEntityType(), operationUuid);
-        return transactions.recordReconciliation(operationUuid, result, context);
-    }
-
-    public PlatformOperation recoverExpiredSubmission(UUID operationUuid, long expectedVersion,
-            AuditOperationContext context) {
-        return transactions.recoverExpiredSubmission(operationUuid, expectedVersion, SUBMISSION_LEASE, context);
-    }
-
-    private OperationOutcome submit(PlatformCommand command) {
-        return switch (command.entityType()) {
-            case CAMPAIGN -> campaigns.submit(command);
-            case AD_SET -> adSets.submit(command);
-            case AD -> ads.submit(command);
-        };
-    }
-
-    private ReconciliationResult reconcile(PlatformEntityType type, UUID operationUuid) {
-        return switch (type) {
-            case CAMPAIGN -> campaigns.reconcile(operationUuid);
-            case AD_SET -> adSets.reconcile(operationUuid);
-            case AD -> ads.reconcile(operationUuid);
-        };
-    }
+import java.math.BigDecimal; import java.time.*; import java.util.*;
+import com.aicommerce.platform.audit.domain.AuditOperationContext; import com.aicommerce.platform.delivery.application.port.*; import com.aicommerce.platform.delivery.domain.*;
+import org.springframework.beans.factory.ObjectProvider; import org.springframework.jdbc.core.JdbcTemplate; import org.springframework.stereotype.Service; import tools.jackson.databind.ObjectMapper;
+@Service public class PlatformOperationService {
+ private final PlatformOperationTransactions tx; private final PlatformOperationInputCanonicalizer canonicalizer; private final PlatformCampaignPort campaigns; private final PlatformAdSetPort adSets; private final PlatformAdPort ads; private final PlatformOperationReconciliationPort reconciliation; private final JdbcTemplate jdbc; private final ObjectMapper mapper;
+ public PlatformOperationService(PlatformOperationTransactions tx,PlatformOperationInputCanonicalizer canonicalizer,ObjectProvider<PlatformCampaignPort> campaigns,ObjectProvider<PlatformAdSetPort> adSets,ObjectProvider<PlatformAdPort> ads,ObjectProvider<PlatformOperationReconciliationPort> reconciliation,JdbcTemplate jdbc,ObjectMapper mapper){this.tx=tx;this.canonicalizer=canonicalizer;this.campaigns=campaigns.getIfAvailable();this.adSets=adSets.getIfAvailable();this.ads=ads.getIfAvailable();this.reconciliation=reconciliation.getIfAvailable();this.jdbc=jdbc;this.mapper=mapper;}
+ public PlatformOperation create(CreatePlatformOperationCommand command,AuditOperationContext context){var input=canonicalizer.canonicalize(command.normalizedRequestJson());String identity="platform-operation-v1\n"+command.platformAccountUuid().toString().toLowerCase()+"\n"+context.actor().type()+"\n"+context.actor().id()+"\n"+command.clientRequestUuid().toString().toLowerCase();return tx.createOrReplay(command,input,canonicalizer.idempotencyKey(identity),context);}
+ public PlatformOperationView submit(UUID operationUuid,long expectedOperationVersion){return submit(operationUuid,expectedOperationVersion,null);}
+ public PlatformOperationView retry(UUID operationUuid,long expectedOperationVersion,Instant now){Objects.requireNonNull(now);return submit(operationUuid,expectedOperationVersion,null);}
+ public PlatformOperationView submit(UUID operationUuid,long expectedOperationVersion,AuditOperationContext context){requireAdapter(operationUuid);AuditOperationContext c=requireContext(context);PlatformCommand generic=tx.claim(operationUuid,expectedOperationVersion,c);PlatformWriteOutcome outcome;try{outcome=dispatch(generic);if(outcome==null)throw new IllegalStateException();}catch(RuntimeException ex){outcome=unknown();}return view(tx.recordWriteOutcome(operationUuid,outcome,c));}
+ public PlatformOperation execute(UUID operationUuid,long expectedVersion,AuditOperationContext context){submit(operationUuid,expectedVersion,context);return tx.get(operationUuid);}
+ public PlatformOperationView reconcile(UUID operationUuid,long expectedOperationVersion){throw new PlatformOperationException(PlatformStableErrorCode.PLATFORM_INVALID_OPERATION_STATE,Optional.of(operationUuid));}
+ public PlatformOperation reconcile(UUID operationUuid,AuditOperationContext context){throw new PlatformOperationException(PlatformStableErrorCode.PLATFORM_INVALID_OPERATION_STATE,Optional.of(operationUuid));}
+ public PlatformOperationView recoverStaleClaim(UUID operationUuid,long expectedOperationVersion,Instant recoveryTime){Objects.requireNonNull(recoveryTime);throw new PlatformOperationException(PlatformStableErrorCode.PLATFORM_RECOVERY_NOT_DUE,Optional.of(operationUuid));}
+ public PlatformOperation recoverExpiredSubmission(UUID operationUuid,long expectedVersion,AuditOperationContext context){return tx.recoverExpiredSubmission(operationUuid,expectedVersion,Duration.ofMinutes(5),context);}
+ private PlatformWriteOutcome dispatch(PlatformCommand c){Map<String,Object> p=payload(c.normalizedRequestJson());PlatformCommandIdentity i=new PlatformCommandIdentity(c.operationUuid(),c.accountUuid(),idempotency(c.operationUuid()),c.requestSha256());return switch(c.operationType()){
+  case CREATE_CAMPAIGN->campaigns.submitCampaign(new PlatformCampaignCommand(i,c.entityUuid(),uuid(p,"campaignUuid"),PlatformObjective.OUTCOME_SALES,PlatformDesiredState.PAUSED,instant(p,"scheduleStart"),instant(p,"scheduleEnd"),text(p,"accountTimezone","Asia/Taipei")));
+  case CREATE_AD_SET->adSets.submitAdSet(new PlatformAdSetCommand(i,c.entityUuid(),uuid(p,"platformCampaignUuid"),PlatformBudgetType.valueOf(text(p,"budgetType","DAILY")),decimal(p,"budgetAmount"),text(p,"currency","TWD"),instant(p,"scheduleStart"),instant(p,"scheduleEnd"),text(p,"accountTimezone","Asia/Taipei"),text(p,"optimizationGoal","OFFSITE_CONVERSIONS"),text(p,"targetingProfileKey","TW_BROAD_FEEDS_V1"),text(p,"placementProfileKey","TW_BROAD_FEEDS_V1"),PlatformDesiredState.PAUSED));
+  case CREATE_AD->ads.submitAd(new PlatformAdCommand(i,c.entityUuid(),uuid(p,"platformAdSetUuid"),uuid(p,"productUuid"),uuid(p,"assetUuid"),uuid(p,"generationOutputUuid"),uuid(p,"reviewDecisionUuid"),text(p,"approvedChecksumSha256",null),text(p,"creativeMappingKey","DEFAULT_IMAGE_V1"),PlatformDesiredState.PAUSED));
+  case PAUSE,RESUME->{String external=entityExternal(c);var m=new PlatformStateMutationCommand(i,c.entityType(),c.entityUuid(),external,longValue(p,"expectedEntityVersion"),c.operationType()==PlatformOperationType.PAUSE?PlatformDesiredState.PAUSED:PlatformDesiredState.ACTIVE);yield switch(c.entityType()){case CAMPAIGN->campaigns.changeCampaignState(m);case AD_SET->adSets.changeAdSetState(m);case AD->ads.changeAdState(m);};}
+  case UPDATE_BUDGET->adSets.updateAdSetBudget(new PlatformBudgetMutationCommand(i,c.entityUuid(),entityExternal(c),longValue(p,"expectedEntityVersion"),PlatformBudgetType.valueOf(text(p,"budgetType","DAILY")),text(p,"currency","TWD"),decimal(p,"previousBudgetAmount"),decimal(p,"newBudgetAmount")));
+ };}
+ private void requireAdapter(UUID id){if(campaigns==null||adSets==null||ads==null||reconciliation==null)throw new PlatformOperationException(PlatformStableErrorCode.PLATFORM_ADAPTER_UNAVAILABLE,Optional.of(id));}
+ private AuditOperationContext requireContext(AuditOperationContext c){if(c==null)throw new PlatformOperationException(PlatformStableErrorCode.PLATFORM_CONTRACT_INVALID,Optional.empty());return c;}
+ @SuppressWarnings("unchecked") private Map<String,Object> payload(String json){try{return mapper.readValue(json,Map.class);}catch(Exception e){throw new PlatformOperationException(PlatformStableErrorCode.PLATFORM_CONTRACT_INVALID,Optional.empty());}}
+ private String idempotency(UUID id){return jdbc.queryForObject("SELECT idempotency_key FROM platform_operations WHERE operation_uuid=?",String.class,id);}
+ private String entityExternal(PlatformCommand c){String table=switch(c.entityType()){case CAMPAIGN->"platform_campaigns";case AD_SET->"platform_ad_sets";case AD->"platform_ads";};String col=switch(c.entityType()){case CAMPAIGN->"platform_campaign_uuid";case AD_SET->"platform_ad_set_uuid";case AD->"platform_ad_uuid";};String v=jdbc.queryForObject("SELECT external_id FROM "+table+" WHERE "+col+"=?",String.class,c.entityUuid());if(v==null)throw new PlatformOperationException(PlatformStableErrorCode.PLATFORM_EVIDENCE_INVALID,Optional.of(c.operationUuid()));return v;}
+ private static UUID uuid(Map<String,Object> p,String k){return UUID.fromString(text(p,k,null));} private static String text(Map<String,Object> p,String k,String d){Object v=p.get(k);if(v==null){if(d!=null)return d;throw new IllegalArgumentException("PLATFORM_CONTRACT_INVALID");}return v.toString();} private static BigDecimal decimal(Map<String,Object> p,String k){return new BigDecimal(text(p,k,null));} private static long longValue(Map<String,Object> p,String k){return Long.parseLong(text(p,k,null));} private static Optional<Instant> instant(Map<String,Object> p,String k){Object v=p.get(k);return v==null?Optional.empty():Optional.of(Instant.parse(v.toString()));}
+ private static WriteUnknownOutcome unknown(){return new WriteUnknownOutcome(PlatformUnknownCode.PLATFORM_RESPONSE_AMBIGUOUS,Optional.empty(),new NormalizedPlatformEvidence(1,ProviderKey.FAKE,PlatformAttemptKind.SUBMIT,PlatformEvidenceResultKind.UNKNOWN_OUTCOME,Optional.empty(),Optional.empty(),Optional.empty()));}
+ private PlatformOperationView view(PlatformOperation o){return new PlatformOperationView(o.getOperationUuid(),o.getPlatformAccountUuid(),o.getOperationType(),o.getEntityType(),o.getEntityUuid(),o.getStatus(),o.getAttemptCount(),o.getReconciliationCount(),o.getMaxAttempts(),Optional.ofNullable(o.getExternalId()),o.getNormalizedErrorCode()==null?Optional.empty():Optional.of(PlatformStableErrorCode.valueOf(o.getNormalizedErrorCode())),Optional.ofNullable(o.getSafeProviderTraceId()),Optional.empty(),Optional.ofNullable(o.getNextAttemptAt()),Optional.ofNullable(o.getClaimedAt()),Optional.ofNullable(o.getCompletedAt()),o.getCreatedAt(),o.getUpdatedAt(),o.getVersion());}
 }

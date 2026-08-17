@@ -1,1 +1,0 @@
-package com.aicommerce.platform.delivery.application.port; import java.math.BigDecimal; import java.time.Instant; public record PlatformMetricsRecord(Long impressions,Long reach,Long clicks,Long conversions,BigDecimal spend,BigDecimal revenue,String currency,String timezone,Instant fetchedAt) {}

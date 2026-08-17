@@ -27,6 +27,7 @@ public class PlatformOperation extends MutableEntity {
     @Column(name="request_id",nullable=false,updatable=false) private String requestId;
     @Enumerated(EnumType.STRING) @Column(name="status",nullable=false) private PlatformOperationStatus status;
     @Column(name="attempt_count",nullable=false) private int attemptCount;
+    @Column(name="reconciliation_count",nullable=false) private int reconciliationCount;
     @Column(name="max_attempts",nullable=false,updatable=false) private int maxAttempts;
     @Column(name="external_id") private String externalId;
     @Column(name="normalized_error_code") private String normalizedErrorCode;
@@ -46,8 +47,8 @@ public class PlatformOperation extends MutableEntity {
         this.clientRequestUuid=Objects.requireNonNull(clientRequestUuid); this.idempotencyKey=required(idempotencyKey,64);
         this.requestPayload=required(payload,16384); this.requestSha256=required(requestSha256,64);
         this.requestedActorType=required(actorType,32); this.requestedActorId=required(actorId,128); this.requestId=required(requestId,128);
-        if(maxAttempts<1||maxAttempts>10) throw new IllegalArgumentException("maxAttempts must be 1..10");
-        this.maxAttempts=maxAttempts; this.status=PlatformOperationStatus.CREATED;
+        if(maxAttempts!=3) throw new IllegalArgumentException("maxAttempts must be 3");
+        this.maxAttempts=3; this.status=PlatformOperationStatus.CREATED;
     }
     public void claim(Instant now) { Objects.requireNonNull(now); if(status!=PlatformOperationStatus.CREATED&&status!=PlatformOperationStatus.FAILED_RETRYABLE) throw new IllegalStateException("operation is not claimable"); if(status==PlatformOperationStatus.FAILED_RETRYABLE&&(nextAttemptAt==null||now.isBefore(nextAttemptAt))) throw new IllegalStateException("retry is not due"); if(attemptCount>=maxAttempts) throw new IllegalStateException("attempts exhausted"); status=PlatformOperationStatus.SUBMITTING; attemptCount++; claimedAt=now; nextAttemptAt=null; }
     public void succeed(String externalId,String trace,Instant now) { requireSubmitting(); status=PlatformOperationStatus.SUCCEEDED; this.externalId=required(externalId,128); safeProviderTraceId=optional(trace,128); completedAt=Objects.requireNonNull(now); }
@@ -65,5 +66,5 @@ public class PlatformOperation extends MutableEntity {
     public UUID getEntityUuid(){return switch(entityType){case CAMPAIGN->platformCampaignUuid;case AD_SET->platformAdSetUuid;case AD->platformAdUuid;};}
     public UUID getPlatformCampaignUuid(){return platformCampaignUuid;} public UUID getPlatformAdSetUuid(){return platformAdSetUuid;} public UUID getPlatformAdUuid(){return platformAdUuid;}
     public String getRequestedActorType(){return requestedActorType;} public String getRequestedActorId(){return requestedActorId;} public String getRequestId(){return requestId;}
-    public PlatformOperationStatus getStatus(){return status;} public int getAttemptCount(){return attemptCount;} public int getMaxAttempts(){return maxAttempts;} public String getRequestPayload(){return requestPayload;} public String getIdempotencyKey(){return idempotencyKey;} public String getRequestSha256(){return requestSha256;} public String getExternalId(){return externalId;} public String getNormalizedErrorCode(){return normalizedErrorCode;} public String getSafeProviderTraceId(){return safeProviderTraceId;} public Instant getNextAttemptAt(){return nextAttemptAt;} public Instant getClaimedAt(){return claimedAt;}
+    public PlatformOperationStatus getStatus(){return status;} public int getAttemptCount(){return attemptCount;} public int getReconciliationCount(){return reconciliationCount;} public int getMaxAttempts(){return maxAttempts;} public String getRequestPayload(){return requestPayload;} public String getIdempotencyKey(){return idempotencyKey;} public String getRequestSha256(){return requestSha256;} public String getExternalId(){return externalId;} public String getNormalizedErrorCode(){return normalizedErrorCode;} public String getSafeProviderTraceId(){return safeProviderTraceId;} public String getOutcomeEvidence(){return outcomeEvidence;} public Instant getNextAttemptAt(){return nextAttemptAt;} public Instant getClaimedAt(){return claimedAt;} public Instant getCompletedAt(){return completedAt;}
 }

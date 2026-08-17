@@ -13,9 +13,9 @@ class PlatformOperationDomainTest {
   assertThatThrownBy(()->op.reconcileFailure("X",null,Instant.now())).isInstanceOf(IllegalStateException.class);
  }
  @Test void retryReusesIdentityAndIsBounded(){
-  PlatformOperation op=operation(2); UUID id=op.getOperationUuid(); Instant now=Instant.parse("2026-08-16T00:00:00Z"); op.claim(now); op.failRetryable("RATE_LIMIT",null,now.plusSeconds(10));
+  PlatformOperation op=operation(3); UUID id=op.getOperationUuid(); Instant now=Instant.parse("2026-08-16T00:00:00Z"); op.claim(now); op.failRetryable("RATE_LIMIT",null,now.plusSeconds(10));
   assertThatThrownBy(()->op.claim(now.plusSeconds(9))).isInstanceOf(IllegalStateException.class); op.claim(now.plusSeconds(10));
-  assertThat(op.getOperationUuid()).isEqualTo(id); assertThat(op.getAttemptCount()).isEqualTo(2);
+  assertThat(op.getOperationUuid()).isEqualTo(id); assertThat(op.getAttemptCount()).isEqualTo(2); op.failRetryable("RATE_LIMIT",null,now.plusSeconds(20)); op.claim(now.plusSeconds(20));
   assertThatThrownBy(()->op.failRetryable("RATE_LIMIT",null,Instant.now())).isInstanceOf(IllegalStateException.class);
  }
  @Test void moneyRejectsFloatingPrecisionAndNormalizesScale(){ assertThat(new Money(new java.math.BigDecimal("1.25"),"twd").amount()).isEqualByComparingTo("1.250000"); assertThatThrownBy(()->new Money(new java.math.BigDecimal("1.0000001"),"TWD")).isInstanceOf(IllegalArgumentException.class); }

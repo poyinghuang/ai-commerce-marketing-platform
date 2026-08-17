@@ -1,1 +1,2 @@
-package com.aicommerce.platform.delivery.application.port; import java.util.UUID; import com.aicommerce.platform.delivery.domain.OperationOutcome; import com.aicommerce.platform.delivery.domain.ReconciliationResult; public interface PlatformAdSetPort { OperationOutcome submit(PlatformCommand command); ReconciliationResult reconcile(UUID operationUuid); PlatformDeliveryRecord readAdSet(UUID accountUuid,UUID adSetUuid); }
+package com.aicommerce.platform.delivery.application.port;
+public interface PlatformAdSetPort { PlatformWriteOutcome submitAdSet(PlatformAdSetCommand command); PlatformWriteOutcome changeAdSetState(PlatformStateMutationCommand command); PlatformWriteOutcome updateAdSetBudget(PlatformBudgetMutationCommand command); }

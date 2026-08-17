@@ -15,6 +15,6 @@ public record CreatePlatformOperationCommand(
         String normalizedRequestJson,
         int maxAttempts) {
     public CreatePlatformOperationCommand {
-        if (maxAttempts < 1 || maxAttempts > 10) throw new IllegalArgumentException("maxAttempts must be 1..10");
+        if (maxAttempts != 3) throw new IllegalArgumentException("maxAttempts must be 3");
     }
 }

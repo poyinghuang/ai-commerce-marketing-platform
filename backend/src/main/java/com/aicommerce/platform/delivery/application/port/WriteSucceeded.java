@@ -1,0 +1,3 @@
+package com.aicommerce.platform.delivery.application.port;
+import java.util.*; import com.aicommerce.platform.delivery.domain.PlatformObservedState;
+public record WriteSucceeded(Optional<String> externalId,Optional<String> safeProviderTraceId,Optional<PlatformObservedState> observedState,NormalizedPlatformEvidence evidence) implements PlatformWriteOutcome{public WriteSucceeded{externalId=PlatformContractSupport.opt(externalId);safeProviderTraceId=PlatformContractSupport.opt(safeProviderTraceId);observedState=PlatformContractSupport.opt(observedState);PlatformContractSupport.req(evidence);externalId.ifPresent(PlatformContractSupport::safe);safeProviderTraceId.ifPresent(PlatformContractSupport::safe);}}

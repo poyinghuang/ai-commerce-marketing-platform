@@ -7,8 +7,8 @@
 - Base Commit: `a90f6e0bb20d23da10edb66712d85261dafe14e8`
 - Prerequisite: Stage 04 specification merged by PR #56; post-merge main CI Run `31921389709` passed
 - Specification: Independent Manager `APPROVE` on reviewed content Head `05503a516c343c66aef532ab51e8284694879ed0`; approval-record Head requires final CI confirmation
-- Implementation: Not started
-- Migration: Not started; the approved implementation may add only `V12__create_platform_operation_foundation.sql`
+- Implementation: In progress on the separate implementation branch; Independent Manager Review has not started
+- Migration: V12 under implementation on the separate implementation branch; V1-V11 remain unchanged
 - Local Verification: Passed — two-file scope, Markdown table sanity, `git diff --check`, and pinned Gitleaks 8.28.0 history/worktree scans
 - Remote CI: Passed on reviewed content Head — Push Run `31983316008`; PR Run `31983318364`
 - Manager Review: Passed on reviewed content Head; final approval-record Head confirmation pending

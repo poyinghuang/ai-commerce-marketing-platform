@@ -1,0 +1,3 @@
+package com.aicommerce.platform.delivery.application.port;
+import java.util.UUID; import com.aicommerce.platform.delivery.domain.*;
+public record PlatformStateMutationCommand(PlatformCommandIdentity identity,PlatformEntityType entityType,UUID entityUuid,String existingExternalId,long expectedEntityVersion,PlatformDesiredState targetDesiredState){public PlatformStateMutationCommand{PlatformContractSupport.req(identity);PlatformContractSupport.req(entityType);PlatformContractSupport.req(entityUuid);existingExternalId=PlatformContractSupport.safe(existingExternalId);if(expectedEntityVersion<0||(targetDesiredState!=PlatformDesiredState.PAUSED&&targetDesiredState!=PlatformDesiredState.ACTIVE))throw PlatformContractSupport.invalid();}}

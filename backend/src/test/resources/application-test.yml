@@ -6,3 +6,5 @@ spring:
 app:
   quality:
     startup-repair-enabled: true
+platform:
+  adapter: fake

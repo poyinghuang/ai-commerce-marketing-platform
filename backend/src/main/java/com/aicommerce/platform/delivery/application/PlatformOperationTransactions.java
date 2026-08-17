@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import com.aicommerce.platform.audit.application.AuditOperationContextFactory;
@@ -14,16 +15,22 @@ import com.aicommerce.platform.audit.domain.AuditEvent;
 import com.aicommerce.platform.audit.domain.AuditOperationContext;
 import com.aicommerce.platform.audit.domain.AuditValueType;
 import com.aicommerce.platform.delivery.application.port.PlatformCommand;
+import com.aicommerce.platform.delivery.application.port.*;
 import com.aicommerce.platform.delivery.domain.OperationOutcome;
 import com.aicommerce.platform.delivery.domain.PlatformOperation;
 import com.aicommerce.platform.delivery.domain.PlatformOperationStatus;
 import com.aicommerce.platform.delivery.domain.ReconciliationResult;
+import com.aicommerce.platform.delivery.domain.ProviderKey;
+import com.aicommerce.platform.delivery.domain.PlatformAttemptKind;
+import com.aicommerce.platform.delivery.domain.PlatformEvidenceResultKind;
+import com.aicommerce.platform.delivery.domain.PlatformStableErrorCode;
 import com.aicommerce.platform.delivery.infrastructure.persistence.PlatformOperationJpaRepository;
 import jakarta.persistence.OptimisticLockException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class PlatformOperationTransactions {
@@ -32,14 +39,16 @@ public class PlatformOperationTransactions {
     private final AuditWriter audit;
     private final AuditOperationContextFactory auditContexts;
     private final Clock clock;
+    private final ObjectMapper mapper;
 
     public PlatformOperationTransactions(PlatformOperationJpaRepository operations, JdbcTemplate jdbc,
-            AuditWriter audit, AuditOperationContextFactory auditContexts, Clock clock) {
+            AuditWriter audit, AuditOperationContextFactory auditContexts, Clock clock, ObjectMapper mapper) {
         this.operations = operations;
         this.jdbc = jdbc;
         this.audit = audit;
         this.auditContexts = auditContexts;
         this.clock = clock;
+        this.mapper = mapper;
     }
 
     @Transactional
@@ -98,6 +107,10 @@ public class PlatformOperationTransactions {
         try {
             operation.claim(Instant.now(clock));
             operations.saveAndFlush(operation);
+            jdbc.update("""
+                    INSERT INTO platform_operation_attempts(operation_attempt_uuid,operation_uuid,attempt_kind,
+                      attempt_number,status,started_at,version) VALUES (?,?,'SUBMIT',?,'STARTED',?,0)
+                    """, UUID.randomUUID(), operationUuid, operation.getAttemptCount(), Instant.now(clock));
         } catch (OptimisticLockException | OptimisticLockingFailureException exception) {
             throw stale();
         } catch (IllegalStateException exception) {
@@ -111,6 +124,28 @@ public class PlatformOperationTransactions {
                 operation.getOperationType(), operation.getEntityType(), operation.getEntityUuid(),
                 operation.getRequestPayload(), operation.getRequestSha256());
     }
+
+    @Transactional
+    public PlatformOperation recordWriteOutcome(UUID operationUuid, PlatformWriteOutcome outcome,
+            AuditOperationContext context) {
+        PlatformOperation operation=require(operationUuid);
+        if(operation.getStatus()!=PlatformOperationStatus.SUBMITTING) throw new PlatformOperationException(
+                PlatformStableErrorCode.PLATFORM_INVALID_OPERATION_STATE,Optional.of(operationUuid));
+        Instant now=Instant.now(clock); String status; String code=null; Integer retry=null;
+        String trace; NormalizedPlatformEvidence evidence; String external=null;
+        if(outcome instanceof WriteSucceeded x){status="SUCCEEDED";trace=x.safeProviderTraceId().orElse(null);evidence=x.evidence();external=x.externalId().orElse(null);}
+        else if(outcome instanceof WriteRetryableFailure x){trace=x.safeProviderTraceId().orElse(null);if(operation.getAttemptCount()>=3){status="FAILED_TERMINAL";code="PLATFORM_MAX_ATTEMPTS_EXCEEDED";evidence=new NormalizedPlatformEvidence(1,ProviderKey.FAKE,PlatformAttemptKind.SUBMIT,PlatformEvidenceResultKind.FAILED_TERMINAL,Optional.empty(),Optional.empty(),Optional.empty());}else{status="FAILED_RETRYABLE";code=x.errorCode().name();retry=x.retryAfterSeconds();evidence=x.evidence();}}
+        else if(outcome instanceof WriteTerminalFailure x){status="FAILED_TERMINAL";code=x.errorCode().name();trace=x.safeProviderTraceId().orElse(null);evidence=x.evidence();}
+        else {WriteUnknownOutcome x=(WriteUnknownOutcome)outcome;status="UNKNOWN_OUTCOME";code=x.errorCode().name();trace=x.safeProviderTraceId().orElse(null);evidence=x.evidence();}
+        String evidenceJson=json(evidence); String attemptStatus=status;
+        jdbc.update("UPDATE platform_operation_attempts SET status=?,safe_provider_trace_id=?,normalized_error_code=?,evidence=?::jsonb,completed_at=?,version=1 WHERE operation_uuid=? AND attempt_kind='SUBMIT' AND attempt_number=? AND status='STARTED'",attemptStatus,trace,code,evidenceJson,now,operationUuid,operation.getAttemptCount());
+        Instant next=retry==null?null:now.plusSeconds(retry); Instant completed=status.equals("SUCCEEDED")||status.equals("FAILED_TERMINAL")?now:null;
+        jdbc.update("UPDATE platform_operations SET status=?,external_id=?,normalized_error_code=?,safe_provider_trace_id=?,outcome_evidence=?::jsonb,next_attempt_at=?,completed_at=?,updated_at=?,version=version+1 WHERE operation_uuid=? AND status='SUBMITTING'",status,external,code,trace,evidenceJson,next,completed,now,operationUuid);
+        if(status.equals("SUCCEEDED")&&external!=null){String table=switch(operation.getEntityType()){case CAMPAIGN->"platform_campaigns";case AD_SET->"platform_ad_sets";case AD->"platform_ads";};String id=switch(operation.getEntityType()){case CAMPAIGN->"platform_campaign_uuid";case AD_SET->"platform_ad_set_uuid";case AD->"platform_ad_uuid";};jdbc.update("UPDATE "+table+" SET external_id=?,updated_at=?,version=version+1 WHERE "+id+"=? AND external_id IS NULL",external,now,operation.getEntityUuid());}
+        PlatformOperation updated=require(operationUuid); append(context,AuditAction.UPDATE,updated,outcomeChanges(PlatformOperationStatus.SUBMITTING,updated)); return updated;
+    }
+
+    private String json(Object value){try{return mapper.writeValueAsString(value);}catch(Exception e){throw new PlatformOperationException(PlatformStableErrorCode.PLATFORM_CONTRACT_INVALID,Optional.empty());}}
 
     @Transactional
     public PlatformOperation recordOutcome(UUID operationUuid, OperationOutcome outcome,

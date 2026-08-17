@@ -9,6 +9,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.Set;
+import java.math.BigDecimal;
+import java.text.Normalizer;
 
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
@@ -33,6 +36,7 @@ public class PlatformOperationInputCanonicalizer {
                 throw new IllegalArgumentException("normalized request must be a JSON object");
             }
             Object normalized = normalize(parsed, new ArrayList<>());
+            validateContract((Map<?, ?>) normalized);
             String canonical = mapper.writeValueAsString(normalized);
             if (canonical.getBytes(StandardCharsets.UTF_8).length > MAX_PAYLOAD_BYTES) {
                 throw new IllegalArgumentException("normalized request exceeds 16384 bytes");
@@ -64,9 +68,55 @@ public class PlatformOperationInputCanonicalizer {
             }
             return sorted;
         }
-        if (value instanceof List<?> list) return list.stream().map(item -> normalize(item, path)).toList();
-        if (value == null || value instanceof String || value instanceof Number || value instanceof Boolean) return value;
+        if (value instanceof List<?>) throw new IllegalArgumentException("arrays are forbidden in normalized requests");
+        if (value == null) throw new IllegalArgumentException("optional values must be omitted, not null");
+        if (value instanceof String text) return Normalizer.normalize(text, Normalizer.Form.NFC);
+        if (value instanceof Number number) {
+            BigDecimal decimal = new BigDecimal(number.toString()).stripTrailingZeros();
+            if (decimal.scale() > 6) throw new IllegalArgumentException("numbers may have at most six fractional digits");
+            return decimal.scale() < 0 ? decimal.setScale(0) : decimal;
+        }
+        if (value instanceof Boolean) throw new IllegalArgumentException("booleans are not part of the platform command contract");
         throw new IllegalArgumentException("normalized request contains an unsupported value");
+    }
+
+    private void validateContract(Map<?, ?> value) {
+        Object operation = value.get("operationType");
+        if (!(operation instanceof String operationType)) {
+            throw new IllegalArgumentException("operationType is required");
+        }
+        Set<String> generic = Set.of("schemaVersion", "operationType", "entityType", "entityUuid");
+        Set<String> specific = switch (operationType) {
+            case "CREATE_CAMPAIGN" -> Set.of("platformCampaignUuid", "campaignUuid", "objective",
+                    "desiredState", "accountTimezone", "scheduleStart", "scheduleEnd");
+            case "CREATE_AD_SET" -> Set.of("platformAdSetUuid", "platformCampaignUuid", "budgetType",
+                    "budgetAmount", "currency", "accountTimezone", "optimizationGoal", "targetingProfileKey",
+                    "placementProfileKey", "desiredState", "scheduleStart", "scheduleEnd");
+            case "CREATE_AD" -> Set.of("platformAdUuid", "platformAdSetUuid", "productUuid", "assetUuid",
+                    "generationOutputUuid", "reviewDecisionUuid", "approvedChecksumSha256", "creativeMappingKey",
+                    "desiredState");
+            case "PAUSE", "RESUME" -> Set.of("expectedEntityVersion", "targetDesiredState");
+            case "UPDATE_BUDGET" -> Set.of("platformAdSetUuid", "expectedEntityVersion", "budgetType",
+                    "currency", "previousBudgetAmount", "newBudgetAmount");
+            default -> throw new IllegalArgumentException("unsupported operationType");
+        };
+        Set<String> allowed = new java.util.HashSet<>(generic);
+        allowed.addAll(specific);
+        if (!allowed.containsAll(value.keySet()) || !value.keySet().containsAll(generic)) {
+            throw new IllegalArgumentException("normalized request contains unknown or missing generic keys");
+        }
+        Set<String> required = switch (operationType) {
+            case "CREATE_CAMPAIGN" -> Set.of("platformCampaignUuid", "campaignUuid", "objective", "desiredState", "accountTimezone");
+            case "CREATE_AD_SET" -> Set.of("platformAdSetUuid", "platformCampaignUuid", "budgetType", "budgetAmount", "currency", "accountTimezone", "optimizationGoal", "targetingProfileKey", "placementProfileKey", "desiredState");
+            case "CREATE_AD" -> specific;
+            case "PAUSE", "RESUME" -> specific;
+            case "UPDATE_BUDGET" -> specific;
+            default -> throw new IllegalArgumentException("unsupported operationType");
+        };
+        if (!value.keySet().containsAll(required)) throw new IllegalArgumentException("normalized request is missing required keys");
+        if (value.containsKey("scheduleStart") != value.containsKey("scheduleEnd")) {
+            throw new IllegalArgumentException("scheduleStart and scheduleEnd must be supplied together");
+        }
     }
 
     private void rejectSensitiveKey(String key, List<String> path) {

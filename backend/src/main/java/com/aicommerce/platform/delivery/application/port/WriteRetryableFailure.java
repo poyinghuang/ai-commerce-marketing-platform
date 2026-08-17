@@ -1,0 +1,3 @@
+package com.aicommerce.platform.delivery.application.port;
+import java.util.*; import com.aicommerce.platform.delivery.domain.PlatformRetryableCode;
+public record WriteRetryableFailure(PlatformRetryableCode errorCode,int retryAfterSeconds,Optional<String> safeProviderTraceId,NormalizedPlatformEvidence evidence) implements PlatformWriteOutcome{public WriteRetryableFailure{PlatformContractSupport.req(errorCode);safeProviderTraceId=PlatformContractSupport.opt(safeProviderTraceId);PlatformContractSupport.req(evidence);safeProviderTraceId.ifPresent(PlatformContractSupport::safe);if(retryAfterSeconds<1||retryAfterSeconds>3600)throw PlatformContractSupport.invalid();}}

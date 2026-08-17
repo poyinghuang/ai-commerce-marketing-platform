@@ -1,1 +1,0 @@
-package com.aicommerce.platform.delivery.application.port; import java.util.UUID; import com.aicommerce.platform.delivery.domain.PlatformEntityType; public interface PlatformDeliveryReadPort { PlatformDeliveryRecord read(UUID accountUuid,PlatformEntityType type,UUID entityUuid); }

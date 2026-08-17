@@ -380,7 +380,7 @@ class MigrationCompatibilityTest {
         assertThat(latest.migrate().migrationsExecuted).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT review_status FROM ai_generation_outputs WHERE generation_output_uuid=?",String.class,output)).isEqualTo("APPROVED");
         assertThat(jdbc.queryForObject("SELECT decision FROM ai_review_decisions WHERE review_decision_uuid=?",String.class,decision)).isEqualTo("APPROVED");
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM information_schema.tables WHERE table_schema=? AND table_name LIKE 'platform_%'",Integer.class,schema)).isEqualTo(6);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM information_schema.tables WHERE table_schema=? AND table_name LIKE 'platform_%'",Integer.class,schema)).isEqualTo(7);
         assertThat(latest.info().pending()).isEmpty();
     }
 

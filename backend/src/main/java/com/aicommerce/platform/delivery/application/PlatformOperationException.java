@@ -1,0 +1,3 @@
+package com.aicommerce.platform.delivery.application;
+import java.util.*; import com.aicommerce.platform.delivery.domain.PlatformStableErrorCode;
+public final class PlatformOperationException extends RuntimeException {private final PlatformStableErrorCode code;private final Optional<UUID> operationUuid;public PlatformOperationException(PlatformStableErrorCode code,Optional<UUID> operationUuid){super(Objects.requireNonNull(code).name());this.code=code;this.operationUuid=Objects.requireNonNull(operationUuid);}public PlatformStableErrorCode code(){return code;}public Optional<UUID> operationUuid(){return operationUuid;}}

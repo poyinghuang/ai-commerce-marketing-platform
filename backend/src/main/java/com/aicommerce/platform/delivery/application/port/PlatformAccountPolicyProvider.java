@@ -1,1 +1,3 @@
-package com.aicommerce.platform.delivery.application.port; import java.util.UUID; public interface PlatformAccountPolicyProvider { AccountPolicy resolve(UUID accountUuid); record AccountPolicy(UUID accountUuid,String currency,String timezone,boolean enabled) {} }
+package com.aicommerce.platform.delivery.application.port;
+import java.util.UUID;
+public interface PlatformAccountPolicyProvider { PlatformAccountPolicy requirePolicy(UUID platformAccountUuid); }
