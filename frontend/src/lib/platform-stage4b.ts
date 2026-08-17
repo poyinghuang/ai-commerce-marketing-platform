@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
-const META_PATH = new RegExp(`^/api/platforms/meta/(?:campaigns(?:/preview|/${UUID}(?:/state-preview|/(?:pause|resume)|/ad-sets(?:/preview)?)?)?|ad-sets/${UUID}(?:/state-preview|/budget-preview|/budget|/(?:pause|resume)))$`);
+const META_PATH = new RegExp(`^/api/platforms/meta/(?:campaigns(?:/preview|/${UUID}(?:/state-preview|/(?:pause|resume)|/ad-sets(?:/preview)?)?)?|ad-sets/${UUID}(?:/state-preview|/budget-preview|/budget|/(?:pause|resume))?)$`);
 const OP_PATH = new RegExp(`^/api/platform-operations/${UUID}(?:/(?:retry|reconcile))?$`);
 const SAFE_REQUEST_ID = /^[A-Za-z0-9._:-]{1,128}$/;
 const REQUEST_LIMIT = 16 * 1024;
@@ -32,6 +32,8 @@ export async function forwardStage4B(request: NextRequest, backendPath: string) 
     const timeout=AbortSignal.timeout(10_000);const signal=AbortSignal.any([request.signal,timeout]);
     const response=await fetch(new URL(backendPath,origin),{method:request.method,headers,body,cache:"no-store",redirect:"manual",signal});
     if(response.status>=300&&response.status<400)return error("BACKEND_BAD_GATEWAY","Backend is unavailable",502);
+    const responseContentType=response.headers.get("content-type")?.split(";",1)[0].trim().toLowerCase();
+    if(responseContentType!=="application/json")return error("BACKEND_BAD_GATEWAY","Backend is unavailable",502);
     let bytes:Uint8Array<ArrayBuffer>;try{bytes=await readBounded(response.body,RESPONSE_LIMIT);}catch{return error("BACKEND_RESPONSE_TOO_LARGE","Backend response is too large",502);}
     if(bytes.byteLength===0||!safeJson(bytes))return error("BACKEND_BAD_GATEWAY","Backend is unavailable",502);
     const exposed=new Headers();for(const name of ["Content-Type","ETag","Location","X-Request-ID"]){const value=response.headers.get(name);if(value)exposed.set(name,value);}

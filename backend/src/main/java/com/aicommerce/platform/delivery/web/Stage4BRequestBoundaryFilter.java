@@ -64,7 +64,8 @@ final class Stage4BRequestBoundaryFilter extends OncePerRequestFilter {
     private static void reject(HttpServletResponse response,HttpServletRequest request,String code,int status,String message)throws IOException{
         response.setStatus(status);response.setContentType(MediaType.APPLICATION_JSON_VALUE);response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         String requestId=String.valueOf(request.getAttribute(RequestIdFilter.REQUEST_ATTRIBUTE));
-        response.getWriter().write("{\"code\":\""+code+"\",\"message\":\""+message+"\",\"requestId\":\""+requestId+"\",\"timestamp\":\""+Instant.now()+"\",\"path\":\""+request.getRequestURI()+"\",\"fieldErrors\":[]}");
+        String fieldErrors="PLATFORM_REQUEST_INVALID".equals(code)?"[{\"field\":\"body\",\"message\":\"Invalid request body\"}]":"[]";
+        response.getWriter().write("{\"code\":\""+code+"\",\"message\":\""+message+"\",\"requestId\":\""+requestId+"\",\"timestamp\":\""+Instant.now()+"\",\"path\":\""+request.getRequestURI()+"\",\"fieldErrors\":"+fieldErrors+"}");
     }
 
     private static final class CachedRequest extends HttpServletRequestWrapper {

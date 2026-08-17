@@ -29,6 +29,7 @@ public class Stage4BTransactions {
 
     @Transactional(readOnly=true)
     public Stage4BViews.Preview previewCampaign(UUID request,UUID campaignUuid){
+        account();
         var plan=plan(campaignUuid,false); validatePlan(plan,businessDate());
         return preview(request,PlatformOperationType.CREATE_CAMPAIGN,PlatformEntityType.CAMPAIGN,null,null,plan.version,
                 PlatformDesiredState.PAUSED,null,null,scheduleStart(plan),scheduleEnd(plan),"NONE",null,null,BigDecimal.ZERO);
@@ -85,7 +86,7 @@ public class Stage4BTransactions {
 
     @Transactional
     public Created confirmState(PlatformEntityType type,UUID entity,UUID request,PlatformDesiredState target,long expectedVersion,String requestId){
-        UUID account=account();var existing=replay(account,request);if(existing.isPresent())return replay(existing.get(),target==PlatformDesiredState.PAUSED?PlatformOperationType.PAUSE:PlatformOperationType.RESUME,Map.of("expectedEntityVersion",Long.toString(expectedVersion),"targetDesiredState",target.name()));
+        UUID account=account();var existing=replay(account,request);if(existing.isPresent())return replay(existing.get(),target==PlatformDesiredState.PAUSED?PlatformOperationType.PAUSE:PlatformOperationType.RESUME,Map.of("entityType",type.name(),"entityUuid",entity.toString(),"expectedEntityVersion",Long.toString(expectedVersion),"targetDesiredState",target.name()));
         var current=entity(type,entity,true);if(current.version!=expectedVersion)throw error("PLATFORM_ENTITY_STALE",HttpStatus.PRECONDITION_FAILED);validateState(current,target);
         PlatformOperationType op=target==PlatformDesiredState.PAUSED?PlatformOperationType.PAUSE:PlatformOperationType.RESUME;UUID operation=UUID.randomUUID();
         var payload=base(op,type,entity);payload.put("expectedEntityVersion",expectedVersion);payload.put("targetDesiredState",target.name());
@@ -104,7 +105,7 @@ public class Stage4BTransactions {
 
     @Transactional
     public Created confirmBudget(UUID entity,UUID request,BigDecimal next,long expectedVersion,String requestId){
-        UUID account=account();var existing=replay(account,request);if(existing.isPresent())return replay(existing.get(),PlatformOperationType.UPDATE_BUDGET,Map.of("expectedEntityVersion",Long.toString(expectedVersion),"newBudgetAmount",plain(next)));
+        UUID account=account();var existing=replay(account,request);if(existing.isPresent())return replay(existing.get(),PlatformOperationType.UPDATE_BUDGET,Map.of("entityType",PlatformEntityType.AD_SET.name(),"entityUuid",entity.toString(),"platformAdSetUuid",entity.toString(),"expectedEntityVersion",Long.toString(expectedVersion),"newBudgetAmount",plain(next)));
         var current=adSet(entity,true);if(current.version!=expectedVersion)throw error("PLATFORM_ENTITY_STALE",HttpStatus.PRECONDITION_FAILED);
         validateBudget(current.budgetType,next,plan(current.campaignUuid,true));if(current.budget.compareTo(next)==0)throw error("PLATFORM_REQUEST_INVALID",HttpStatus.BAD_REQUEST);
         BigDecimal delta=next.subtract(current.budget).max(BigDecimal.ZERO);String kind=delta.signum()>0?"INCREASE":"DECREASE_NO_RELEASE";UUID operation=UUID.randomUUID();

@@ -36,6 +36,7 @@ class MigrationCompatibilityTest {
     private static final String V9_SHA256 = "7c7e14faae71394182ecca06010dd8b97f42598480530abfeb13ccacefca7367";
     private static final String V10_SHA256 = "8d67fd339eb4cc0189e71394feb903a02bf51897fc0287bb2da1d8f78365f7d8";
     private static final String V11_SHA256 = "761371c64dc2283c7ba3f644802d0b523a50ab5fe342e89da8c8c6b9befc0a1c";
+    private static final String V12_SHA256 = "828be0d98a681501e0572ad038698002275f72fd66c0095b44def10da7ddfcf3";
 
     @Container
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17.6-alpine3.22");
@@ -391,7 +392,7 @@ class MigrationCompatibilityTest {
     }
 
     @Test
-    void canonicalV1ThroughV11ContentRemainsStable() throws Exception {
+    void canonicalV1ThroughV12ContentRemainsStable() throws Exception {
         assertThat(sha256("db/migration/V1__create_product_foundation.sql")).isEqualTo(V1_SHA256);
         assertThat(sha256("db/migration/V2__create_audit_foundation.sql")).isEqualTo(V2_SHA256);
         assertThat(sha256("db/migration/V3__add_product_master_fields.sql")).isEqualTo(V3_SHA256);
@@ -404,6 +405,7 @@ class MigrationCompatibilityTest {
         assertThat(sha256("db/migration/V9__create_ai_text_outputs.sql")).isEqualTo(V9_SHA256);
         assertThat(sha256("db/migration/V10__add_ai_image_outputs.sql")).isEqualTo(V10_SHA256);
         assertThat(sha256("db/migration/V11__create_ai_review_decisions.sql")).isEqualTo(V11_SHA256);
+        assertThat(sha256("db/migration/V12__create_platform_operation_foundation.sql")).isEqualTo(V12_SHA256);
     }
 
     @Test
