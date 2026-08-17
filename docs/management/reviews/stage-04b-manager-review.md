@@ -350,6 +350,48 @@ Manager Decision: `REQUEST_CHANGES`
 
 There is no human-escalation trigger. PR #62 remains Draft; merge and Stage 4C remain locked.
 
+## Re-review cycle 6
+
+### Identity and evidence
+
+- Correction commit: `8648d1eb8ad7e49337ed070df8055cb6357d88b5`
+- Reviewed superseding Head: `9bdb55f644b9ff6e97eb2808d35309d10e59081c`
+- Exact-head Push CI `32047314403` and Pull Request CI `32047318371` — Passed.
+- Both runs executed Backend 444/444, Frontend 24 files / 149 tests, Compose, Playwright 16/16, Smoke, actionlint, dependency audit, and Gitleaks; only the conditional failure-artifact upload was skipped.
+- Branch, base, upstream, clean worktree, diff check, V1-V12 immutability, additive V13, and forbidden-boundary exclusions were independently verified.
+
+Policy 400/409 separation, isolated aggregate/ceiling/cap direct-SQL cases, full seeded V12 graph preservation, repeated legacy inert-route snapshots, durable ordinal, route SQL-state behavior, stale UI, BFF limits, and all prior security/provider boundaries are resolved. Three required evidence gaps remain.
+
+### 4B-RR6-001 — BLOCKING — provider outcome matrix does not cross the deterministic FAKE boundary
+
+The route-specific unit matrix constructs a mocked service and synthesized operation bodies. It validates the controller mapper but does not execute deterministic FAKE modes through MockMvc, transaction/persistence, adapter normalization, and the safe web DTO. A broken adapter-to-service-to-controller propagation could still pass.
+
+Required correction: add end-to-end MockMvc cases whose deterministic FAKE request identities or approved modes produce both `PLATFORM_RATE_LIMITED` and `PLATFORM_TEMPORARILY_UNAVAILABLE` for every applicable Campaign/Ad Set create/state/budget/retry/reconciliation route family. Assert persisted operation/attempt status and evidence plus exact HTTP 429, ETag, Location, allowed JSON keys/values, and forbidden-field absence. Retain the pure mapper unit matrix as supplemental coverage.
+
+### 4B-RR6-002 / 4B-DB-005 — BLOCKING — concurrency evidence is not a complete persistent graph
+
+Tests validate selected operation fields, cross-row IDs, broad time bounds, aggregates, and Audit presence, but omit the actual Ad Set row and complete monetary/kind/currency/ceiling/version/timestamp/AuditChange values. The above-cap loser candidate entity UUID is not captured, so absence of an orphan entity cannot be proven directly.
+
+Required correction: expose or inject a controlled deterministic UUID source for test candidates, construct complete expected row snapshots for below/exact/above/decrease-first, assert every entity/operation/attempt/batch/reservation/day/Audit/AuditChange row and cross-link including exact version/timestamp transitions, and prove every loser-owned row absent with byte-equivalent preservation of the winner graph.
+
+### 4B-RR6-003 / 4B-DB-004 — BLOCKING — all-five Audit comparison is still partial
+
+The test proves durable ordinal, type sequence, selected budget values, and exact request context, but accepts action from a CREATE/UPDATE allowlist, checks many subject UUIDs only for non-null, and does not compare every old/new value and change order for operation, attempt, entity, state, and budget records.
+
+Required correction: build exact expected persisted Audit and AuditChange record lists for all five command shapes, ordered by durable ordinal and change order, and compare exact action, subject UUID/type, actor/source/request correlation, field/value type, and old/new values. Retain the complete no-event snapshot matrix.
+
+### 4B-RR6-004 — MAJOR — completion report remains overstated
+
+The report calls mocked results deterministic provider execution and describes selected concurrency/Audit assertions as complete graphs and exact records.
+
+Required correction: make these claims case-exact after the executable cases exist and record final superseding-head CI.
+
+### Cycle-6 decision
+
+Manager Decision: `REQUEST_CHANGES`
+
+There is no human-escalation trigger. PR #62 remains Draft; merge and Stage 4C remain locked.
+
 ## Stage Gate decision
 
 Manager Decision: `REQUEST_CHANGES`
