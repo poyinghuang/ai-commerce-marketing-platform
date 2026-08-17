@@ -20,6 +20,15 @@
 - Human Review Required: Yes — the FAKE/local/test authorization exception requires an explicit repository-owner decision
 - Merge: Not started
 
+## Repository-owner decision and correction status
+
+- Decision recorded: 2026-08-17
+- Selected option: **A — deterministic FAKE exception**
+- Exact boundary: the fixed LOCAL/TEST actor may confirm RESUME and budget changes only behind deterministic `FAKE`; credentials, network, real Provider, paid delivery, billing and production remain forbidden, and every real path still requires `PLATFORM_OPERATOR`/`PLATFORM_APPROVER` separation.
+- Correction scope: only this review record and the Stage 4B specification; no runtime, migration, REST, BFF or UI implementation
+- Findings `4B-SPEC-001` through `4B-SPEC-009`: `RESOLVED_PENDING_RE_REVIEW`
+- Gate status: the historical decision below remains authoritative for Head `2b0dba3...`; the corrected Head requires full CI and a fresh Independent Manager Review. It is not self-approved.
+
 ## Scope reviewed
 
 - Approved scope: Stage 4B specification for Campaign/Ad Set preview-confirm-read-state-budget vertical slice and aggregate budget authorization ledger.
@@ -34,13 +43,13 @@
 - Migration reviewed: Proposed additive V13 only. The direction is non-destructive, but exact legacy-operation, account-day bootstrap, clock, FK/coherence, and migration-test contracts are blocking
 - Domain／Transaction／Audit boundary: Stage 4A operation lifecycle is retained, but the proposed authorization substitution and new Audit event model are not approved/representable as written
 - API contract changes: Additive local/test-only routes are proposed, but request/response, per-route concurrency/error, entity-scope, actor/account, Campaign Plan, and schedule contracts are incomplete
-- Frontend／BFF contract changes: Same-origin/fail-closed direction is correct; exact limits/errors and the operator/approver boundary remain unresolved
+- Frontend／BFF contract changes at reviewed Head: Same-origin/fail-closed direction was correct; exact limits/errors and the operator/approver boundary were unresolved and are addressed in the correction cycle below
 - Backward compatibility: Documentation-only now. Proposed V13 is additive, but pre-V13 unbatched operation behavior is unspecified
 - Rollback／forward recovery: Forward-only migration intent is correct; V13 defects would use V14+, but executable recovery evidence is incomplete
 
 ## Impact
 
-- Security impact: No runtime change in this PR. Proposed same-actor activation/budget confirmation conflicts with the parent operator/approver separation requirement and requires human resolution
+- Security impact at reviewed Head: No runtime change in this PR. The proposed same-actor activation/budget confirmation required the human resolution now recorded in the correction cycle
 - Data impact: No data change in this PR. Proposed V13 adds immutable authorization evidence; exact integrity/legacy behavior requires correction
 - Production impact: None; fail-closed required
 - External service／cost impact: None; deterministic fake only
@@ -83,6 +92,20 @@
 | 4B-SPEC-008 | BLOCKING | V13 time/ledger/day coherence | A default does not prevent forged caller `created_at`; reservation-to-day FK/coherence and exact account-day insert/update protectors are incomplete. | Require database overwrite/rejection of caller batch time, derive date from that exact anchor, copy it to reservation, define account/FK/reciprocal/deferred aggregate checks, and add forged clock/orphan/wrong-day/aggregate/version/rollback direct-SQL tests. |
 | 4B-SPEC-009 | MAJOR | Stage 4B verification matrix | Populated V12 upgrade evidence does not enumerate representative platform entities, budget provenance, or each in-flight/terminal unbatched operation state. | Require exact preservation fixtures and documented no-batch legacy behavior in migration compatibility tests. |
 
+## Developer correction evidence pending independent re-review
+
+| Finding | Status | Specification correction |
+| --- | --- | --- |
+| 4B-SPEC-001 | `RESOLVED_PENDING_RE_REVIEW` | Records the repository-owner-approved same-actor exception only under `local/test` + `platform.adapter=fake` + both web/stage flags; expressly forbids credentials/network/real Provider/spend/production and retains real operator/approver separation. |
+| 4B-SPEC-002 | `RESOLVED_PENDING_RE_REVIEW` | Defines exact ACTIVE Campaign Plan eligibility, META/OUTCOME_SALES/TWD fields, version locking, Plan budget caps, database-date eligibility, Asia/Taipei inclusive-date mapping, parent schedule copying, duplicate/stale/ineligible errors and confirmation revalidation. |
+| 4B-SPEC-003 | `RESOLVED_PENDING_RE_REVIEW` | Defines the implemented `platform.adapter=fake` conjunction, exact fixed account UUID/reference/environment/fingerprint with local/test-only initializer and mismatch failure, fixed actor tuple/source and `OFFSITE_CONVERSIONS`. |
+| 4B-SPEC-004 | `RESOLVED_PENDING_RE_REVIEW` | Adds exact typed request/preview/entity DTOs, Optional/null/money rules, typed Campaign/Ad Set state routes, route-specific If-Match/status/body/ETag/replay/error precedence, exact retry/reconcile empty bodies, and stable error codes. BFF limits are 16 KiB request, 1 MiB response, 10 seconds, with exact 413/502/504 behavior. |
+| 4B-SPEC-005 | `RESOLVED_PENDING_RE_REVIEW` | Adds stable account-day UUID, separate exact typed budget Audit record/writer overload, presence/action/change-order rules, five exact Transaction A cardinalities, no-event/redaction and every-position rollback tests. |
+| 4B-SPEC-006 | `RESOLVED_PENDING_RE_REVIEW` | Requires batch-first insertion, rejects retroactive attachment, adds reciprocal deferred checks, preserves pre-V13 rows without backfill, and makes legacy unbatched operation mutation/retry/reconcile inert with a stable code. |
+| 4B-SPEC-007 | `RESOLVED_PENDING_RE_REVIEW` | Defines `INSERT ... ON CONFLICT DO NOTHING` then `SELECT ... FOR UPDATE`, persisted-winner UUID handling, zero-row/version/timestamp behavior, no automatic transaction retry, stable concurrency mapping and first-use barrier tests. |
+| 4B-SPEC-008 | `RESOLVED_PENDING_RE_REVIEW` | Requires database overwrite of the batch clock/date, exact reservation-to-day UUID/composite FK, account FKs, pristine day insertion, positive-delta-only update and reciprocal deferred sum/count/coherence tests. |
+| 4B-SPEC-009 | `RESOLVED_PENDING_RE_REVIEW` | Enumerates the populated V12 preservation fixture across entity/evidence/metric/budget data and every representative unbatched operation status, including HTTP inertness. |
+
 ## Known limitations
 
 - Account authorization is conservative and never released in 4B.
@@ -95,9 +118,9 @@
 
 - Decision: `ESCALATE_TO_HUMAN`
 - Decision rationale: Exact-head CI and documentation scope passed, but 4B-SPEC-001 is an unresolved conflict between the approved operator/approver security boundary and the proposed same-actor FAKE/local/test mutation flow. The escalation policy requires a human decision when specifications conflict or a security/product boundary has multiple reasonable choices. Findings 002–009 also prevent an implementation-ready approval.
-- Required next action: Keep PR #61 Draft. Freeze merge and every Stage 4B runtime/migration/API/BFF/UI implementation. Obtain the explicit repository-owner decision for 4B-SPEC-001; then revise only the Stage 4B specification and review record for findings 001–009, push a new exact Head, wait for full Push/PR CI, and request a fresh independent review.
+- Required next action: Keep PR #61 Draft and runtime frozen. Push the specification-only correction, wait for full exact-head Push/PR CI, and request a fresh Independent Manager Review of all `RESOLVED_PENDING_RE_REVIEW` findings.
 - Human approval required: `Yes`
-- Human approval reason／evidence: Decide whether FAKE/local/test activation and budget commands receive a narrowly scoped same-actor exemption, or remain disabled until operator/approver authorization separation exists.
+- Human approval reason／evidence: Satisfied for the narrow deterministic-FAKE exception by the repository-owner decision recorded above; no real-path authorization approval was granted.
 
 ## Approval record
 
