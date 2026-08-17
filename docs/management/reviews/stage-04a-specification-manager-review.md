@@ -12,6 +12,7 @@
 - Re-reviewed Candidate Head Commit: `b8781c224748cceac7ec45706382e73c8f592825`
 - Latest Re-reviewed Candidate Head Commit: `ddf4d452c1aec09dcbaabe075da13250646a26f9`
 - Latest Contract Candidate Head Commit: `9b63954018fa8ce01e877039f3a55bc5f3ba03a9`
+- Latest Recovery Candidate Head Commit: `e661c0d3a219afea2dbc8b89a2a9ad560f3b81c7`
 - Pull Request: #59
 
 ## Status before review
@@ -25,14 +26,14 @@
 ## Developer resolution status
 
 - Resolution date: 2026-08-17
-- Status: Developer corrections for findings 4A-SPEC-015 through 017 are `RESOLVED_PENDING_RE_REVIEW`; Manager Decision remains `REQUEST_CHANGES`
-- Correction Head: Pending developer correction commit
-- Remote CI for correction Head: Pending new Push and PR runs
+- Status: Independent re-review completed for exact Head `e661c0d3a219afea2dbc8b89a2a9ad560f3b81c7`; Manager Decision remains `REQUEST_CHANGES`
+- Correction Head: `e661c0d3a219afea2dbc8b89a2a9ad560f3b81c7`
+- Remote CI for correction Head: Passed — Push Run `31982708594`; PR Run `31982710953`
 - Developer local validation: Passed — exact two-document scope, Markdown table sanity, `git diff --check`, Gitleaks 8.28.0 history (103 commits) and worktree; no leaks found
 - Implementation: Not started
 - Migration/runtime/API/UI/adapter changes: None
 - Prior Manager Decisions: `REQUEST_CHANGES` for reviewed Heads `d129df447f670a9f5b1faab230a06a64c8240438`, `b8781c224748cceac7ec45706382e73c8f592825`, `ddf4d452c1aec09dcbaabe075da13250646a26f9`, and `9b63954018fa8ce01e877039f3a55bc5f3ba03a9`; none is approval of the correction Head
-- Merge: Blocked; PR #59 remains Draft through new Push/PR CI and exact-head Independent Manager re-review
+- Merge: Blocked; PR #59 remains Draft through one reconciled-mutation correction, new Push/PR CI, and exact-head Independent Manager re-review
 
 ## Scope reviewed
 
@@ -203,6 +204,19 @@ No escalation-policy trigger exists. These are ordinary specification correction
 
 No human escalation trigger is present. Stage 4A implementation remains locked.
 
+### Re-review of recovery Head `e661c0d3a219afea2dbc8b89a2a9ad560f3b81c7`
+
+- Exact scope/identity and local checks passed; PR remained Draft/Open/Mergeable with only the two approved documents.
+- Push Run `31982708594` and PR Run `31982710953` passed at the exact Head with all required jobs/steps executed; only successful-Playwright failure-artifact upload was skipped.
+- Database specialist: PASS; stale recovery transformations and all prior additive V12 contracts remain coherent.
+- Architecture specialist: 4A-SPEC-015 through 017 are resolved; one reconciled-mutation success contradiction remains.
+
+| ID | Severity | File/Evidence | Finding | Required fix/test |
+| --- | --- | --- | --- | --- |
+| 4A-SPEC-018 | BLOCKING | `docs/stages/stage-04a-platform-foundation.md:186`, `:319`, `:467`, `:494`, `:855` | `ReconciliationFound` changes a mutation operation to `SUCCEEDED`, but the contract applies only ID/optional observation and omits the confirmed `PAUSE`/`RESUME` desired-state or `UPDATE_BUDGET` amount/provenance mutation. Reconciled budget success therefore cannot satisfy the reciprocal deferred trigger, and reconciled state mutation leaves PostgreSQL inconsistent with the confirmed result. | Require reconciled mutation success to atomically apply the same desired-state or budget/provenance change as direct success, subject to the durable payload's expected entity version; combine optional observed-state change; emit the exact entity `ENTITY_RESULT_APPLIED` Audit event; define stale-version ambiguity handling; and add PAUSE, RESUME, UPDATE_BUDGET, stale-version, trigger-coherence, and Audit rollback tests. |
+
+No escalation trigger exists. Implementation remains locked.
+
 ## Known limitations
 
 - Remote CI validates the current repository baseline only; it cannot execute the proposed V12 or future 4A implementation in this documentation-only PR.
@@ -214,8 +228,8 @@ No human escalation trigger is present. Stage 4A implementation remains locked.
 ## Stage Gate decision
 
 - Decision: REQUEST_CHANGES
-- Decision rationale: Candidate Head `9b63954018fa8ce01e877039f3a55bc5f3ba03a9`, exact scope, and required CI passed; database review is clean, 4A-SPEC-012/013 are resolved, and no escalation trigger exists. However, 4A-SPEC-015 leaves an allowed effective observed-state mutation unauditable, while 016/017 leave recovery and replay contracts inconsistent. The specification still is not one exact executable contract.
-- Required next action: Keep PR #59 Draft. The specification Developer Agent must correct only 4A-SPEC-015 through 017, validate scope/diff/Gitleaks, push a new exact Head, and pass full Push/PR CI. Then perform another independent exact-head Manager Review. Do not create V12 or runtime implementation.
+- Decision rationale: Candidate Head `e661c0d3a219afea2dbc8b89a2a9ad560f3b81c7`, exact scope, and required CI passed; both specialist reviews confirm 4A-SPEC-015 through 017 and prior database findings resolved, and no escalation trigger exists. However, 4A-SPEC-018 makes reconciled mutation success incompatible with the authoritative entity and budget-provenance contract.
+- Required next action: Keep PR #59 Draft. The specification Developer Agent must correct only 4A-SPEC-018, validate scope/diff/Gitleaks, push a new exact Head, and pass full Push/PR CI. Then perform another independent exact-head Manager Review. Do not create V12 or runtime implementation.
 - Human approval required: No for the required corrections if they remain within the approved deterministic local/test-only 4A scope.
 - Human approval reason/evidence: The findings are technical consistency and verification-contract corrections within the already approved Stage 04 boundaries. Escalate if resolution would change product cardinality, security/tenant authority, credentials/access, spend, production, destructive data behavior, or Stage 4B+ scope.
 
