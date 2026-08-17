@@ -80,9 +80,11 @@ Known non-blocking warnings: Mockito/Byte Buddy reports its existing dynamic-age
 ## Remote delivery status
 
 - Draft PR: #60 (remains Draft)
-- Prior Push/PR evidence is superseded by the current correction set.
-- Push CI: Pending the new exact Head.
-- Pull Request CI: Pending the new exact Head.
+- Correction implementation Head: `65e4b5c8835918986b74cc7c08ad9930ebdf80c7`
+- Push CI: Run `31992584736` passed at the correction implementation Head; `quality-and-compose` and `secret-scan` both passed.
+- Pull Request CI: Run `31992587232` passed at the correction implementation Head; `quality-and-compose` and `secret-scan` both passed.
+- Required execution: Backend 337/337, frontend lint/typecheck/22 files and 134 tests/build/audit, Compose cold start, Smoke, Playwright 14/14, pinned actionlint, and Gitleaks all executed and passed. Only failure-artifact upload was conditionally skipped because Playwright passed.
+- Evidence-only Head CI: Pending after this report commit; it will supersede the correction implementation Head for independent review.
 - Independent Manager Review: Re-review pending after exact-head CI
 - Manager Decision: `REQUEST_CHANGES` preserved
 - Merge and post-merge verification: Not started
