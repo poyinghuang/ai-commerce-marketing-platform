@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
+import java.sql.SQLException;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -33,6 +34,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.dao.DataAccessException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.test.context.ActiveProfiles;
@@ -372,12 +374,38 @@ class PlatformOperationIntegrationTest {
         assertBudgetSuccessWithoutEntityRejected(reconciledId,"{\"schemaVersion\":1,\"providerKey\":\"FAKE\",\"attemptKind\":\"RECONCILE\",\"resultKind\":\"FOUND\",\"observedState\":\"PAUSED\"}");
     }
 
+    @Test
+    void wrongNonSuccessReusedBudgetOperationsAndPolicyCurrencyBoundsRollbackWithExactInvariant() {
+        BudgetFixture fixture=budgetFixture("budget-negative");
+        assertAdSetSqlStateUnchanged(fixture.adSetUuid(),"23514",()->new TransactionTemplate(transactionManager).executeWithoutResult(status->jdbc.update("update platform_ad_sets set budget_amount=30,last_budget_operation_uuid=?,version=version+1,updated_at=current_timestamp where platform_ad_set_uuid=?",fixture.createOperationUuid(),fixture.adSetUuid())));
+
+        UUID pendingId=UUID.randomUUID();var pendingContext=contexts.forCurrentActor("budget-pending-"+pendingId);
+        service.create(budgetCommand(pendingId,UUID.randomUUID(),fixture.adSetUuid(),1,"20","30"),pendingContext);
+        assertAdSetSqlStateUnchanged(fixture.adSetUuid(),"23514",()->new TransactionTemplate(transactionManager).executeWithoutResult(status->jdbc.update("update platform_ad_sets set budget_amount=30,last_budget_operation_uuid=?,version=version+1,updated_at=current_timestamp where platform_ad_set_uuid=?",pendingId,fixture.adSetUuid())));
+        assertAdSetSqlStateUnchanged(fixture.adSetUuid(),"23514",()->jdbc.update("update platform_ad_sets set currency='USD',budget_amount=30,last_budget_operation_uuid=?,version=version+1,updated_at=current_timestamp where platform_ad_set_uuid=?",pendingId,fixture.adSetUuid()));
+        assertAdSetSqlStateUnchanged(fixture.adSetUuid(),"23514",()->jdbc.update("update platform_ad_sets set budget_type='LIFETIME',budget_amount=30,last_budget_operation_uuid=?,version=version+1,updated_at=current_timestamp where platform_ad_set_uuid=?",pendingId,fixture.adSetUuid()));
+        assertAdSetSqlStateUnchanged(fixture.adSetUuid(),"23514",()->jdbc.update("update platform_ad_sets set budget_amount=101,last_budget_operation_uuid=?,version=version+1,updated_at=current_timestamp where platform_ad_set_uuid=?",pendingId,fixture.adSetUuid()));
+
+        UUID firstId=UUID.randomUUID();var firstContext=contexts.forCurrentActor("budget-used-first-"+firstId);var first=service.create(budgetCommand(firstId,UUID.randomUUID(),fixture.adSetUuid(),1,"20","30"),firstContext);service.submit(firstId,first.getVersion());
+        UUID secondId=UUID.randomUUID();var secondContext=contexts.forCurrentActor("budget-used-second-"+secondId);var second=service.create(budgetCommand(secondId,UUID.randomUUID(),fixture.adSetUuid(),2,"30","15"),secondContext);service.submit(secondId,second.getVersion());
+        assertAdSetSqlStateUnchanged(fixture.adSetUuid(),"23514",()->new TransactionTemplate(transactionManager).executeWithoutResult(status->jdbc.update("update platform_ad_sets set budget_amount=30,last_budget_operation_uuid=?,version=version+1,updated_at=current_timestamp where platform_ad_set_uuid=?",firstId,fixture.adSetUuid())));
+    }
+
     private void assertBudgetSuccessWithoutEntityRejected(UUID operationUuid,String evidence) {
         String kind=jdbc.queryForObject("select case when status='RECONCILING' then 'RECONCILE' else 'SUBMIT' end from platform_operations where operation_uuid=?",String.class,operationUuid);
         UUID attempt=jdbc.queryForObject("select operation_attempt_uuid from platform_operation_attempts where operation_uuid=? and attempt_kind=? and status='STARTED'",UUID.class,operationUuid,kind);
-        assertThatThrownBy(()->new TransactionTemplate(transactionManager).executeWithoutResult(status->{jdbc.update("update platform_operation_attempts set status='SUCCEEDED',evidence=?::jsonb,completed_at=current_timestamp,version=1 where operation_attempt_uuid=?",evidence,attempt);jdbc.update("update platform_operations set status='SUCCEEDED',outcome_evidence=?::jsonb,completed_at=current_timestamp,updated_at=current_timestamp,version=version+1 where operation_uuid=?",evidence,operationUuid);})).isInstanceOf(RuntimeException.class);
+        String operationBefore=jdbc.queryForObject("select status from platform_operations where operation_uuid=?",String.class,operationUuid);var adSetBefore=jdbc.queryForMap("select budget_amount,last_budget_operation_uuid,version from platform_ad_sets where platform_ad_set_uuid=(select platform_ad_set_uuid from platform_operations where operation_uuid=?)",operationUuid);int auditBefore=jdbc.queryForObject("select count(*) from audit_logs where operation_uuid=?",Integer.class,operationUuid);
+        assertThatThrownBy(()->new TransactionTemplate(transactionManager).executeWithoutResult(status->{jdbc.update("update platform_operation_attempts set status='SUCCEEDED',evidence=?::jsonb,completed_at=current_timestamp,version=1 where operation_attempt_uuid=?",evidence,attempt);jdbc.update("update platform_operations set status='SUCCEEDED',outcome_evidence=?::jsonb,completed_at=current_timestamp,updated_at=current_timestamp,version=version+1 where operation_uuid=?",evidence,operationUuid);})).isInstanceOf(DataAccessException.class).satisfies(error->assertThat(sqlState(error)).isEqualTo("23514"));
+        assertThat(jdbc.queryForObject("select status from platform_operations where operation_uuid=?",String.class,operationUuid)).isEqualTo(operationBefore);
         assertThat(jdbc.queryForObject("select status from platform_operation_attempts where operation_attempt_uuid=?",String.class,attempt)).isEqualTo("STARTED");
+        assertThat(jdbc.queryForMap("select budget_amount,last_budget_operation_uuid,version from platform_ad_sets where platform_ad_set_uuid=(select platform_ad_set_uuid from platform_operations where operation_uuid=?)",operationUuid)).isEqualTo(adSetBefore);
+        assertThat(jdbc.queryForObject("select count(*) from audit_logs where operation_uuid=?",Integer.class,operationUuid)).isEqualTo(auditBefore);
     }
+
+    private BudgetFixture budgetFixture(String prefix){UUID campaignId=UUID.randomUUID();var campaignContext=contexts.forCurrentActor(prefix+"-campaign-"+campaignId);var campaignCommand=createCampaign(campaignId,UUID.randomUUID());var campaign=service.create(campaignCommand,campaignContext);service.submit(campaignId,campaign.getVersion());UUID adSetUuid=UUID.randomUUID(),createId=UUID.randomUUID();var createContext=contexts.forCurrentActor(prefix+"-adset-"+createId);var adSet=service.create(createAdSet(createId,UUID.randomUUID(),adSetUuid,campaignCommand.entityUuid()),createContext);service.submit(createId,adSet.getVersion());return new BudgetFixture(adSetUuid,createId);}
+    private void assertAdSetSqlStateUnchanged(UUID adSetUuid,String state,org.assertj.core.api.ThrowableAssert.ThrowingCallable call){var before=jdbc.queryForMap("select budget_type,budget_amount,currency,last_budget_operation_uuid,version from platform_ad_sets where platform_ad_set_uuid=?",adSetUuid);assertThatThrownBy(call).isInstanceOf(DataAccessException.class).satisfies(error->assertThat(sqlState(error)).isEqualTo(state));assertThat(jdbc.queryForMap("select budget_type,budget_amount,currency,last_budget_operation_uuid,version from platform_ad_sets where platform_ad_set_uuid=?",adSetUuid)).isEqualTo(before);}
+    private String sqlState(Throwable error){Throwable current=error;while(current!=null){if(current instanceof SQLException sql)return sql.getSQLState();current=current.getCause();}throw new AssertionError("missing SQLException",error);}
+    private record BudgetFixture(UUID adSetUuid,UUID createOperationUuid){}
 
     @Test
     void reconciledFoundStaleMutationsUseExactAmbiguousRepresentationAtomically() {

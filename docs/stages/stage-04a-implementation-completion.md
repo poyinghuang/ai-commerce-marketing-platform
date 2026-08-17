@@ -6,8 +6,8 @@
 - Base: `681a51e7cca769e579bddc3f8157f2ab52c19497`
 - Scope: internal PostgreSQL/provider-neutral foundation only
 - Migration: additive `V12__create_platform_operation_foundation.sql`; V1-V11 unchanged
-- Status: Manager re-review findings resolved by Developer; full local verification passed and exact-head Remote CI pending
-- Manager Decision: `REQUEST_CHANGES` at reviewed Head `85832f0be732bf50f5196fea0994c730fb70e184`; preserved pending independent re-review
+- Status: Manager re-review cycle 2 finding resolved by Developer; full local verification passed and exact-head Remote CI pending
+- Manager Decision: `REQUEST_CHANGES`; preserved pending independent re-review
 - Merge: Not started
 - Stage 4B: Locked
 
@@ -46,45 +46,44 @@ Developer resolution status: `RESOLVED_PENDING_RE_REVIEW`. This is not a Manager
 | 4A-IMPL-013 | V12 overwrites caller-supplied claim time with PostgreSQL statement time and checks retry eligibility against server time; `Milestone4ASchemaIntegrationTest#exactOutcomeEvidenceMatrixAndRetryDueTimeAreDatabaseEnforced` covers forged-future, early, due, and late claims. |
 | 4A-IMPL-014 | The deferred attempt-coherence trigger proves `next_attempt_at = completed_at + retryAfterSeconds`; `Milestone4ASchemaIntegrationTest#exactOutcomeEvidenceMatrixAndRetryDueTimeAreDatabaseEnforced` covers exact, one-second early, and one-second late schedules. |
 | 4A-IMPL-015 | Money canonicalization converts negative stripped scales to scale zero without rounding, and Campaign construction accepts only `PAUSED`; `DeterministicFakePlatformAdapterTest#commandMoneyUsesScaleZeroThroughSixAndCampaignCreateIsPausedOnly` covers integer, trailing-zero, fractional, and rejected ACTIVE cases. |
+| 4A-IMPL-016 | Case-specific acceptance tests now execute each requested Ad, budget, metric, fake-provider, and typed-Audit invariant. Every negative database case asserts its exact SQLState and exact unchanged durable post-state; the methods and cases are enumerated below. |
 
 ### Case-exact acceptance evidence
 
-- `Milestone4AAdEvidenceAcceptanceIntegrationTest#adRequiresExactActiveProductGeneratedImageApprovalPreservationAndChecksumSnapshot` exercises a valid immutable Ad snapshot plus wrong Product, archived Product, missing/wrong Asset, non-image Asset, missing/rejected review, wrong output Product, checksum mismatch, immutable evidence, and Ad hard-delete rejection.
+- `Milestone4AAdEvidenceAcceptanceIntegrationTest#productAssetOutputReviewAndPreservationFailuresExposeExactSqlStateAndLeaveNoAd` executes mismatched Product/Asset and Product/output foreign keys (`23503`), missing review (`23503`), rejected/pending review, blocked preservation, and approved TEXT output (`23514`). `#inactiveNonImageNullChecksumAndLaterAssetDivergenceKeepHistoricalSnapshotButBlockNewAd` separately executes archived, VIDEO, and null-checksum Asset divergence (`23514`), proves the prior Ad snapshot remains byte-for-byte unchanged, and proves no new Ad is written.
 - `Milestone4ASchemaIntegrationTest` exercises all seven table hard-delete guards, pristine inserts, deferred operation/attempt/outcome/evidence matrices, exact due/schedule boundaries, collision rollback, and schema/Hibernate constraints.
-- `PlatformOperationIntegrationTest#directAndReconciledBudgetSuccessRequireReciprocalAmountAndProvenanceMutation` covers direct and reconciled budget increase/decrease success and missing entity/provenance, amount, currency/pointer negatives; `#reconciledFoundSuccessfullyAppliesPauseResumeAndBudgetIncreaseDecreaseAtomically` covers reconciled PAUSE, RESUME, budget increase, and budget decrease with exact attempt/entity/Audit evidence.
-- `Milestone4AMetricAcceptanceIntegrationTest` covers revision 1/2 coexistence, latest/as-of selection, nullable metrics, skipped/repeated/nonmonotonic revisions, fingerprint duplicates, negative metrics, immutability/delete, account currency/timezone/activity coherence, and one-winner concurrent next-revision insertion.
+- `PlatformOperationIntegrationTest#wrongNonSuccessReusedBudgetOperationsAndPolicyCurrencyBoundsRollbackWithExactInvariant` executes wrong-kind, non-success, reused-success, currency, budget-policy, and lower/upper-bound violations (`23514`) and asserts the complete Ad Set row is unchanged. `#directAndReconciledBudgetSuccessRequireReciprocalAmountAndProvenanceMutation` executes direct and reconciled missing reciprocal mutation/provenance paths (`23514`) and asserts operation, attempt, Ad Set, and Audit post-state are unchanged; `#reconciledFoundSuccessfullyAppliesPauseResumeAndBudgetIncreaseDecreaseAtomically` proves the four valid reconciled mutation paths.
+- `Milestone4AMetricAcceptanceIntegrationTest#baseWindowAttributionFreshnessAndFingerprintInvalidCasesExposeExactConstraintAndPreserveState` separately executes negative impressions/reach/clicks/conversions/spend/revenue, equal/reversed window, invalid 7-day click/1-day view attribution, non-current freshness, and uppercase fingerprint (`23514`), plus duplicate fingerprint (`23505`), asserting the snapshot revision set remains unchanged after each failure. The remaining metric methods prove revision coexistence/latest/as-of semantics, nullable metrics, revision/fingerprint ordering, immutability/delete, account coherence, and one-winner concurrency.
 - `MigrationCompatibilityTest#populatedV11RowsAndApprovedEvidenceSurviveUpgradeToV12` preserves Product, Campaign Plan, campaign-product, Asset checksum/version, AI output, and review evidence; `#failedV12MigrationRollsBackEveryPartialV12Object` proves collision atomicity and `#canonicalV1ThroughV11ContentRemainsStable` proves V1-V11 byte preservation.
-- `PlatformOperationAuditRollbackIntegrationTest#auditFailureBeforeBetweenAndAfterFinalAppendRollsBackAttemptOperationEntityAndAudit` covers failures before, between, and after final Audit append with operation, attempt, entity, and event rollback. Operation integration tests cover exact successful/failure/no-event cardinality and concurrent finalizer one-winner behavior.
-- `DeterministicFakePlatformAdapterTest` covers every submit outcome, reconciliation result, deterministic Campaign/Ad Set/Ad ID prefix, canonical money, and Campaign PAUSED boundary. `PlatformAdapterProfileTest` proves the adapter exists only with explicit enablement under local/test and is absent under default/production or missing configuration.
+- `PlatformTypedAuditAcceptanceIntegrationTest#successfulCreateEmitsExactTypedSequenceContentAndPersistedChangeOrder` asserts the exact seven-event typed sequence, correlation/entity/operation identities, transition fields, fingerprint, and persisted ordered change content. `#replayAndInvalidEntryEmitNoTypedOrPersistedEvents` proves replay and stale-entry no-event behavior. `PlatformOperationAuditRollbackIntegrationTest#auditFailureBeforeBetweenAndAfterFinalAppendRollsBackAttemptOperationEntityAndAudit` proves exact operation, attempt, entity, typed-event, and persisted-Audit rollback at every append position.
+- `DeterministicFakePlatformAdapterTest#everyFixtureReturnsExactNormalizedCodeTraceIdRetryAndEvidenceFields` asserts the exact deterministic Campaign ID, trace ID, fingerprint, normalized code, retry delay, optionals, and evidence schema/provider/kind/result/observed fields for every submit and reconciliation fixture. Other methods prove deterministic Campaign/Ad Set/Ad IDs, canonical money, and Campaign PAUSED. `PlatformAdapterProfileTest` proves the fake exists only with explicit enablement under local/test and is absent under default/production or missing configuration.
 
 ## Local verification record
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| Backend/Testcontainers | Passed | 337 tests; 0 failures, 0 errors, 0 skipped |
+| Backend/Testcontainers | Passed | 344 tests; 0 failures, 0 errors, 0 skipped |
 | V12 migration/direct SQL/Hibernate | Passed | Included in the full Backend suite; only V12 is added and V1-V11 are unchanged |
 | Frontend lint | Passed | Existing unchanged frontend |
 | Frontend typecheck | Passed | Existing unchanged frontend |
 | Frontend tests | Passed | 22 files / 134 tests |
 | Frontend production build | Passed | Next.js build completed |
 | Frontend dependency audit | Passed | `npm audit --omit=dev`: 0 vulnerabilities |
-| Compose config/cold health | Passed | Isolated full stack became healthy |
+| Compose config/cold health | Passed | Repository default Compose project became healthy on local ports 18080/13000 |
 | Smoke | Passed | Backend/BFF health and Product create/read/update/archive/restore chain |
 | Playwright | Passed | 14 Chromium tests |
 | actionlint | Passed | Pinned v1.7.7 |
 | Gitleaks | Passed | Pinned v8.28.0 history and worktree scans |
 | `git diff --check` | Passed | No whitespace errors |
 
-Known non-blocking warnings: Mockito/Byte Buddy reports its existing dynamic-agent deprecation warning. Windows Git reports that V12's LF working-tree line endings may be converted to CRLF when Git next rewrites that file. Maven Surefire reported a fork-JVM shutdown timeout after publishing the successful 337-test result; Maven exited successfully and no test failed or was skipped. npm reports the existing `unrs-resolver@1.12.2` allow-scripts warning. The first Playwright attempt used an isolated Compose project name while DB-assertion fixtures intentionally address the repository's default project, producing six environment-only DB lookup failures; that stack was removed, the supported default project was started on `BACKEND_PORT=18080` and `FRONTEND_PORT=13000`, and the complete 14-test suite then passed.
+Known non-blocking warnings: Mockito/Byte Buddy reports its existing dynamic-agent deprecation warning. Windows Git reports that V12's LF working-tree line endings may be converted to CRLF when Git next rewrites that file. Maven Surefire reported a fork-JVM shutdown timeout after publishing the successful 344-test result; Maven exited successfully and no test failed or was skipped. npm reports the existing `unrs-resolver@1.12.2` allow-scripts warning. The first local PowerShell smoke harness attempt passed a multi-value response-header object directly as `If-Match`, so PowerShell rejected the header format before issuing the PATCH; the corrected harness selected the single ETag value and the complete create/read/update/archive/restore chain passed.
 
 ## Remote delivery status
 
 - Draft PR: #60 (remains Draft)
-- Correction implementation Head: `65e4b5c8835918986b74cc7c08ad9930ebdf80c7`
-- Push CI: Run `31992584736` passed at the correction implementation Head; `quality-and-compose` and `secret-scan` both passed.
-- Pull Request CI: Run `31992587232` passed at the correction implementation Head; `quality-and-compose` and `secret-scan` both passed.
-- Required execution: Backend 337/337, frontend lint/typecheck/22 files and 134 tests/build/audit, Compose cold start, Smoke, Playwright 14/14, pinned actionlint, and Gitleaks all executed and passed. Only failure-artifact upload was conditionally skipped because Playwright passed.
-- Evidence-only Head CI: Pending after this report commit; it will supersede the correction implementation Head for independent review.
+- Prior exact-head evidence is superseded by the current Manager correction cycle.
+- Current correction implementation Head and Push/PR CI: Pending after local validation and push.
+- Evidence-only Head CI: Pending after the exact Remote CI results are recorded; that Head will supersede the correction implementation Head for independent review.
 - Independent Manager Review: Re-review pending after exact-head CI
 - Manager Decision: `REQUEST_CHANGES` preserved
 - Merge and post-merge verification: Not started
