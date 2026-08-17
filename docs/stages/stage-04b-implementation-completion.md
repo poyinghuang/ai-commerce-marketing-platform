@@ -6,8 +6,8 @@
 - Base: `b43204bc1b06cd0c34c56540735b2b9694d81043`
 - Scope: deterministic-FAKE Campaign and Ad Set vertical slice
 - Migration: additive `V13__add_platform_budget_authorization_ledger.sql`; V1-V12 unchanged
-- Status: Manager cycle 5 findings corrected; `RESOLVED_PENDING_RE_REVIEW`
-- Manager Decision: `REQUEST_CHANGES` (preserved pending independent re-review)
+- Status: Independent Manager Review complete at reviewed Head `6dbb3fb2aac1d3a5d22610f992fecd64fac3ebd2`; approval-record CI pending
+- Manager Decision: `APPROVE`
 - Merge: Not authorized
 - Stage 4C: Locked
 
@@ -164,3 +164,12 @@ This evidence-only documentation commit creates a superseding Head. Its exact Pu
 - Pull Request CI Run `32053429233` — Passed; both `quality-and-compose` and `secret-scan` completed successfully.
 - Both runs executed actionlint, Backend 446/446, frontend install/lint/typecheck/149 tests/build/audit, Compose build/health, Playwright 16/16, Smoke, cleanup, and pinned Gitleaks. The conditional Playwright failure-artifact upload was skipped because Playwright passed. The existing GitHub Actions Node.js deprecation annotation remains non-blocking.
 - This evidence-only documentation commit creates the superseding candidate Head. Its exact Push and Pull Request CI Run IDs are reported in the Developer handoff after both workflows complete, without another report mutation.
+
+## Cycle 8 Independent Manager approval
+
+- Reviewed exact Head: `6dbb3fb2aac1d3a5d22610f992fecd64fac3ebd2`.
+- Push CI Run `32054107545` — Passed; `quality-and-compose` and `secret-scan` completed successfully.
+- Pull Request CI Run `32054111422` — Passed; `quality-and-compose` and `secret-scan` completed successfully.
+- Both exact-head runs executed Backend 446/446, frontend install/lint/typecheck/149 tests/build/audit, Compose build/health, Playwright 16/16, Smoke, actionlint, cleanup, and pinned Gitleaks. Only the conditional failure-artifact upload was skipped because Playwright passed.
+- Independent architecture/API/security/UI/BFF/Audit and database/concurrency/migration/Audit reviewers both recommended `APPROVE`; no CRITICAL, BLOCKING, unresolved required MAJOR, or human-escalation trigger remains.
+- The approval applies to the reviewed Head above. This governance-only approval-record update creates a new Head whose complete Push and Pull Request CI must pass before Ready or merge. Stage 4C remains locked until merge and post-merge main verification.

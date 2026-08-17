@@ -434,10 +434,40 @@ Manager Decision: `REQUEST_CHANGES`
 
 There is no human-escalation trigger. PR #62 remains Draft; merge and Stage 4C remain locked.
 
-Developer resolution status: `RESOLVED_PENDING_RE_REVIEW`. The Cycle-7 Manager decision and history remain authoritative until a new independent review evaluates the superseding exact Head and CI evidence.
+## Re-review cycle 8
+
+### Identity and evidence
+
+- Correction commit: `349241247b2197e838de74bfb4d27bee2cbf766f`
+- Approved reviewed Head: `6dbb3fb2aac1d3a5d22610f992fecd64fac3ebd2`
+- Exact-head Push CI `32054107545` and Pull Request CI `32054111422` — Passed.
+- Both runs executed Backend 446/446, Frontend 149 tests, Compose, Playwright 16/16, Smoke, actionlint, dependency audit, and Gitleaks; only the conditional failure-artifact upload was skipped after success.
+- Branch, base, upstream, clean worktree, diff check, V1-V12 immutability, additive V13, actual PR diff, completion evidence, and all provider/security boundaries were independently verified.
+
+### Findings disposition
+
+- `4B-RR7-001`: Resolved. Both legal retryable deterministic FAKE outcomes cross the five applicable initial-submit route families and compare every safe DTO field plus complete persisted operation, attempt, evidence, hashes, retry schedule, identities, and database-consistent timestamps. No illegal reconciliation retryable or pre-due retry path was added.
+- `4B-RR7-002`: Resolved. Independent case-specific expected graphs cover below-cap, exact-cap, above-cap, and decrease-first. The above-cap winner graph is captured while the loser is held at the real ledger hook, remains byte-equivalent after rollback, and every deterministic loser-owned identity is absent.
+- `4B-RR7-003`: Resolved. All five command shapes compare explicit independently owned Audit and AuditChange lists by durable ordinal and change order, including exact action, subject, actor/source/request, field/type, and old/new values. The full no-event and rollback matrix remains green.
+- `4B-RR7-004`: Resolved. The completion report is case-exact and matches executable evidence.
+
+All prior database, migration, concurrency, API, UI, BFF, Audit, idempotency, fixed-account, error-mapping, disclosure, and deterministic FAKE findings were regression-reviewed. No CRITICAL, BLOCKING, unresolved required MAJOR, unauthorized scope change, or human-escalation trigger remains.
+
+### Known limitations and warnings
+
+- Stage 4B remains deterministic FAKE in LOCAL/TEST only. No credential, real Provider, network, paid execution, production behavior, Auth/RBAC/Tenant change, or Stage 4C work is authorized.
+- The conditional Playwright failure-artifact upload was skipped because Playwright passed.
+- Existing GitHub Actions Node.js deprecation and local Mockito/Byte Buddy/Surefire warnings remain non-blocking and documented.
+- The PR description contains older historical test counts and must be refreshed before Ready/merge.
+
+### Cycle-8 decision
+
+Manager Decision: `APPROVE`
+
+This approval applies to exact reviewed Head `6dbb3fb2aac1d3a5d22610f992fecd64fac3ebd2`. This formal review-record commit creates a new Head; governance requires complete exact-new-head Push and Pull Request CI before Ready or merge. Stage 4C remains locked until merge and post-merge main verification.
 
 ## Stage Gate decision
 
-Manager Decision: `REQUEST_CHANGES`
+Manager Decision: `APPROVE`
 
-PR #62 must remain Draft. Merge and Stage 4C remain locked. This decision does not authorize credentials, network access, real Provider access, spend, production behavior, or any scope beyond the approved Stage 4B specification.
+The reviewed Stage 4B runtime scope is approved. PR #62 must remain Draft until this approval-record commit receives complete exact-head CI. Merge and Stage 4C remain locked until the remaining integration gates pass. This decision does not authorize credentials, network access, real Provider access, spend, production behavior, or any scope beyond the approved Stage 4B specification.
