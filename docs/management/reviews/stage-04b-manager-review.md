@@ -176,6 +176,60 @@ Manager Decision: `REQUEST_CHANGES`
 
 There is no human-escalation trigger. PR #62 remains Draft; merge and Stage 4C remain locked.
 
+## Re-review cycle 3
+
+### Identity and evidence
+
+- Correction commit: `2d7970ead97cefc1e9a81aa6884952b18b073831`
+- Reviewed superseding Head: `748ccf4d596aba1fe8d09f937264fc7a1dfa8dc4`
+- Exact-head Push CI `32038483322` and Pull Request CI `32038485543` — Passed.
+- Both runs executed `quality-and-compose` and `secret-scan`: Backend 413/413; Frontend 24 files / 147 tests, build and audit; Compose, Playwright 16/16, Smoke, actionlint, and Gitleaks passed. Only the conditional failure-artifact upload was skipped.
+- Branch, upstream, PR Head, base, clean worktree, diff check, V1-V12 immutability, additive V13 scope, and all forbidden-boundary exclusions were independently verified.
+
+Cycle-2 corrections materially resolved replay entity identity, fixed-account operation scoping, account-day Audit constructor closure, bounded BFF response handling, due-only retry, and several UI flows. The findings below remain required.
+
+### 4B-RR3-001 — BLOCKING — required-field presence and route-aware validation remain incomplete
+
+The Campaign Plan version request field uses a primitive value, is omitted from the explicit required-field set, and can deserialize as zero when absent. Invalid money and other declared fields can still produce empty or generic `body` field errors, and the route/outcome error and safe-response matrix remains incomplete.
+
+Required correction: use presence-aware parsing for every required/non-null field, select the exact declared field in deterministic declaration order, and add exhaustive missing/null/invalid enum/money/UUID, precedence, HTTP 429 outcome, field-error, and safe JSON snapshot tests.
+
+### 4B-RR3-002 — BLOCKING — entity stale handling does not invalidate the preview
+
+After an entity 412, the UI reloads Campaign or Ad Set state but leaves the prior preview and confirmation actionable. A second confirmation can therefore apply stale preview intent using the refreshed ETag.
+
+Required correction: clear preview and pending confirmation state before reload. Test stale Ad Set create, Campaign/Ad Set state, and budget confirmations, requiring a fresh preview and proving no automatic mutation.
+
+### 4B-RR3-003 / 4B-DB-005 — BLOCKING — direct-SQL, real concurrency, and V12 legacy matrix remain incomplete
+
+The labeled direct-SQL matrix updates already-committed immutable rows instead of constructing malformed INSERT/deferred-commit transactions. It therefore does not prove batch-first/retroactive, missing/extra/wrong operation/batch/reservation/day, unapproved operation, forged initial anchors, zero-release, reciprocal rollback, or reused-operation behavior. The concurrency test shares a parent Campaign lock, so transactions serialize before the ledger critical section; exact-at and above-cap are not fresh first-use cases and decrease-first is absent. Legacy evidence covers one failed-retryable row rather than the full coherent V12 state matrix.
+
+Required correction: add malformed batch-first INSERT transactions that reach the intended deferred constraint and assert full rollback; position a database critical-section barrier after separate parent locks for fresh below/exact/above/decrease-first account/day scenarios and assert complete winner/loser state, UUID, version, and timestamps. Build and preserve coherent CREATED, SUBMITTING, FAILED_RETRYABLE, UNKNOWN_OUTCOME, RECONCILING, SUCCEEDED, submit-terminal, and reconciliation-terminal V12 fixtures plus related platform entities/evidence/metric/budget data; verify GET and inert retry/reconcile with zero effects.
+
+### 4B-RR3-004 / 4B-DB-004 — BLOCKING — exact Audit persistence and post-final-append rollback are missing
+
+Persisted tests establish subjects and change names/types but not exact old/new values, UUID equality, action, context, and durable ordering. Rollback failures occur during append positions only and do not cover failure after the final append succeeds but before commit.
+
+Required correction: assert exact persisted event and AuditChange values/context using a durable sequence, add explicit no-event paths, and add a transaction hook proving complete rollback after the final successful append and before commit for the applicable command paths.
+
+### 4B-RR3-005 — MAJOR — BFF timeout and exact-limit evidence is weaker than claimed
+
+The timeout test injects an immediate synthetic error rather than proving the ten-second signal abort. Response tests cover the exact 1 MiB boundary and a larger payload, but not the exact limit-plus-one streaming cancellation.
+
+Required correction: use deterministic fake timers/signals to prove abort at 10,000 ms and add an exact 1 MiB + 1 byte streaming cancellation case, retaining content-type, header, redirect, client-abort, and forbidden-field assertions.
+
+### 4B-RR3-006 — MAJOR — completion evidence remains overstated
+
+The report describes the missing cases above as executed and resolved.
+
+Required correction: make the report case-exact only after the executable evidence exists, and record only the final superseding Head and completed exact-head CI.
+
+### Cycle-3 decision
+
+Manager Decision: `REQUEST_CHANGES`
+
+There is no human-escalation trigger. PR #62 remains Draft; merge and Stage 4C remain locked.
+
 ## Stage Gate decision
 
 Manager Decision: `REQUEST_CHANGES`
