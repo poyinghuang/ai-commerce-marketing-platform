@@ -6,7 +6,7 @@
 - Base: `b43204bc1b06cd0c34c56540735b2b9694d81043`
 - Scope: deterministic-FAKE Campaign and Ad Set vertical slice
 - Migration: additive `V13__add_platform_budget_authorization_ledger.sql`; V1-V12 unchanged
-- Status: Manager cycle 3 findings corrected; `RESOLVED_PENDING_RE_REVIEW`
+- Status: Manager cycle 4 findings corrected; `RESOLVED_PENDING_RE_REVIEW`
 - Manager Decision: `REQUEST_CHANGES` (preserved pending independent re-review)
 - Merge: Not authorized
 - Stage 4C: Locked
@@ -70,7 +70,7 @@ The implementation commit was pushed and both exact-head runs finished successfu
 | Frontend lint | Passed |
 | Frontend typecheck | Passed |
 | Frontend tests | Passed — 24 files / 149 tests |
-| Full Backend | Passed — 422 tests, 0 failures/errors/skips |
+| Full Backend | Passed — 437 tests, 0 failures/errors/skips |
 | Frontend build | Passed |
 | `npm audit --omit=dev` | Passed — 0 vulnerabilities |
 | Compose cold build/start/health | Passed; isolated host ports 18080/13000 were used because unrelated local software occupied 8080 |
@@ -102,3 +102,13 @@ Known local warnings are the existing Mockito/Byte Buddy dynamic-agent deprecati
 - GitHub reported the existing non-blocking Actions Node.js 20 deprecation annotation for pinned `actions/checkout`; only the conditional Playwright failure-artifact upload was skipped after Playwright passed, and no Stage 4B validation or acceptance step was skipped.
 
 This evidence-only documentation commit creates a superseding Head. Its exact Push and Pull Request CI Run IDs are reported in the Developer handoff after both runs complete successfully; the completion report remains clean rather than creating an infinite evidence-commit cycle.
+
+## Manager cycle 4 developer resolution
+
+- `4B-RR4-001`: controller-boundary money parsing now preserves the declared `budgetAmount` or `newBudgetAmount` field and accepts only canonical positive plain decimal text within the route policy. Exponent, leading plus, leading zero, trailing zero, excessive scale, zero/negative, and over-limit cases assert exact field errors and unchanged persistence. The provider retryable matrix covers Campaign create, Campaign/Ad Set state, budget, retry, and reconciliation for `RATE_LIMITED` and `TEMPORARILY_UNAVAILABLE`, with exact 429 status, `ETag`, `Location`, normalized body, and forbidden-field snapshots.
+- `4B-RR4-002`: additive V13 now assigns an immutable, gapless, per-operation `stage4b_operation_ordinal` to Stage 4B-owned Audit rows under a transaction-scoped advisory lock. Ownership, non-negative value, and deferrable operation/ordinal uniqueness are database-enforced; supplied/forged values fail with SQLSTATE `23514`. Hibernate exposes the value read-only, legacy/Stage 4A Audit remains nullable, and migration atomicity is retained.
+- `4B-RR4-003`: fresh below, exact, above-ceiling, and decrease-first concurrency fixtures use separate parent Campaigns and synchronize inside the account/day ledger critical section. Assertions cover deterministic winners/loser, complete entity/operation/batch/reservation/day/Audit rollback, exact UUID/version/timestamp graph, and fresh account/day identities. Direct-SQL cases additionally cover a valid V12 `CREATE_AD`/Ad graph rejected from the Stage 4B batch set, wrong account/Ad Set, forged bootstrap, missing/extra aggregates, delta/ceiling mismatches, committed zero-release, and database-derived business dates.
+- `4B-RR4-004`: controlled `40001` and `40P01` failures are injected at the real route-to-ledger critical-section boundary. Each route test proves one controller/service/transaction attempt, stable 409 `PLATFORM_LEDGER_CONCURRENCY_CONFLICT`, no provider call or automatic retry, and byte-equivalent persistence after rollback.
+- `4B-RR4-005`: the populated V12 upgrade fixture now contains Product ownership, source/generated IMAGE Assets, AI prompt/template/batch/job/output, approved review evidence, Platform Ad checksum linkage, Campaign/Ad Set/metric rows, successful budget provenance, and the complete eight-state operation/attempt/evidence matrix. Every relevant table is snapshotted before V13 and byte-compared after migration; every operation remains readable and retry/reconcile remains inert without writes or adapter calls.
+- `4B-RR4-006`: the five command shapes assert exact durable Audit ordinal, action, subject UUID/type, request/actor/source context, ordered typed changes, operation/batch/reservation/day UUID relationships, monetary old/new values, and aggregate arithmetic. Replay, invalid/stale requests, cap/concurrency rollback, route SQL failure, and legacy operation paths assert no new Audit event; existing every-append-position and post-final-append rollback suites remain green.
+- `4B-RR4-007`: this section and the verification table name only executable cases and observed results. Exact cycle-4 implementation-head and superseding evidence-head CI identities are recorded only after their workflows complete; the preserved Manager Decision remains `REQUEST_CHANGES` pending independent re-review.

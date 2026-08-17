@@ -62,6 +62,61 @@ CREATE TABLE platform_budget_reservations (
     )
 );
 
+-- Stage 4B audit events need a logical, immutable order.  The column remains
+-- nullable for every pre-Stage-4B and Stage-4A audit row; rows owned by an
+-- operation batch receive their ordinal inside the same database transaction.
+ALTER TABLE audit_logs ADD COLUMN stage4b_operation_ordinal SMALLINT;
+ALTER TABLE audit_logs ADD CONSTRAINT ck_audit_logs_stage4b_ordinal
+  CHECK (stage4b_operation_ordinal IS NULL OR stage4b_operation_ordinal >= 0);
+ALTER TABLE audit_logs ADD CONSTRAINT uq_audit_logs_stage4b_operation_ordinal
+  UNIQUE (operation_uuid, stage4b_operation_ordinal) DEFERRABLE INITIALLY DEFERRED;
+
+CREATE FUNCTION platform_assign_stage4b_audit_ordinal() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE owns_stage4b_operation BOOLEAN; expected_ordinal SMALLINT;
+BEGIN
+  -- Serialize writers for one logical operation even when callers use direct SQL.
+  PERFORM pg_advisory_xact_lock(hashtextextended(NEW.operation_uuid::text, 40402));
+  SELECT EXISTS (SELECT 1 FROM platform_operation_batches b WHERE b.operation_uuid=NEW.operation_uuid)
+    INTO owns_stage4b_operation;
+  IF owns_stage4b_operation THEN
+    IF NEW.stage4b_operation_ordinal IS NOT NULL THEN
+      RAISE EXCEPTION 'stage4b audit ordinal is database owned' USING ERRCODE='23514';
+    END IF;
+    SELECT COALESCE(MAX(stage4b_operation_ordinal),-1)+1 INTO expected_ordinal
+      FROM audit_logs WHERE operation_uuid=NEW.operation_uuid;
+    NEW.stage4b_operation_ordinal:=expected_ordinal;
+  ELSIF NEW.stage4b_operation_ordinal IS NOT NULL THEN
+    RAISE EXCEPTION 'stage4b audit ordinal has no operation batch owner' USING ERRCODE='23514';
+  END IF;
+  RETURN NEW;
+END $$;
+CREATE TRIGGER trg_platform_assign_stage4b_audit_ordinal BEFORE INSERT ON audit_logs
+FOR EACH ROW EXECUTE FUNCTION platform_assign_stage4b_audit_ordinal();
+
+CREATE FUNCTION platform_validate_stage4b_audit_ownership() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE operation_id UUID; owns_stage4b_operation BOOLEAN;
+BEGIN
+  operation_id:=NEW.operation_uuid;
+  SELECT EXISTS (SELECT 1 FROM platform_operation_batches b WHERE b.operation_uuid=operation_id)
+    INTO owns_stage4b_operation;
+  IF owns_stage4b_operation AND EXISTS (
+      SELECT 1 FROM audit_logs a
+      WHERE a.operation_uuid=operation_id AND a.stage4b_operation_ordinal IS NULL
+  ) THEN
+    RAISE EXCEPTION 'stage4b audit ordinal is required for operation batch owner' USING ERRCODE='23514';
+  ELSIF NOT owns_stage4b_operation AND EXISTS (
+      SELECT 1 FROM audit_logs a
+      WHERE a.operation_uuid=operation_id AND a.stage4b_operation_ordinal IS NOT NULL
+  ) THEN
+    RAISE EXCEPTION 'stage4b audit ordinal has no operation batch owner' USING ERRCODE='23514';
+  END IF;
+  RETURN NULL;
+END $$;
+CREATE CONSTRAINT TRIGGER trg_platform_audit_ownership_from_audit AFTER INSERT ON audit_logs
+DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION platform_validate_stage4b_audit_ownership();
+CREATE CONSTRAINT TRIGGER trg_platform_audit_ownership_from_batch AFTER INSERT ON platform_operation_batches
+DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION platform_validate_stage4b_audit_ownership();
+
 CREATE INDEX idx_platform_budget_reservations_account_day
   ON platform_budget_reservations(platform_account_uuid, business_date, currency);
 

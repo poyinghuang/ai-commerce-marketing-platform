@@ -363,7 +363,7 @@ class MigrationCompatibilityTest {
         assertThat(flyway(schema, MigrationVersion.fromVersion("11")).migrate().migrationsExecuted).isEqualTo(12);
         JdbcTemplate jdbc = jdbcTemplate(schema);
         UUID product=UUID.randomUUID(), campaignPlan=UUID.randomUUID(), campaignProduct=UUID.randomUUID(), asset=UUID.randomUUID(), template=UUID.randomUUID(), templateVersion=UUID.randomUUID();
-        UUID batch=UUID.randomUUID(), job=UUID.randomUUID(), output=UUID.randomUUID(), decision=UUID.randomUUID();
+        UUID batch=UUID.randomUUID(), job=UUID.randomUUID(), output=UUID.randomUUID(), decision=UUID.randomUUID(), legacyAudit=UUID.randomUUID();
         jdbc.update("INSERT INTO products(product_uuid,product_id,product_name,lifecycle_status,version) VALUES (?,'PROD-00000412','V12 Upgrade','ACTIVE',5)",product);
         jdbc.update("INSERT INTO campaign_plans(campaign_uuid,campaign_name,objective,budget_daily,currency,version) VALUES (?,'Preserved Campaign','sales',12.3456,'TWD',7)",campaignPlan);
         jdbc.update("INSERT INTO campaign_products(campaign_product_uuid,campaign_uuid,product_uuid,version) VALUES (?,?,?,6)",campaignProduct,campaignPlan,product);
@@ -380,6 +380,7 @@ class MigrationCompatibilityTest {
             } catch(Exception failure) { connection.rollback(); throw failure; } finally { connection.setAutoCommit(auto); }
             return null;
         });
+        jdbc.update("INSERT INTO audit_logs(audit_uuid,operation_uuid,request_id,actor_type,actor_id,source,action,entity_type,entity_uuid,product_uuid) VALUES (?,?,'v12-audit','SYSTEM','migration-test','SYSTEM','UPDATE','PRODUCT',?,?)",legacyAudit,UUID.randomUUID(),product,product);
         Flyway latest=flyway(schema,null);
         assertThat(latest.migrate().migrationsExecuted).isEqualTo(2);
         assertThat(jdbc.queryForObject("SELECT review_status FROM ai_generation_outputs WHERE generation_output_uuid=?",String.class,output)).isEqualTo("APPROVED");
@@ -387,6 +388,7 @@ class MigrationCompatibilityTest {
         assertThat(jdbc.queryForMap("SELECT campaign_name,objective,budget_daily,currency,version FROM campaign_plans WHERE campaign_uuid=?",campaignPlan)).containsEntry("campaign_name","Preserved Campaign").containsEntry("objective","sales").containsEntry("currency","TWD").containsEntry("version",7L);
         assertThat(jdbc.queryForMap("SELECT product_uuid,campaign_uuid,asset_type,purpose,checksum_sha256,version FROM assets WHERE asset_uuid=?",asset)).containsEntry("product_uuid",product).containsEntry("campaign_uuid",campaignPlan).containsEntry("asset_type","IMAGE").containsEntry("purpose","PRESERVED").containsEntry("checksum_sha256","d".repeat(64)).containsEntry("version",8L);
         assertThat(jdbc.queryForObject("SELECT version FROM products WHERE product_uuid=?",Long.class,product)).isEqualTo(5L);
+        assertThat(jdbc.queryForObject("SELECT stage4b_operation_ordinal FROM audit_logs WHERE audit_uuid=?",Short.class,legacyAudit)).isNull();
         assertThat(jdbc.queryForObject("SELECT count(*) FROM information_schema.tables WHERE table_schema=? AND table_name LIKE 'platform_%'",Integer.class,schema)).isEqualTo(10);
         assertThat(latest.info().pending()).isEmpty();
     }
@@ -439,6 +441,7 @@ class MigrationCompatibilityTest {
             assertThat(jdbc.queryForObject("SELECT count(*) FROM information_schema.tables WHERE table_schema=? AND table_name=?",Integer.class,schema,table)).isZero();
         }
         assertThat(jdbc.queryForObject("SELECT count(*) FROM information_schema.columns WHERE table_schema=? AND table_name='platform_operation_batches'",Integer.class,schema)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM information_schema.columns WHERE table_schema=? AND table_name='audit_logs' AND column_name='stage4b_operation_ordinal'",Integer.class,schema)).isZero();
         assertThat(jdbc.queryForObject("SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=? AND p.proname LIKE 'platform_%budget%'",Integer.class,schema)).isZero();
         assertThat(flyway(schema,MigrationVersion.fromVersion("12")).info().current().getVersion().getVersion()).isEqualTo("12");
     }

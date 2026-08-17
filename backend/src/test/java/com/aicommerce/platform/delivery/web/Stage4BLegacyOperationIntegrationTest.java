@@ -51,6 +51,16 @@ class Stage4BLegacyOperationIntegrationTest {
     private static final UUID OPERATION=UUID.fromString("00000000-0000-4000-8000-000000000454");
     private static final UUID ATTEMPT=UUID.fromString("00000000-0000-4000-8000-000000000455");
     private static final UUID METRIC=UUID.fromString("00000000-0000-4000-8000-000000000456");
+    private static final UUID PRODUCT=UUID.fromString("00000000-0000-4000-8000-000000000470");
+    private static final UUID SOURCE_ASSET=UUID.fromString("00000000-0000-4000-8000-000000000471");
+    private static final UUID GENERATED_ASSET=UUID.fromString("00000000-0000-4000-8000-000000000472");
+    private static final UUID TEMPLATE=UUID.fromString("00000000-0000-4000-8000-000000000473");
+    private static final UUID TEMPLATE_VERSION=UUID.fromString("00000000-0000-4000-8000-000000000474");
+    private static final UUID AI_BATCH=UUID.fromString("00000000-0000-4000-8000-000000000475");
+    private static final UUID AI_JOB=UUID.fromString("00000000-0000-4000-8000-000000000476");
+    private static final UUID AI_OUTPUT=UUID.fromString("00000000-0000-4000-8000-000000000477");
+    private static final UUID REVIEW=UUID.fromString("00000000-0000-4000-8000-000000000478");
+    private static final UUID AD=UUID.fromString("00000000-0000-4000-8000-000000000479");
     private static final List<UUID> STATE_OPERATIONS=List.of(
         UUID.fromString("00000000-0000-4000-8000-000000000460"),UUID.fromString("00000000-0000-4000-8000-000000000461"),OPERATION,
         UUID.fromString("00000000-0000-4000-8000-000000000462"),UUID.fromString("00000000-0000-4000-8000-000000000463"),
@@ -60,6 +70,7 @@ class Stage4BLegacyOperationIntegrationTest {
     private static final Map<String,Object> V12_ATTEMPT=new LinkedHashMap<>();
     private static final Map<String,Object> V12_METRIC=new LinkedHashMap<>();
     private static final Map<String,Object> V12_AD_SET=new LinkedHashMap<>();
+    private static final Map<String,String> V12_TABLES=new LinkedHashMap<>();
 
     @Container @ServiceConnection
     static final PostgreSQLContainer postgres=new PostgreSQLContainer("postgres:17.6-alpine3.22");
@@ -74,6 +85,8 @@ class Stage4BLegacyOperationIntegrationTest {
         assertThat(row("platform_operation_attempts","operation_attempt_uuid",ATTEMPT)).isEqualTo(V12_ATTEMPT);
         assertThat(row("platform_metric_snapshots","metric_snapshot_uuid",METRIC)).isEqualTo(V12_METRIC);
         assertThat(row("platform_ad_sets","platform_ad_set_uuid",AD_SET)).isEqualTo(V12_AD_SET);
+        V12_TABLES.forEach((table,expected)->assertThat(rows(table,orderColumn(table))).as(table).isEqualTo(expected));
+        assertThat(row("platform_ads","platform_ad_uuid",AD)).containsEntry("product_uuid",PRODUCT).containsEntry("asset_uuid",GENERATED_ASSET).containsEntry("generation_output_uuid",AI_OUTPUT).containsEntry("review_decision_uuid",REVIEW).containsEntry("approved_checksum_sha256","e".repeat(64));
         assertThat(jdbc.queryForObject("select count(*) from platform_operation_batches where operation_uuid=?",Integer.class,OPERATION)).isZero();
 
         assertThat(STATE_OPERATIONS.stream().map(operation->jdbc.queryForObject("select status from platform_operations where operation_uuid=?",String.class,operation)).toList()).containsExactlyElementsOf(EXPECTED_STATES);
@@ -97,6 +110,7 @@ class Stage4BLegacyOperationIntegrationTest {
         jdbc.queryForObject("select count(*) from platform_budget_reservations",Integer.class),
         jdbc.queryForObject("select count(*) from audit_logs",Integer.class),rows("platform_operations","operation_uuid"),rows("platform_operation_attempts","operation_attempt_uuid"),rows("platform_campaigns","platform_campaign_uuid"),rows("platform_ad_sets","platform_ad_set_uuid"),rows("platform_metric_snapshots","metric_snapshot_uuid"));}
     private String rows(String table,String order){return jdbc.queryForObject("select coalesce(jsonb_agg(to_jsonb(t) order by "+order+"),'[]')::text from "+table+" t",String.class);}
+    private static String orderColumn(String table){return switch(table){case "products"->"product_uuid";case "assets"->"asset_uuid";case "ai_generation_outputs"->"generation_output_uuid";case "ai_review_decisions"->"review_decision_uuid";case "platform_campaigns"->"platform_campaign_uuid";case "platform_ad_sets"->"platform_ad_set_uuid";case "platform_ads"->"platform_ad_uuid";case "platform_operations"->"operation_uuid";case "platform_operation_attempts"->"operation_attempt_uuid";default->"metric_snapshot_uuid";};}
     private record Snapshot(int operations,int attempts,int batches,int reservations,int audits,String operationRows,String attemptRows,String campaignRows,String adSetRows,String metricRows){}
 
     @TestConfiguration(proxyBeanMethods=false)
@@ -111,6 +125,18 @@ class Stage4BLegacyOperationIntegrationTest {
                 jdbc.update("insert into campaign_plans(campaign_uuid,campaign_name,start_date,end_date,objective,platform,budget_daily,budget_total,currency) values (?,'Legacy V12',current_date+10,current_date+20,'OUTCOME_SALES','META',100,300,'TWD')",PLAN);
                 jdbc.update("insert into platform_campaigns(platform_campaign_uuid,campaign_uuid,platform_account_uuid,objective,schedule_start,schedule_end,account_timezone) values (?,?,?,'OUTCOME_SALES',current_timestamp+interval '10 days',current_timestamp+interval '20 days','Asia/Taipei')",CAMPAIGN,PLAN,ACCOUNT);
                 jdbc.update("insert into platform_ad_sets(platform_ad_set_uuid,platform_campaign_uuid,platform_account_uuid,budget_type,budget_amount,currency,schedule_start,schedule_end,account_timezone,optimization_goal,targeting_profile_key,placement_profile_key) values (?,?,?,'DAILY',25,'TWD',current_timestamp+interval '10 days',current_timestamp+interval '20 days','Asia/Taipei','OFFSITE_CONVERSIONS','TW_BROAD_FEEDS_V1','TW_BROAD_FEEDS_V1')",AD_SET,CAMPAIGN,ACCOUNT);
+                jdbc.update("insert into products(product_uuid,product_id,product_name,lifecycle_status) values (?,'PROD-00000470','Legacy platform product','ACTIVE')",PRODUCT);
+                jdbc.update("insert into campaign_products(campaign_product_uuid,campaign_uuid,product_uuid) values (?,?,?)",UUID.randomUUID(),PLAN,PRODUCT);
+                jdbc.update("insert into assets(asset_uuid,product_uuid,campaign_uuid,asset_type,purpose,checksum_sha256) values (?,?,?,'IMAGE','SOURCE',?)",SOURCE_ASSET,PRODUCT,PLAN,"d".repeat(64));
+                jdbc.update("insert into assets(asset_uuid,product_uuid,campaign_uuid,asset_type,purpose,checksum_sha256) values (?,?,?,'IMAGE','GENERATED',?)",GENERATED_ASSET,PRODUCT,PLAN,"e".repeat(64));
+                jdbc.update("insert into ai_prompt_templates(prompt_template_uuid,template_key,generation_type,display_name) values (?,'legacy.platform.image','IMAGE','Legacy image')",TEMPLATE);
+                jdbc.update("insert into ai_prompt_template_versions(prompt_template_version_uuid,prompt_template_uuid,version_number,template_text,input_schema,content_sha256,created_by) values (?,?,1,'image','{}'::jsonb,?,'legacy')",TEMPLATE_VERSION,TEMPLATE,"a".repeat(64));
+                jdbc.update("insert into ai_generation_batches(generation_batch_uuid,product_uuid,status,currency,estimated_cost,reserved_cost,requested_job_count,succeeded_job_count,created_by) values (?,?,'COMPLETED','TWD',0,0,1,1,'legacy')",AI_BATCH,PRODUCT);
+                jdbc.update("insert into ai_generation_jobs(generation_job_uuid,generation_batch_uuid,product_uuid,prompt_template_version_uuid,generation_type,provider_key,model_key,status,rendered_prompt,input_snapshot,estimated_cost,reserved_cost,actual_cost,currency,submitted_at,started_at,completed_at) values (?,?,?,?,'IMAGE','stub','stub','SUCCEEDED','image','{}'::jsonb,0,0,0,'TWD',current_timestamp,current_timestamp,current_timestamp)",AI_JOB,AI_BATCH,PRODUCT,TEMPLATE_VERSION);
+                jdbc.update("insert into ai_generation_outputs(generation_output_uuid,generation_job_uuid,generation_batch_uuid,product_uuid,generation_type,model_label,input_units,output_units,actual_cost,currency,safety_findings,provider_metadata,source_asset_uuid,generated_asset_uuid,generation_mode,workflow_key,workflow_version,image_width,image_height,media_type,size_bytes,source_checksum_sha256,output_checksum_sha256,protected_pixels_sha256,preservation_algorithm,preservation_status,preservation_details) values (?,?,?,?, 'IMAGE','stub-image',0,0,0,'TWD','[]'::jsonb,'{}'::jsonb,?,?,'BACKGROUND_COMPOSITE','legacy-image-v1','1',1,1,'image/png',1,?,?,?,'RGBA_MASK_EXACT_V1','PASSED','{\"changedPixelCount\":0,\"protectedPixelCount\":1}'::jsonb)",AI_OUTPUT,AI_JOB,AI_BATCH,PRODUCT,SOURCE_ASSET,GENERATED_ASSET,"d".repeat(64),"e".repeat(64),"f".repeat(64));
+                TransactionTemplate evidenceTx=new TransactionTemplate(new DataSourceTransactionManager(dataSource));
+                evidenceTx.executeWithoutResult(s->{jdbc.update("insert into ai_review_decisions(review_decision_uuid,generation_output_uuid,decision,reviewer_type,reviewer_id,request_id,reviewed_output_version,decided_at) values (?,?,'APPROVED','LOCAL_ADMIN','legacy','legacy-review',0,current_timestamp)",REVIEW,AI_OUTPUT);jdbc.update("update ai_generation_outputs set review_status='APPROVED',version=1 where generation_output_uuid=?",AI_OUTPUT);});
+                jdbc.update("insert into platform_ads(platform_ad_uuid,platform_ad_set_uuid,platform_account_uuid,product_uuid,asset_uuid,generation_output_uuid,review_decision_uuid,approved_checksum_sha256,creative_mapping_key) values (?,?,?,?,?,?,?,?, 'IMAGE_PRIMARY_V1')",AD,AD_SET,ACCOUNT,PRODUCT,GENERATED_ASSET,AI_OUTPUT,REVIEW,"e".repeat(64));
                 jdbc.update("insert into platform_metric_snapshots(metric_snapshot_uuid,platform_account_uuid,entity_type,platform_ad_set_uuid,window_start,window_end,timezone,currency,impressions,clicks,spend,revision_number,fetched_at,freshness_status,source_fingerprint) values (?,?, 'AD_SET',?,current_timestamp-interval '1 day',current_timestamp,'Asia/Taipei','TWD',100,7,12.345678,1,current_timestamp,'FRESH',?)",METRIC,ACCOUNT,AD_SET,"a".repeat(64));
                 String payload="{\"schemaVersion\":1,\"operationType\":\"UPDATE_BUDGET\",\"entityType\":\"AD_SET\",\"entityUuid\":\""+AD_SET+"\",\"platformAdSetUuid\":\""+AD_SET+"\",\"expectedEntityVersion\":0,\"budgetType\":\"DAILY\",\"currency\":\"TWD\",\"previousBudgetAmount\":25,\"newBudgetAmount\":30}";
                 UUID request=UUID.fromString("00000000-0000-4000-8000-000000000457");
@@ -137,6 +163,7 @@ class Stage4BLegacyOperationIntegrationTest {
                 V12_ATTEMPT.putAll(jdbc.queryForMap("select * from platform_operation_attempts where operation_attempt_uuid=?",ATTEMPT));
                 V12_METRIC.putAll(jdbc.queryForMap("select * from platform_metric_snapshots where metric_snapshot_uuid=?",METRIC));
                 V12_AD_SET.putAll(jdbc.queryForMap("select * from platform_ad_sets where platform_ad_set_uuid=?",AD_SET));
+                for(String table:List.of("products","assets","ai_generation_outputs","ai_review_decisions","platform_campaigns","platform_ad_sets","platform_ads","platform_operations","platform_operation_attempts","platform_metric_snapshots"))V12_TABLES.put(table,rows(jdbc,table,orderColumn(table)));
                 latest.migrate();
             };
         }
@@ -146,5 +173,6 @@ class Stage4BLegacyOperationIntegrationTest {
         private static void claimReconcile(JdbcTemplate jdbc,TransactionTemplate tx,UUID operation){tx.executeWithoutResult(s->{jdbc.update("update platform_operations set status='RECONCILING',reconciliation_count=reconciliation_count+1,normalized_error_code=null,safe_provider_trace_id=null,outcome_evidence=null,claimed_at=statement_timestamp(),updated_at=statement_timestamp(),version=version+1 where operation_uuid=?",operation);jdbc.update("insert into platform_operation_attempts(operation_attempt_uuid,operation_uuid,attempt_kind,attempt_number,status,started_at,version) select ?,operation_uuid,'RECONCILE',reconciliation_count,'STARTED',claimed_at,0 from platform_operations where operation_uuid=?",UUID.randomUUID(),operation);});}
         private static void finalizeReconcileTerminal(JdbcTemplate jdbc,TransactionTemplate tx,UUID operation){String evidence="{\"schemaVersion\":1,\"providerKey\":\"FAKE\",\"attemptKind\":\"RECONCILE\",\"resultKind\":\"FAILED_TERMINAL\"}";tx.executeWithoutResult(s->{jdbc.update("update platform_operation_attempts set status='FAILED_TERMINAL',normalized_error_code='PLATFORM_RECONCILIATION_TERMINAL',safe_provider_trace_id='legacy-trace',evidence=?::jsonb,completed_at=statement_timestamp(),version=1 where operation_uuid=? and attempt_kind='RECONCILE'",evidence,operation);jdbc.update("update platform_operations set status='FAILED_TERMINAL',normalized_error_code='PLATFORM_RECONCILIATION_TERMINAL',safe_provider_trace_id='legacy-trace',outcome_evidence=?::jsonb,claimed_at=null,completed_at=statement_timestamp(),updated_at=statement_timestamp(),version=version+1 where operation_uuid=?",evidence,operation);});}
         private static String hex(UUID id){return id.toString().replace("-","").repeat(2);}
+        private static String rows(JdbcTemplate jdbc,String table,String order){return jdbc.queryForObject("select coalesce(jsonb_agg(to_jsonb(t) order by "+order+"),'[]')::text from "+table+" t",String.class);}
     }
 }

@@ -1,25 +1,35 @@
 package com.aicommerce.platform.delivery.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import java.time.LocalDate;
+import java.sql.SQLException;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import com.aicommerce.platform.delivery.application.Stage4BService;
+import com.aicommerce.platform.delivery.application.Stage4BLedgerCriticalSectionHook;
+import com.aicommerce.platform.delivery.infrastructure.provider.DeterministicFakePlatformAdapter;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -28,6 +38,8 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 class Stage4BControllerIntegrationTest {
     @Container @ServiceConnection static final PostgreSQLContainer postgres=new PostgreSQLContainer("postgres:17.6-alpine3.22");
     @Autowired MockMvc mvc; @Autowired JdbcTemplate jdbc; @Autowired PlatformTransactionManager transactionManager;
+    @MockitoSpyBean Stage4BService stage4BService; @MockitoSpyBean Stage4BLedgerCriticalSectionHook ledgerHook;
+    @Autowired DeterministicFakePlatformAdapter fake;
     UUID plan;
     @BeforeEach void fixture(){
         plan=UUID.randomUUID();jdbc.update("""
@@ -98,14 +110,17 @@ class Stage4BControllerIntegrationTest {
         assertBudgetAudit(adSetOperation,"INITIAL",null,"25","25",true);
         assertBudgetAudit(increaseOperation,"INCREASE","25","30","5",true);
         assertBudgetAudit(decreaseOperation,"DECREASE_NO_RELEASE","30","20","0",false);
+        assertBatchAudit(campaignOperation,"0",false);assertBatchAudit(stateOperation,"0",false);
         assertThat(jdbc.queryForObject("select count(*) from audit_logs where operation_uuid in (?,?,?,?,?) and actor_type='LOCAL_ADMIN' and actor_id='local-admin' and source='API' and request_id ~ '^[A-Za-z0-9._:-]{1,128}$'",Integer.class,campaignOperation,adSetOperation,stateOperation,increaseOperation,decreaseOperation)).isEqualTo(subjects(campaignOperation).size()+subjects(adSetOperation).size()+subjects(stateOperation).size()+subjects(increaseOperation).size()+subjects(decreaseOperation).size());
         assertThat(jdbc.queryForObject("select count(*) from audit_log_changes c join audit_logs l on l.audit_uuid=c.audit_uuid where l.operation_uuid in (?,?,?,?,?) and lower(coalesce(c.old_value,'')||coalesce(c.new_value,'')) ~ '(secret|token|credential|authorization|cookie|https?://)'",Integer.class,campaignOperation,adSetOperation,stateOperation,increaseOperation,decreaseOperation)).isZero();
     }
     @Test void replayReturnsExistingOperationWithoutCapacityChange() throws Exception {
         UUID request=UUID.randomUUID();String body="{\"clientRequestUuid\":\""+request+"\",\"campaignUuid\":\""+plan+"\",\"expectedCampaignPlanVersion\":0}";
         mvc.perform(post("/api/platforms/meta/campaigns").contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isAccepted());
+        int audit=count("audit_logs"),changes=count("audit_log_changes");
         mvc.perform(post("/api/platforms/meta/campaigns").contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk());
         assertThat(jdbc.queryForObject("SELECT count(*) FROM platform_operation_batches WHERE client_request_uuid=?",Integer.class,request)).isEqualTo(1);
+        assertThat(count("audit_logs")).isEqualTo(audit);assertThat(count("audit_log_changes")).isEqualTo(changes);
     }
     @Test void adSetReplayPreservesOriginalParentVersionAndChangedIntentHasZeroSideEffects() throws Exception {
         UUID campaignRequest=UUID.randomUUID();String campaignJson=mvc.perform(post("/api/platforms/meta/campaigns").contentType(MediaType.APPLICATION_JSON).content("{\"clientRequestUuid\":\""+campaignRequest+"\",\"campaignUuid\":\""+plan+"\",\"expectedCampaignPlanVersion\":0}"))
@@ -145,6 +160,42 @@ class Stage4BControllerIntegrationTest {
         mvc.perform(post("/api/platforms/meta/campaigns/preview").contentType(MediaType.APPLICATION_JSON).content(valid.substring(0,valid.length()-1)+",\"secr\u0065tToken\":\"e\u0301\"}")).andExpect(status().isBadRequest());
         mvc.perform(post("/api/platforms/meta/campaigns/00000000-0000-4000-8000-000000000001/resume").contentType(MediaType.APPLICATION_JSON).content("{\"clientRequestUuid\":\""+UUID.randomUUID()+"\",\"targetDesiredState\":\"ACTIVE\"}"))
             .andExpect(status().isPreconditionRequired()).andExpect(jsonPath("$.fieldErrors[0].field").value("If-Match")).andExpect(jsonPath("$.fieldErrors[0].message").value("Invalid If-Match"));
+    }
+
+    @Test void canonicalMoneyBoundaryPreservesDeclaredFieldForEveryInvalidLexicalScaleAndRangeCase() throws Exception {
+        String campaign=createCampaign(plan),adSet=createAdSet(campaign,"10");
+        String[] invalid={"1e1","+1","01","1.0","1.230","1.0000001","0","-1","301","999999999999999999999999999999"};
+        int operations=count("platform_operations"),audits=count("audit_logs");
+        for(String amount:invalid){
+            mvc.perform(post("/api/platforms/meta/campaigns/"+campaign+"/ad-sets/preview").contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"clientRequestUuid\":\""+UUID.randomUUID()+"\",\"budgetType\":\"DAILY\",\"budgetAmount\":\""+amount+"\"}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("PLATFORM_REQUEST_INVALID"))
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("budgetAmount"));
+            mvc.perform(post("/api/platforms/meta/ad-sets/"+adSet+"/budget-preview").contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"clientRequestUuid\":\""+UUID.randomUUID()+"\",\"newBudgetAmount\":\""+amount+"\"}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("PLATFORM_REQUEST_INVALID"))
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("newBudgetAmount"));
+        }
+        mvc.perform(post("/api/platforms/meta/campaigns/"+campaign+"/ad-sets/preview").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"clientRequestUuid\":\""+UUID.randomUUID()+"\",\"budgetType\":\"DAILY\",\"budgetAmount\":\"101\"}"))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.fieldErrors[0].field").value("budgetAmount"));
+        assertThat(count("platform_operations")).isEqualTo(operations);assertThat(count("audit_logs")).isEqualTo(audits);
+    }
+
+    @ParameterizedTest @ValueSource(strings={"40001","40P01"})
+    void routePropagatesCommitClassDatabaseConflictOnceWithoutRetryProviderOrPersistence(String sqlState) throws Exception {
+        String campaign=createCampaign(plan),adSet=createAdSet(campaign,"10");String etag=mvc.perform(get("/api/platforms/meta/ad-sets/"+adSet)).andReturn().getResponse().getHeader("ETag");
+        String before=persistentSnapshot();int providerCalls=fake.invocationCount();clearInvocations(stage4BService,ledgerHook);
+        doThrow(new DataIntegrityViolationException("controlled",new SQLException("never disclose",sqlState))).when(ledgerHook).beforeAccountDayClaim();
+        try{
+            mvc.perform(post("/api/platforms/meta/ad-sets/"+adSet+"/budget").header("If-Match",etag).contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"clientRequestUuid\":\""+UUID.randomUUID()+"\",\"newBudgetAmount\":\"20\"}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("PLATFORM_LEDGER_CONCURRENCY_CONFLICT"))
+                .andExpect(jsonPath("$.message").value("The budget authorization changed concurrently"))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("never disclose"))));
+            verify(stage4BService,times(1)).confirmBudget(eq(UUID.fromString(adSet)),any(),eq("20"),anyLong(),any());
+            verify(ledgerHook,times(1)).beforeAccountDayClaim();assertThat(fake.invocationCount()).isEqualTo(providerCalls);assertThat(persistentSnapshot()).isEqualTo(before);
+        } finally {reset(ledgerHook);}
     }
 
     @Test void stateReplayBindsEntityUuidAndTypeWithZeroSideEffects() throws Exception {
@@ -192,18 +243,21 @@ class Stage4BControllerIntegrationTest {
     }
     private int auditCount(String subject){return jdbc.queryForObject("SELECT count(*) FROM audit_logs WHERE entity_type=?",Integer.class,subject);}
     private int count(String table){return jdbc.queryForObject("SELECT count(*) FROM "+table,Integer.class);}
+    private String persistentSnapshot(){return jdbc.queryForObject("SELECT jsonb_build_object('operations',(SELECT jsonb_agg(to_jsonb(t) ORDER BY operation_uuid) FROM platform_operations t),'attempts',(SELECT jsonb_agg(to_jsonb(t) ORDER BY operation_attempt_uuid) FROM platform_operation_attempts t),'batches',(SELECT jsonb_agg(to_jsonb(t) ORDER BY operation_batch_uuid) FROM platform_operation_batches t),'reservations',(SELECT jsonb_agg(to_jsonb(t) ORDER BY budget_reservation_uuid) FROM platform_budget_reservations t),'days',(SELECT jsonb_agg(to_jsonb(t) ORDER BY account_budget_day_uuid) FROM platform_account_budget_days t),'campaigns',(SELECT jsonb_agg(to_jsonb(t) ORDER BY platform_campaign_uuid) FROM platform_campaigns t),'adsets',(SELECT jsonb_agg(to_jsonb(t) ORDER BY platform_ad_set_uuid) FROM platform_ad_sets t),'audit',(SELECT jsonb_agg(to_jsonb(t) ORDER BY audit_uuid) FROM audit_logs t),'changes',(SELECT jsonb_agg(to_jsonb(t) ORDER BY audit_uuid,change_order) FROM audit_log_changes t))::text",String.class);}
     private UUID operation(UUID request){return jdbc.queryForObject("select operation_uuid from platform_operations where client_request_uuid=?",UUID.class,request);}
-    private java.util.List<String> subjects(UUID operation){return jdbc.queryForList("select entity_type from audit_logs where operation_uuid=? order by ctid",String.class,operation);}
+    private java.util.List<String> subjects(UUID operation){var rows=jdbc.queryForList("select stage4b_operation_ordinal,entity_type from audit_logs where operation_uuid=? order by stage4b_operation_ordinal",operation);for(int i=0;i<rows.size();i++)assertThat(((Number)rows.get(i).get("stage4b_operation_ordinal")).intValue()).isEqualTo(i);return rows.stream().map(row->(String)row.get("entity_type")).toList();}
     private java.util.List<String> changes(UUID operation,String subject){return jdbc.queryForList("select c.field_name||':'||c.value_type from audit_log_changes c join audit_logs l on l.audit_uuid=c.audit_uuid where l.operation_uuid=? and l.entity_type=? order by c.change_order",String.class,operation,subject);}
     private void assertBudgetAudit(UUID operation,String kind,String previous,String next,String reserved,boolean dayEvent){
         UUID batch=jdbc.queryForObject("select operation_batch_uuid from platform_operation_batches where operation_uuid=?",UUID.class,operation),reservation=jdbc.queryForObject("select budget_reservation_uuid from platform_budget_reservations where operation_uuid=?",UUID.class,operation),day=jdbc.queryForObject("select account_budget_day_uuid from platform_budget_reservations where operation_uuid=?",UUID.class,operation);
+        java.time.LocalDate date=jdbc.queryForObject("select business_date from platform_operation_batches where operation_uuid=?",java.time.LocalDate.class,operation);
         assertThat(jdbc.queryForObject("select count(*) from audit_logs where operation_uuid=? and entity_type='PLATFORM_OPERATION_BATCH' and action='CREATE' and entity_uuid=?",Integer.class,operation,batch)).isEqualTo(1);
         assertThat(jdbc.queryForObject("select count(*) from audit_logs where operation_uuid=? and entity_type='PLATFORM_BUDGET_RESERVATION' and action='CREATE' and entity_uuid=?",Integer.class,operation,reservation)).isEqualTo(1);
-        assertThat(change(operation,"PLATFORM_OPERATION_BATCH","operationBatchUuid","new_value")).isEqualTo(batch.toString());assertThat(change(operation,"PLATFORM_OPERATION_BATCH","budgetReservationUuid","new_value")).isEqualTo(reservation.toString());assertThat(change(operation,"PLATFORM_OPERATION_BATCH","accountBudgetDayUuid","new_value")).isEqualTo(day.toString());
-        assertThat(change(operation,"PLATFORM_BUDGET_RESERVATION","reservationKind","new_value")).isEqualTo(kind);if(previous==null)assertThat(change(operation,"PLATFORM_BUDGET_RESERVATION","budgetAmount","old_value")).isNull();else assertThat(new java.math.BigDecimal(change(operation,"PLATFORM_BUDGET_RESERVATION","budgetAmount","old_value"))).isEqualByComparingTo(previous);assertThat(new java.math.BigDecimal(change(operation,"PLATFORM_BUDGET_RESERVATION","budgetAmount","new_value"))).isEqualByComparingTo(next);assertThat(new java.math.BigDecimal(change(operation,"PLATFORM_BUDGET_RESERVATION","reservedAmount","new_value"))).isEqualByComparingTo(reserved);
+        assertThat(change(operation,"PLATFORM_OPERATION_BATCH","operationBatchUuid","new_value")).isEqualTo(batch.toString());assertThat(change(operation,"PLATFORM_OPERATION_BATCH","budgetReservationUuid","new_value")).isEqualTo(reservation.toString());assertThat(change(operation,"PLATFORM_OPERATION_BATCH","accountBudgetDayUuid","new_value")).isEqualTo(day.toString());assertThat(change(operation,"PLATFORM_OPERATION_BATCH","businessDate","new_value")).isEqualTo(date.toString());assertThat(change(operation,"PLATFORM_OPERATION_BATCH","currency","new_value")).isEqualTo("TWD");assertThat(new java.math.BigDecimal(change(operation,"PLATFORM_OPERATION_BATCH","reservedAmount","new_value"))).isEqualByComparingTo(reserved);
+        assertThat(change(operation,"PLATFORM_BUDGET_RESERVATION","operationBatchUuid","new_value")).isEqualTo(batch.toString());assertThat(change(operation,"PLATFORM_BUDGET_RESERVATION","budgetReservationUuid","new_value")).isEqualTo(reservation.toString());assertThat(change(operation,"PLATFORM_BUDGET_RESERVATION","accountBudgetDayUuid","new_value")).isEqualTo(day.toString());assertThat(change(operation,"PLATFORM_BUDGET_RESERVATION","businessDate","new_value")).isEqualTo(date.toString());assertThat(change(operation,"PLATFORM_BUDGET_RESERVATION","currency","new_value")).isEqualTo("TWD");assertThat(change(operation,"PLATFORM_BUDGET_RESERVATION","reservationKind","new_value")).isEqualTo(kind);if(previous==null)assertThat(change(operation,"PLATFORM_BUDGET_RESERVATION","budgetAmount","old_value")).isNull();else assertThat(new java.math.BigDecimal(change(operation,"PLATFORM_BUDGET_RESERVATION","budgetAmount","old_value"))).isEqualByComparingTo(previous);assertThat(new java.math.BigDecimal(change(operation,"PLATFORM_BUDGET_RESERVATION","budgetAmount","new_value"))).isEqualByComparingTo(next);assertThat(new java.math.BigDecimal(change(operation,"PLATFORM_BUDGET_RESERVATION","reservedAmount","new_value"))).isEqualByComparingTo(reserved);
         assertThat(jdbc.queryForObject("select count(*) from audit_logs where operation_uuid=? and entity_type='PLATFORM_ACCOUNT_BUDGET_DAY' and action='UPDATE' and entity_uuid=?",Integer.class,operation,day)).isEqualTo(dayEvent?1:0);
         if(dayEvent){java.math.BigDecimal oldValue=new java.math.BigDecimal(change(operation,"PLATFORM_ACCOUNT_BUDGET_DAY","aggregateReservedAmount","old_value")),newValue=new java.math.BigDecimal(change(operation,"PLATFORM_ACCOUNT_BUDGET_DAY","aggregateReservedAmount","new_value"));assertThat(newValue.subtract(oldValue)).isEqualByComparingTo(reserved);}
     }
+    private void assertBatchAudit(UUID operation,String reserved,boolean hasReservation){UUID batch=jdbc.queryForObject("select operation_batch_uuid from platform_operation_batches where operation_uuid=?",UUID.class,operation);java.time.LocalDate date=jdbc.queryForObject("select business_date from platform_operation_batches where operation_uuid=?",java.time.LocalDate.class,operation);assertThat(change(operation,"PLATFORM_OPERATION_BATCH","operationBatchUuid","new_value")).isEqualTo(batch.toString());assertThat(change(operation,"PLATFORM_OPERATION_BATCH","businessDate","new_value")).isEqualTo(date.toString());assertThat(change(operation,"PLATFORM_OPERATION_BATCH","currency","new_value")).isEqualTo("TWD");assertThat(new java.math.BigDecimal(change(operation,"PLATFORM_OPERATION_BATCH","reservedAmount","new_value"))).isEqualByComparingTo(reserved);assertThat(jdbc.queryForObject("select count(*) from audit_log_changes c join audit_logs l on l.audit_uuid=c.audit_uuid where l.operation_uuid=? and l.entity_type='PLATFORM_OPERATION_BATCH' and c.field_name in ('budgetReservationUuid','accountBudgetDayUuid','reservationKind')",Integer.class,operation)).isEqualTo(hasReservation?3:0);}
     private String change(UUID operation,String subject,String field,String column){return jdbc.queryForObject("select c."+column+" from audit_log_changes c join audit_logs l on l.audit_uuid=c.audit_uuid where l.operation_uuid=? and l.entity_type=? and c.field_name=?",String.class,operation,subject,field);}
     private String createCampaign(UUID campaignPlan) throws Exception {String json=mvc.perform(post("/api/platforms/meta/campaigns").contentType(MediaType.APPLICATION_JSON).content("{\"clientRequestUuid\":\""+UUID.randomUUID()+"\",\"campaignUuid\":\""+campaignPlan+"\",\"expectedCampaignPlanVersion\":0}")) .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString();return json.replaceAll(".*\\\"entityUuid\\\":\\\"([^\\\"]+)\\\".*","$1");}
     private String createCampaign(UUID campaignPlan,UUID request) throws Exception {String json=mvc.perform(post("/api/platforms/meta/campaigns").contentType(MediaType.APPLICATION_JSON).content("{\"clientRequestUuid\":\""+request+"\",\"campaignUuid\":\""+campaignPlan+"\",\"expectedCampaignPlanVersion\":0}")) .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString();return json.replaceAll(".*\\\"entityUuid\\\":\\\"([^\\\"]+)\\\".*","$1");}

@@ -2,14 +2,19 @@ package com.aicommerce.platform.delivery.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.sql.SQLException;
 import java.util.Optional;
+import java.util.UUID;
+import java.time.Instant;
 import java.util.stream.Stream;
 
 import com.aicommerce.platform.delivery.application.PlatformOperationException;
 import com.aicommerce.platform.delivery.application.Stage4BService;
+import com.aicommerce.platform.delivery.application.Stage4BViews;
+import com.aicommerce.platform.delivery.domain.*;
 import com.aicommerce.platform.delivery.domain.PlatformStableErrorCode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -41,6 +46,28 @@ class Stage4BControllerErrorMappingTest {
         assertThat(response.getBody().message()).isEqualTo("The budget authorization changed concurrently").doesNotContain("sentinel");verifyNoInteractions(service);
     }
 
+    @ParameterizedTest(name="{0} exposes normalized {1} as safe 429")
+    @MethodSource("rateLimitedRoutes")
+    void everyMutationAndRecoveryRouteReturnsExactSafe429HeadersAndOperationBody(String route,PlatformStableErrorCode code) throws Exception {
+        UUID operation=UUID.randomUUID(),entity=UUID.randomUUID(),requestUuid=UUID.randomUUID();Instant now=Instant.parse("2026-08-17T00:00:00Z");
+        var view=new Stage4BViews.Operation(operation,PlatformOperationType.UPDATE_BUDGET,PlatformEntityType.AD_SET,entity,PlatformOperationStatus.FAILED_RETRYABLE,1,0,3,Optional.of(code),Optional.of(now.plusSeconds(60)),Optional.empty(),now,now,7);
+        var confirmation=new Stage4BViews.Confirmation(view,false);var request=request("/api/"+route);
+        org.springframework.http.ResponseEntity<Stage4BViews.Operation> response=switch(route){
+            case "create"->{when(service.confirmCampaign(requestUuid,entity,0,"stage4b-error-test")).thenReturn(confirmation);yield controller.confirmCampaign(new Stage4BController.CampaignConfirmRequest(requestUuid,entity,0L),request);}
+            case "state"->{when(service.confirmState(PlatformEntityType.AD_SET,entity,requestUuid,PlatformDesiredState.ACTIVE,0,"stage4b-error-test")).thenReturn(confirmation);yield controller.adSetState(entity,"resume","W/\"0\"",new Stage4BController.StateMutationRequest(requestUuid,PlatformDesiredState.ACTIVE),request);}
+            case "budget"->{when(service.confirmBudget(entity,requestUuid,"20",0,"stage4b-error-test")).thenReturn(confirmation);yield controller.budget(entity,"W/\"0\"",new Stage4BController.BudgetMutationRequest(requestUuid,"20"),request);}
+            case "retry"->{when(service.retry(operation,0)).thenReturn(confirmation);yield controller.retry(operation,"W/\"0\"",null);}
+            case "reconcile"->{when(service.reconcile(operation,0)).thenReturn(confirmation);yield controller.reconcile(operation,"W/\"0\"",null);}
+            default->throw new AssertionError(route);
+        };
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+        assertThat(response.getHeaders().getETag()).isEqualTo("W/\"7\"");assertThat(response.getHeaders().getLocation().toString()).isEqualTo("/api/platform-operations/"+operation);
+        String json=new tools.jackson.databind.ObjectMapper().writeValueAsString(response.getBody());
+        assertThat(json).contains("\"normalizedErrorCode\":\""+code.name()+"\"").contains("\"status\":\"FAILED_RETRYABLE\"")
+            .doesNotContainIgnoringCase("secret").doesNotContainIgnoringCase("token").doesNotContainIgnoringCase("credential")
+            .doesNotContainIgnoringCase("authorization").doesNotContainIgnoringCase("cookie").doesNotContain("http://").doesNotContain("https://");
+    }
+
     static Stream<Arguments> operationErrors(){return Stream.of(
         Arguments.of(PlatformStableErrorCode.PLATFORM_CONTRACT_INVALID,HttpStatus.BAD_REQUEST,"PLATFORM_CONTRACT_INVALID"),
         Arguments.of(PlatformStableErrorCode.PLATFORM_OPERATION_NOT_FOUND,HttpStatus.NOT_FOUND,"PLATFORM_RESOURCE_NOT_FOUND"),
@@ -58,5 +85,6 @@ class Stage4BControllerErrorMappingTest {
         Arguments.of(PlatformStableErrorCode.PLATFORM_EVIDENCE_INVALID,HttpStatus.CONFLICT,"PLATFORM_EVIDENCE_INVALID"),
         Arguments.of(PlatformStableErrorCode.PLATFORM_INVALID_OPERATION_STATE,HttpStatus.CONFLICT,"PLATFORM_INVALID_OPERATION_STATE"));}
     static Stream<String> databaseStates(){return Stream.of("40001","40P01");}
-    private static MockHttpServletRequest request(String uri){var request=new MockHttpServletRequest();request.setRequestURI(uri);request.setAttribute("requestId","stage4b-error-test");return request;}
+    static Stream<Arguments> rateLimitedRoutes(){return Stream.of("create","state","budget","retry","reconcile").flatMap(route->Stream.of(PlatformStableErrorCode.PLATFORM_RATE_LIMITED,PlatformStableErrorCode.PLATFORM_TEMPORARILY_UNAVAILABLE).map(code->Arguments.of(route,code)));}
+    private static MockHttpServletRequest request(String uri){var request=new MockHttpServletRequest();request.setRequestURI(uri);request.setAttribute(com.aicommerce.platform.web.RequestIdFilter.REQUEST_ATTRIBUTE,"stage4b-error-test");return request;}
 }
