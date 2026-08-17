@@ -76,13 +76,15 @@ Developer resolution status: `RESOLVED_PENDING_RE_REVIEW`. This is not a Manager
 | Gitleaks | Passed | Pinned v8.28.0 history and worktree scans |
 | `git diff --check` | Passed | No whitespace errors |
 
-Known non-blocking warnings: Mockito/Byte Buddy reports its existing dynamic-agent deprecation warning. Windows Git reports that V12's LF working-tree line endings may be converted to CRLF when Git next rewrites that file. Maven Surefire reported a fork-JVM shutdown timeout after publishing the successful 344-test result; Maven exited successfully and no test failed or was skipped. npm reports the existing `unrs-resolver@1.12.2` allow-scripts warning. The first local PowerShell smoke harness attempt passed a multi-value response-header object directly as `If-Match`, so PowerShell rejected the header format before issuing the PATCH; the corrected harness selected the single ETag value and the complete create/read/update/archive/restore chain passed.
+Known non-blocking warnings: Mockito/Byte Buddy reports its existing dynamic-agent deprecation warning. Windows Git reports that V12's LF working-tree line endings may be converted to CRLF when Git next rewrites that file. Maven Surefire reported a fork-JVM shutdown timeout after publishing the successful 344-test result; Maven exited successfully and no test failed or was skipped. npm reports the existing `unrs-resolver@1.12.2` allow-scripts warning. GitHub Actions reports that pinned checkout/setup actions target Node.js 20 and are forced onto Node.js 24 by the runner. The first local PowerShell smoke harness attempt passed a multi-value response-header object directly as `If-Match`, so PowerShell rejected the header format before issuing the PATCH; the corrected harness selected the single ETag value and the complete create/read/update/archive/restore chain passed.
 
 ## Remote delivery status
 
 - Draft PR: #60 (remains Draft)
-- Prior exact-head evidence is superseded by the current Manager correction cycle.
-- Current correction implementation Head and Push/PR CI: Pending after local validation and push.
+- Correction implementation Head: `db752e7ced0a6eff0772c1c657eeed22282dbefa`.
+- Push CI: Run `31994807572` passed at the correction implementation Head; `quality-and-compose` and `secret-scan` both passed.
+- Pull Request CI: Run `31994812462` passed at the correction implementation Head; `quality-and-compose` and `secret-scan` both passed.
+- Required execution: Backend 344/344, frontend lint/typecheck/22 files and 134 tests/build/audit, Compose cold start, Smoke, Playwright 14/14, pinned actionlint, and Gitleaks all executed and passed. Only failure-artifact upload was conditionally skipped because Playwright passed.
 - Evidence-only Head CI: Pending after the exact Remote CI results are recorded; that Head will supersede the correction implementation Head for independent review.
 - Independent Manager Review: Re-review pending after exact-head CI
 - Manager Decision: `REQUEST_CHANGES` preserved
