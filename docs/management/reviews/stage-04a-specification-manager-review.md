@@ -10,6 +10,7 @@
 - Base Commit: `a90f6e0bb20d23da10edb66712d85261dafe14e8`
 - Reviewed Head Commit: `d129df447f670a9f5b1faab230a06a64c8240438`
 - Re-reviewed Candidate Head Commit: `b8781c224748cceac7ec45706382e73c8f592825`
+- Latest Re-reviewed Candidate Head Commit: `ddf4d452c1aec09dcbaabe075da13250646a26f9`
 - Pull Request: #59
 
 ## Status before review
@@ -23,14 +24,14 @@
 ## Developer resolution status
 
 - Resolution date: 2026-08-17
-- Status: Developer corrections for findings 4A-SPEC-005 through 011 are `RESOLVED_PENDING_RE_REVIEW`; Manager Decision remains `REQUEST_CHANGES`
-- Correction Head: Pending this specification-only commit, Push/PR CI, and independent exact-head verification
-- Remote CI for correction Head: Pending
+- Status: Independent re-review completed for exact Head `ddf4d452c1aec09dcbaabe075da13250646a26f9`; Manager Decision remains `REQUEST_CHANGES`
+- Correction Head: `ddf4d452c1aec09dcbaabe075da13250646a26f9`
+- Remote CI for correction Head: Passed — Push Run `31981207234`; PR Run `31981211019`
 - Developer local validation: Passed — exact two-document scope, Markdown table sanity, `git diff --check`, Gitleaks 8.28.0 history (99 commits) and worktree; no leaks found
 - Implementation: Not started
 - Migration/runtime/API/UI/adapter changes: None
 - Prior Manager Decisions: `REQUEST_CHANGES` for reviewed Head `d129df447f670a9f5b1faab230a06a64c8240438` and re-reviewed candidate `b8781c224748cceac7ec45706382e73c8f592825`; neither is approval of the correction Head
-- Merge: Blocked; PR #59 remains Draft through correction Push/PR CI and new exact-head Independent Manager re-review
+- Merge: Blocked; PR #59 remains Draft through a final contract correction, new Push/PR CI, and another exact-head Independent Manager re-review
 
 ## Scope reviewed
 
@@ -152,6 +153,24 @@ No finding changes the approved Stage 04 human/security boundaries, and no escal
 
 These are Developer completion claims only. They do not alter the Manager findings, Decision, approval record, or Stage 4A lock. The Independent Manager must review the correction exact Head and full Remote CI before changing any decision.
 
+### Re-review of correction Head `ddf4d452c1aec09dcbaabe075da13250646a26f9`
+
+- Scope and identity: local, upstream, and PR Head matched; worktree was clean; base and merge-base remained `a90f6e0bb20d23da10edb66712d85261dafe14e8`; PR diff remained exactly the two Stage 4A documentation files.
+- Push Run `31981207234`: Passed at the exact Head; `quality-and-compose` and `secret-scan` passed.
+- PR Run `31981211019`: Passed at the exact Head; Backend 288/288, Frontend 22 files / 134 tests, lint, typecheck, build, audit 0 vulnerabilities, Compose, Smoke, Playwright 14/14, actionlint, and Gitleaks actually executed and passed.
+- Required-step skips: None. Playwright failure-artifact upload alone was conditionally skipped because the tests passed.
+- Local evidence: `git diff --check` and pinned Gitleaks history/worktree passed.
+- Database specialist: No unresolved BLOCKING or MAJOR database finding; 4A-SPEC-007 through 011 are implementable and the V12 plan remains additive.
+- Architecture specialist: 4A-SPEC-005 and most of 006 are resolved, but two contradictory outcome/retry contracts remain.
+
+| ID | Severity | File/Evidence | Finding | Required fix/test |
+| --- | --- | --- | --- | --- |
+| 4A-SPEC-012 | BLOCKING | `docs/stages/stage-04a-platform-foundation.md:315`, `:665`, `:762` | Mutation success has three incompatible external-ID rules: the outcome table permits it, the typed rule requires it absent, and the fake adapter says mutations return the existing entity ID. | Select one exact provider-neutral rule and align the table, record validation, evidence fingerprint, persisted result, fake behavior, and tests. Recommended: create requires an ID; mutation carries no returned ID and only uses/verifies the existing entity ID from durable state. |
+| 4A-SPEC-013 | BLOCKING | `docs/stages/stage-04a-platform-foundation.md:316`, `:326`, `:347`, `:466`, `:665`, `:702-739` | Attempt 3 converts a retryable outcome into terminal `PLATFORM_MAX_ATTEMPTS_EXCEEDED`, but the returned evidence remains retryable with retry seconds. Copying it violates the terminal status/error/evidence coherence rules. A fourth retry also matches both invalid-state and max-attempt local errors. | Define the exact application-generated terminal evidence transformation: finalized attempt/operation status, terminal code/result kind, retry-after removal, trace retention, treatment of the original retryable code, and persistence fields. Define fourth-retry error precedence and add DB/domain/fake tests. |
+| 4A-SPEC-014 | MAJOR | `docs/stages/stage-04a-platform-foundation.md:775-790` | The Audit enforcement layer is clear, but `PlatformAuditEvent` is still prose-only and Transaction A may create more than one durable aggregate, leaving event cardinality/content to implementation. | Define the exact typed Audit event record/enum and a transaction-by-transaction event matrix, including entity plus operation creation, claim, result, reconcile, and budget changes; retain rollback, no-false-Audit, and redaction tests. |
+
+No escalation-policy trigger exists. These are ordinary specification corrections within the approved local/test-only Stage 4A boundary; implementation remains locked.
+
 ## Known limitations
 
 - Remote CI validates the current repository baseline only; it cannot execute the proposed V12 or future 4A implementation in this documentation-only PR.
@@ -163,8 +182,8 @@ These are Developer completion claims only. They do not alter the Manager findin
 ## Stage Gate decision
 
 - Decision: REQUEST_CHANGES
-- Decision rationale: Candidate Head `b8781c224748cceac7ec45706382e73c8f592825` and all required CI passed, scope remains documentation-only, and no human escalation trigger is present. Findings 4A-SPEC-005 through 011 nevertheless leave provider dispatch/types/errors, aggregate budget policy, durable Ad evidence, operation creation evidence, Audit enforcement semantics, and account snapshot coherence under-specified. Implementation would still require unapproved design choices or permit direct-SQL bypasses.
-- Required next action: Keep PR #59 Draft. The specification Developer Agent must correct only the Stage 4A technical specification and pending review status, validate documentation scope/diff/Gitleaks, push a new exact Head, and pass full Push/PR CI. Then perform another independent exact-head Manager Review. Do not create V12 or any runtime implementation.
+- Decision rationale: Candidate Head `ddf4d452c1aec09dcbaabe075da13250646a26f9`, exact scope, and all required CI passed; database review is clean and no human escalation trigger exists. However, 4A-SPEC-012 and 013 are mutually incompatible provider/retry result contracts, and 4A-SPEC-014 leaves required same-transaction Audit cardinality to implementation. The specification is not yet one exact executable contract.
+- Required next action: Keep PR #59 Draft. The specification Developer Agent must correct only 4A-SPEC-012 through 014 in the Stage 4A specification/pending status, validate scope/diff/Gitleaks, push a new exact Head, and pass full Push/PR CI. Then perform another independent exact-head Manager Review. Do not create V12 or runtime implementation.
 - Human approval required: No for the required corrections if they remain within the approved deterministic local/test-only 4A scope.
 - Human approval reason/evidence: The findings are technical consistency and verification-contract corrections within the already approved Stage 04 boundaries. Escalate if resolution would change product cardinality, security/tenant authority, credentials/access, spend, production, destructive data behavior, or Stage 4B+ scope.
 
