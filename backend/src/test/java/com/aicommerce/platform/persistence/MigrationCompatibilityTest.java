@@ -401,6 +401,24 @@ class MigrationCompatibilityTest {
     }
 
     @Test
+    void failedV12MigrationRollsBackEveryPartialV12Object() {
+        String schema="atomic_v12_case";
+        assertThat(flyway(schema,MigrationVersion.fromVersion("11")).migrate().migrationsExecuted).isEqualTo(12);
+        JdbcTemplate jdbc=jdbcTemplate();
+        jdbc.execute("CREATE TABLE "+schema+".platform_accounts(sentinel integer primary key)");
+
+        assertThatThrownBy(()->flyway(schema,null).migrate()).isInstanceOf(FlywayException.class);
+
+        for(String table:List.of("platform_campaigns","platform_ad_sets","platform_ads","platform_operations",
+                "platform_operation_attempts","platform_metric_snapshots")){
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM information_schema.tables WHERE table_schema=? AND table_name=?",Integer.class,schema,table)).isZero();
+        }
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM information_schema.columns WHERE table_schema=? AND table_name='platform_accounts'",Integer.class,schema)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=? AND p.proname IN ('is_valid_platform_evidence','is_valid_platform_attempt_result','is_valid_platform_request')",Integer.class,schema)).isZero();
+        assertThat(flyway(schema,MigrationVersion.fromVersion("11")).info().current().getVersion().getVersion()).isEqualTo("11");
+    }
+
+    @Test
     void failedV4MigrationRollsBackAllPartialObjects() {
         String schema = "atomic_case";
         Flyway v3 = flyway(schema, MigrationVersion.fromVersion("3"));

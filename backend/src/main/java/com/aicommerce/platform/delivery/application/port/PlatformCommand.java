@@ -1,3 +1,3 @@
 package com.aicommerce.platform.delivery.application.port;
-import java.util.UUID; import com.aicommerce.platform.delivery.domain.PlatformEntityType; import com.aicommerce.platform.delivery.domain.PlatformOperationType;
-public record PlatformCommand(UUID operationUuid,UUID accountUuid,PlatformOperationType operationType,PlatformEntityType entityType,UUID entityUuid,String normalizedRequestJson,String requestSha256) {}
+import java.util.*; import com.aicommerce.platform.delivery.domain.PlatformEntityType; import com.aicommerce.platform.delivery.domain.PlatformOperationType;
+public record PlatformCommand(UUID operationUuid,UUID accountUuid,PlatformOperationType operationType,PlatformEntityType entityType,UUID entityUuid,String normalizedRequestJson,String requestSha256,Optional<String> durableEntityExternalId) { public PlatformCommand { Objects.requireNonNull(operationUuid);Objects.requireNonNull(accountUuid);Objects.requireNonNull(operationType);Objects.requireNonNull(entityType);Objects.requireNonNull(entityUuid);Objects.requireNonNull(normalizedRequestJson);Objects.requireNonNull(requestSha256);Objects.requireNonNull(durableEntityExternalId); } }

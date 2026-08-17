@@ -15,6 +15,11 @@ public record CreatePlatformOperationCommand(
         String normalizedRequestJson,
         int maxAttempts) {
     public CreatePlatformOperationCommand {
-        if (maxAttempts != 3) throw new IllegalArgumentException("maxAttempts must be 3");
+        if (operationUuid == null || platformAccountUuid == null || operationType == null || entityType == null
+                || entityUuid == null || clientRequestUuid == null || normalizedRequestJson == null
+                || normalizedRequestJson.isBlank()) {
+            throw new IllegalArgumentException("PLATFORM_CONTRACT_INVALID");
+        }
+        if (maxAttempts != 3) throw new IllegalArgumentException("PLATFORM_CONTRACT_INVALID");
     }
 }

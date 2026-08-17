@@ -119,15 +119,32 @@ public class PlatformOperationTransactions {
     }
 
     @Transactional
+    public PlatformCommand claimSubmit(UUID operationUuid, long expectedVersion, Instant claimTime, AuditOperationContext context) {
+        return claimExpected(operationUuid, expectedVersion, claimTime, context, PlatformOperationStatus.CREATED);
+    }
+
+    @Transactional
+    public PlatformCommand claimRetry(UUID operationUuid, long expectedVersion, Instant claimTime, AuditOperationContext context) {
+        return claimExpected(operationUuid, expectedVersion, claimTime, context, PlatformOperationStatus.FAILED_RETRYABLE);
+    }
+
+    /** Compatibility seam for focused transaction tests; production submit uses claimSubmit. */
+    @Transactional
     public PlatformCommand claim(UUID operationUuid, long expectedVersion, Instant claimTime, AuditOperationContext context) {
+        return claimSubmit(operationUuid, expectedVersion, claimTime, context);
+    }
+
+    private PlatformCommand claimExpected(UUID operationUuid, long expectedVersion, Instant claimTime,
+            AuditOperationContext context, PlatformOperationStatus expectedEntryStatus) {
         PlatformOperation operation = require(operationUuid);
         if (operation.getVersion() != expectedVersion) throw stale(operationUuid);
-        if(operation.getAttemptCount()>=operation.getMaxAttempts())throw new PlatformOperationException(
+        if(expectedEntryStatus==PlatformOperationStatus.FAILED_RETRYABLE&&operation.getAttemptCount()>=operation.getMaxAttempts())throw new PlatformOperationException(
                 PlatformStableErrorCode.PLATFORM_MAX_ATTEMPTS_EXCEEDED,Optional.of(operationUuid));
-        if(operation.getStatus()!=PlatformOperationStatus.CREATED&&operation.getStatus()!=PlatformOperationStatus.FAILED_RETRYABLE)throw new PlatformOperationException(
+        if(operation.getStatus()!=expectedEntryStatus)throw new PlatformOperationException(
                 PlatformStableErrorCode.PLATFORM_INVALID_OPERATION_STATE,Optional.of(operationUuid));
         if(operation.getStatus()==PlatformOperationStatus.FAILED_RETRYABLE&&(operation.getNextAttemptAt()==null||claimTime.isBefore(operation.getNextAttemptAt())))throw new PlatformOperationException(
                 PlatformStableErrorCode.PLATFORM_RETRY_NOT_DUE,Optional.of(operationUuid));
+        Optional<String> durableExternalId=validateMutationTarget(operation);
         validateAccount(operation.getPlatformAccountUuid(),operationUuid);
         PlatformOperationStatus before = operation.getStatus();
         int attempts = operation.getAttemptCount();
@@ -153,7 +170,7 @@ public class PlatformOperationTransactions {
                         AuditValueType.INTEGER, 1)));
         return new PlatformCommand(operation.getOperationUuid(), operation.getPlatformAccountUuid(),
                 operation.getOperationType(), operation.getEntityType(), operation.getEntityUuid(),
-                operation.getRequestPayload(), operation.getRequestSha256());
+                operation.getRequestPayload(), operation.getRequestSha256(), durableExternalId);
     }
 
     @Transactional
@@ -218,9 +235,11 @@ public class PlatformOperationTransactions {
         else {WriteUnknownOutcome x=(WriteUnknownOutcome)outcome;status="UNKNOWN_OUTCOME";code=x.errorCode().name();trace=x.safeProviderTraceId().orElse(null);evidence=x.evidence();}
         String evidenceJson=json(evidence); String attemptStatus=status;
         UUID attemptUuid=jdbc.queryForObject("SELECT operation_attempt_uuid FROM platform_operation_attempts WHERE operation_uuid=? AND attempt_kind='SUBMIT' AND attempt_number=?",UUID.class,operationUuid,operation.getAttemptCount());
-        jdbc.update("UPDATE platform_operation_attempts SET status=?,safe_provider_trace_id=?,normalized_error_code=?,evidence=?::jsonb,completed_at=?,version=1 WHERE operation_uuid=? AND attempt_kind='SUBMIT' AND attempt_number=? AND status='STARTED'",attemptStatus,trace,code,evidenceJson,ts(now),operationUuid,operation.getAttemptCount());
+        int attemptUpdated=jdbc.update("UPDATE platform_operation_attempts SET status=?,safe_provider_trace_id=?,normalized_error_code=?,evidence=?::jsonb,completed_at=?,version=1 WHERE operation_uuid=? AND attempt_kind='SUBMIT' AND attempt_number=? AND status='STARTED' AND version=0",attemptStatus,trace,code,evidenceJson,ts(now),operationUuid,operation.getAttemptCount());
+        if(attemptUpdated!=1)throw stale(operationUuid);
         Instant next=retry==null?null:now.plusSeconds(retry); Instant completed=status.equals("SUCCEEDED")||status.equals("FAILED_TERMINAL")?now:null;
-        jdbc.update("UPDATE platform_operations SET status=?,external_id=?,normalized_error_code=?,safe_provider_trace_id=?,outcome_evidence=?::jsonb,next_attempt_at=?,completed_at=?,updated_at=?,version=version+1 WHERE operation_uuid=? AND status='SUBMITTING'",status,external,code,trace,evidenceJson,ts(next),ts(completed),ts(now),operationUuid);
+        int opUpdated=jdbc.update("UPDATE platform_operations SET status=?,external_id=?,normalized_error_code=?,safe_provider_trace_id=?,outcome_evidence=?::jsonb,next_attempt_at=?,completed_at=?,updated_at=?,version=version+1 WHERE operation_uuid=? AND status='SUBMITTING' AND version=?",status,external,code,trace,evidenceJson,ts(next),ts(completed),ts(now),operationUuid,operation.getVersion());
+        if(opUpdated!=1)throw stale(operationUuid);
         entityManager.clear(); PlatformOperation updated=require(operationUuid);
         platformAudit.write(PlatformAuditEvent.attempt(updated,attemptUuid,PlatformAttemptKind.SUBMIT,updated.getAttemptCount(),com.aicommerce.platform.delivery.domain.PlatformAttemptStatus.STARTED,com.aicommerce.platform.delivery.domain.PlatformAttemptStatus.valueOf(attemptStatus),code==null?null:PlatformStableErrorCode.valueOf(code),trace,false),context);
         append(context,AuditAction.UPDATE,updated,outcomeChanges(PlatformOperationStatus.SUBMITTING,updated));
@@ -257,7 +276,7 @@ public class PlatformOperationTransactions {
             if (entityMutation==null) {
                 status = "UNKNOWN_OUTCOME"; attemptStatus = "UNKNOWN_OUTCOME";
                 code = "PLATFORM_RESPONSE_AMBIGUOUS";
-                evidence = recoveryEvidence(PlatformAttemptKind.RECONCILE, PlatformEvidenceResultKind.STILL_UNKNOWN);
+                evidence = recoveryEvidence(PlatformAttemptKind.RECONCILE, PlatformEvidenceResultKind.UNKNOWN_OUTCOME);
             } else {
                 status = "SUCCEEDED"; attemptStatus = "SUCCEEDED"; evidence = found.evidence();
                 external = found.externalId().orElse(null);
@@ -289,8 +308,9 @@ public class PlatformOperationTransactions {
         int opUpdated = jdbc.update("""
                 UPDATE platform_operations SET status=?,external_id=?,normalized_error_code=?,safe_provider_trace_id=?,
                   outcome_evidence=?::jsonb,next_attempt_at=NULL,completed_at=?,updated_at=?,version=version+1
-                WHERE operation_uuid=? AND status='RECONCILING'
-                """, status, external, code, trace, evidenceJson, ts(completed), ts(completionTime), operationUuid);
+                WHERE operation_uuid=? AND status='RECONCILING' AND version=?
+                """, status, external, code, trace, evidenceJson, ts(completed), ts(completionTime), operationUuid,
+                operation.getVersion());
         if (opUpdated != 1) throw stale(operationUuid);
         entityManager.clear();
         PlatformOperation updated = require(operationUuid);
@@ -379,6 +399,46 @@ public class PlatformOperationTransactions {
         boolean test=java.util.Arrays.asList(environment.getActiveProfiles()).contains("test");
         boolean local=java.util.Arrays.asList(environment.getActiveProfiles()).contains("local");
         if((test&&policy.environment()!=com.aicommerce.platform.delivery.domain.PlatformEnvironment.TEST)||(local&&policy.environment()!=com.aicommerce.platform.delivery.domain.PlatformEnvironment.LOCAL)||(!test&&!local))throw new PlatformOperationException(PlatformStableErrorCode.PLATFORM_ACCOUNT_ENVIRONMENT_MISMATCH,Optional.of(operationUuid));
+    }
+
+    @SuppressWarnings("unchecked")
+    private Optional<String> validateMutationTarget(PlatformOperation operation) {
+        if (operation.getOperationType().name().startsWith("CREATE_")) return Optional.empty();
+        try {
+            var payload = mapper.readValue(operation.getRequestPayload(), java.util.Map.class);
+            String table=switch(operation.getEntityType()){case CAMPAIGN->"platform_campaigns";case AD_SET->"platform_ad_sets";case AD->"platform_ads";};
+            String column=switch(operation.getEntityType()){case CAMPAIGN->"platform_campaign_uuid";case AD_SET->"platform_ad_set_uuid";case AD->"platform_ad_uuid";};
+            var row=jdbc.queryForMap("SELECT desired_state,external_id,version,"+
+                    (operation.getEntityType()==com.aicommerce.platform.delivery.domain.PlatformEntityType.AD_SET
+                            ? "budget_type,budget_amount,currency" : "NULL::text AS budget_type,NULL::numeric AS budget_amount,NULL::text AS currency")+
+                    " FROM "+table+" WHERE "+column+"=? AND platform_account_uuid=? FOR UPDATE",
+                    operation.getEntityUuid(),operation.getPlatformAccountUuid());
+            String external=(String)row.get("external_id");
+            if(external==null)throw new PlatformOperationException(PlatformStableErrorCode.PLATFORM_EVIDENCE_INVALID,Optional.of(operation.getOperationUuid()));
+            long expected=Long.parseLong(payload.get("expectedEntityVersion").toString());
+            if(((Number)row.get("version")).longValue()!=expected)throw stale(operation.getOperationUuid());
+            if(operation.getOperationType()==com.aicommerce.platform.delivery.domain.PlatformOperationType.PAUSE
+                    ||operation.getOperationType()==com.aicommerce.platform.delivery.domain.PlatformOperationType.RESUME){
+                String current=(String)row.get("desired_state");
+                String required=operation.getOperationType()==com.aicommerce.platform.delivery.domain.PlatformOperationType.PAUSE?"ACTIVE":"PAUSED";
+                String target=operation.getOperationType()==com.aicommerce.platform.delivery.domain.PlatformOperationType.PAUSE?"PAUSED":"ACTIVE";
+                if(!target.equals(payload.get("targetDesiredState"))||!required.equals(current))throw new PlatformOperationException(PlatformStableErrorCode.PLATFORM_INVALID_OPERATION_STATE,Optional.of(operation.getOperationUuid()));
+            } else {
+                if(!row.get("budget_type").equals(payload.get("budgetType"))||!row.get("currency").toString().equals(payload.get("currency")))throw new PlatformOperationException(PlatformStableErrorCode.PLATFORM_POLICY_REJECTED,Optional.of(operation.getOperationUuid()));
+                BigDecimal current=canonicalMoney((BigDecimal)row.get("budget_amount"));
+                BigDecimal previous=canonicalMoney(new BigDecimal(payload.get("previousBudgetAmount").toString()));
+                BigDecimal next=canonicalMoney(new BigDecimal(payload.get("newBudgetAmount").toString()));
+                if(current.compareTo(previous)!=0)throw stale(operation.getOperationUuid());
+                if(current.compareTo(next)==0)throw new PlatformOperationException(PlatformStableErrorCode.PLATFORM_INVALID_OPERATION_STATE,Optional.of(operation.getOperationUuid()));
+            }
+            return Optional.of(external);
+        } catch (PlatformOperationException exception) {
+            throw exception;
+        } catch (org.springframework.dao.EmptyResultDataAccessException exception) {
+            throw new PlatformOperationException(PlatformStableErrorCode.PLATFORM_EVIDENCE_INVALID,Optional.of(operation.getOperationUuid()));
+        } catch (RuntimeException exception) {
+            throw new PlatformOperationException(PlatformStableErrorCode.PLATFORM_CONTRACT_INVALID,Optional.of(operation.getOperationUuid()));
+        }
     }
 
     private PlatformOperation require(UUID operationUuid) {

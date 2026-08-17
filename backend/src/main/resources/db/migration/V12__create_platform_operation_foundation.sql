@@ -7,7 +7,7 @@ CREATE FUNCTION is_valid_platform_evidence(value JSONB) RETURNS BOOLEAN LANGUAGE
   AND value->>'providerKey'='FAKE' AND value->>'attemptKind' IN ('SUBMIT','RECONCILE')
   AND value->>'resultKind' IN ('SUCCEEDED','FAILED_RETRYABLE','FAILED_TERMINAL','UNKNOWN_OUTCOME','FOUND','NOT_FOUND','STILL_UNKNOWN')
   AND NOT (value->>'attemptKind'='SUBMIT' AND value->>'resultKind' IN ('FOUND','NOT_FOUND','STILL_UNKNOWN'))
-  AND NOT (value->>'attemptKind'='RECONCILE' AND value->>'resultKind' IN ('SUCCEEDED','FAILED_RETRYABLE','UNKNOWN_OUTCOME'))
+  AND NOT (value->>'attemptKind'='RECONCILE' AND value->>'resultKind' IN ('SUCCEEDED','FAILED_RETRYABLE'))
   AND (NOT value?'externalIdFingerprint' OR (jsonb_typeof(value->'externalIdFingerprint')='string' AND value->>'externalIdFingerprint' ~ '^[0-9a-f]{64}$'))
   AND (NOT value?'observedState' OR (jsonb_typeof(value->'observedState')='string' AND value->>'observedState' IN ('UNKNOWN','PENDING','PAUSED','ACTIVE','COMPLETED','REJECTED','ERROR','DELETED')))
   AND (NOT value?'retryAfterSeconds' OR (jsonb_typeof(value->'retryAfterSeconds')='number' AND value->>'retryAfterSeconds' ~ '^[0-9]+$' AND (value->>'retryAfterSeconds')::integer BETWEEN 1 AND 3600))
@@ -17,6 +17,21 @@ CREATE FUNCTION is_valid_platform_evidence(value JSONB) RETURNS BOOLEAN LANGUAGE
     WHEN 'FOUND' THEN NOT value?'retryAfterSeconds'
     ELSE NOT value?'externalIdFingerprint' AND NOT value?'observedState' AND NOT value?'retryAfterSeconds'
   END;
+$$;
+
+CREATE FUNCTION is_valid_platform_attempt_result(kind TEXT,status TEXT,code TEXT,evidence JSONB) RETURNS BOOLEAN LANGUAGE sql IMMUTABLE AS $$
+ SELECT is_valid_platform_evidence(evidence) AND evidence->>'attemptKind'=kind AND CASE
+  WHEN kind='SUBMIT' AND status='SUCCEEDED' THEN code IS NULL AND evidence->>'resultKind'='SUCCEEDED'
+  WHEN kind='SUBMIT' AND status='FAILED_RETRYABLE' THEN code IN ('PLATFORM_RATE_LIMITED','PLATFORM_TEMPORARILY_UNAVAILABLE') AND evidence->>'resultKind'='FAILED_RETRYABLE'
+  WHEN kind='SUBMIT' AND status='FAILED_TERMINAL' THEN code IN ('PLATFORM_VALIDATION_FAILED','PLATFORM_PERMISSION_DENIED','PLATFORM_MAX_ATTEMPTS_EXCEEDED') AND evidence->>'resultKind'='FAILED_TERMINAL'
+  WHEN kind='SUBMIT' AND status='UNKNOWN_OUTCOME' THEN code='PLATFORM_RESPONSE_AMBIGUOUS' AND evidence->>'resultKind'='UNKNOWN_OUTCOME'
+  WHEN kind='RECONCILE' AND status='SUCCEEDED' THEN code IS NULL AND evidence->>'resultKind'='FOUND'
+  WHEN kind='RECONCILE' AND status='FAILED_TERMINAL' THEN code='PLATFORM_RECONCILIATION_TERMINAL' AND evidence->>'resultKind'='FAILED_TERMINAL'
+  WHEN kind='RECONCILE' AND status='NOT_FOUND' THEN code='PLATFORM_RECONCILIATION_NOT_FOUND' AND evidence->>'resultKind'='NOT_FOUND'
+  WHEN kind='RECONCILE' AND status='UNKNOWN_OUTCOME' THEN
+    (code='PLATFORM_RECONCILIATION_INCONCLUSIVE' AND evidence->>'resultKind'='STILL_UNKNOWN') OR
+    (code='PLATFORM_RESPONSE_AMBIGUOUS' AND evidence->>'resultKind'='UNKNOWN_OUTCOME')
+  ELSE FALSE END;
 $$;
 
 CREATE FUNCTION is_valid_platform_request(value JSONB,op TEXT,entity TEXT,entity_id UUID) RETURNS BOOLEAN LANGUAGE sql IMMUTABLE AS $$
@@ -344,6 +359,7 @@ BEGIN
  IF NOT ((OLD.status IN ('CREATED','FAILED_RETRYABLE') AND NEW.status='SUBMITTING') OR (OLD.status='SUBMITTING' AND NEW.status IN ('SUCCEEDED','FAILED_RETRYABLE','FAILED_TERMINAL','UNKNOWN_OUTCOME')) OR (OLD.status='UNKNOWN_OUTCOME' AND NEW.status='RECONCILING') OR (OLD.status='RECONCILING' AND NEW.status IN ('SUCCEEDED','FAILED_TERMINAL','UNKNOWN_OUTCOME'))) THEN RAISE EXCEPTION 'invalid operation transition' USING ERRCODE='23514'; END IF;
  IF NEW.version<>OLD.version+1 THEN RAISE EXCEPTION 'operation version must increment once' USING ERRCODE='23514'; END IF;
  IF NEW.status='SUBMITTING' AND (NEW.attempt_count<>OLD.attempt_count+1 OR NEW.reconciliation_count<>OLD.reconciliation_count) THEN RAISE EXCEPTION 'submit claim counter mismatch' USING ERRCODE='23514'; END IF;
+ IF OLD.status='FAILED_RETRYABLE' AND NEW.status='SUBMITTING' AND (OLD.next_attempt_at IS NULL OR NEW.claimed_at<OLD.next_attempt_at) THEN RAISE EXCEPTION 'retry claim is not due' USING ERRCODE='23514'; END IF;
  IF NEW.status='RECONCILING' AND (NEW.reconciliation_count<>OLD.reconciliation_count+1 OR NEW.attempt_count<>OLD.attempt_count) THEN RAISE EXCEPTION 'reconcile claim counter mismatch' USING ERRCODE='23514'; END IF;
  IF NEW.status NOT IN ('SUBMITTING','RECONCILING') AND (NEW.attempt_count<>OLD.attempt_count OR NEW.reconciliation_count<>OLD.reconciliation_count) THEN RAISE EXCEPTION 'counter changed outside claim' USING ERRCODE='23514'; END IF;
  IF NEW.status IN ('SUBMITTING','RECONCILING') AND (NEW.claimed_at IS NULL OR NEW.next_attempt_at IS NOT NULL OR NEW.completed_at IS NOT NULL OR NEW.normalized_error_code IS NOT NULL OR NEW.safe_provider_trace_id IS NOT NULL OR NEW.outcome_evidence IS NOT NULL) THEN RAISE EXCEPTION 'claim fields are incoherent' USING ERRCODE='23514'; END IF;
@@ -351,6 +367,11 @@ BEGIN
  IF NEW.status='UNKNOWN_OUTCOME' AND (NEW.normalized_error_code NOT IN ('PLATFORM_RESPONSE_AMBIGUOUS','PLATFORM_RECONCILIATION_NOT_FOUND','PLATFORM_RECONCILIATION_INCONCLUSIVE') OR NEW.next_attempt_at IS NOT NULL OR NEW.completed_at IS NOT NULL OR NEW.external_id IS NOT NULL) THEN RAISE EXCEPTION 'unknown result fields are incoherent' USING ERRCODE='23514'; END IF;
  IF NEW.status='SUCCEEDED' AND (NEW.normalized_error_code IS NOT NULL OR NEW.next_attempt_at IS NOT NULL OR NEW.outcome_evidence IS NULL OR (NEW.operation_type LIKE 'CREATE_%') IS DISTINCT FROM (NEW.external_id IS NOT NULL)) THEN RAISE EXCEPTION 'success result fields are incoherent' USING ERRCODE='23514'; END IF;
  IF NEW.status='FAILED_TERMINAL' AND (NEW.normalized_error_code IS NULL OR NEW.external_id IS NOT NULL OR NEW.outcome_evidence IS NULL) THEN RAISE EXCEPTION 'terminal result fields are incoherent' USING ERRCODE='23514'; END IF;
+ IF NEW.status NOT IN ('CREATED','SUBMITTING','RECONCILING') AND NOT is_valid_platform_attempt_result(
+      CASE WHEN OLD.status='RECONCILING' THEN 'RECONCILE' ELSE 'SUBMIT' END,
+      CASE WHEN NEW.status='UNKNOWN_OUTCOME' AND NEW.normalized_error_code='PLATFORM_RECONCILIATION_NOT_FOUND' THEN 'NOT_FOUND' ELSE NEW.status END,
+      NEW.normalized_error_code,NEW.outcome_evidence) THEN RAISE EXCEPTION 'operation outcome/evidence matrix mismatch' USING ERRCODE='23514'; END IF;
+ IF NEW.normalized_error_code='PLATFORM_MAX_ATTEMPTS_EXCEEDED' AND (NEW.status<>'FAILED_TERMINAL' OR NEW.attempt_count<>NEW.max_attempts) THEN RAISE EXCEPTION 'max-attempt terminal result is incoherent' USING ERRCODE='23514'; END IF;
  IF OLD.external_id IS NOT NULL AND NEW.external_id IS DISTINCT FROM OLD.external_id THEN RAISE EXCEPTION 'operation external id is write once' USING ERRCODE='23514'; END IF;
  RETURN NEW;
 END $$;
@@ -359,6 +380,9 @@ CREATE TRIGGER trg_platform_operations_protect BEFORE UPDATE ON platform_operati
 CREATE FUNCTION protect_platform_attempt_update() RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
  IF OLD.status<>'STARTED' OR NEW.status='STARTED' OR (NEW.operation_attempt_uuid,NEW.operation_uuid,NEW.attempt_kind,NEW.attempt_number,NEW.started_at,NEW.created_at) IS DISTINCT FROM (OLD.operation_attempt_uuid,OLD.operation_uuid,OLD.attempt_kind,OLD.attempt_number,OLD.started_at,OLD.created_at) OR OLD.version<>0 OR NEW.version<>1 THEN RAISE EXCEPTION 'attempt may finalize exactly once' USING ERRCODE='23514'; END IF;
+ IF NOT is_valid_platform_attempt_result(NEW.attempt_kind,NEW.status,NEW.normalized_error_code,NEW.evidence) THEN RAISE EXCEPTION 'attempt outcome/evidence matrix mismatch' USING ERRCODE='23514'; END IF;
+ IF NEW.normalized_error_code='PLATFORM_MAX_ATTEMPTS_EXCEEDED' AND (NEW.attempt_kind<>'SUBMIT' OR NEW.attempt_number<>3 OR NEW.status<>'FAILED_TERMINAL') THEN RAISE EXCEPTION 'max-attempt evidence is incoherent' USING ERRCODE='23514'; END IF;
+ IF NEW.attempt_kind='SUBMIT' AND NEW.attempt_number=3 AND NEW.status='FAILED_RETRYABLE' THEN RAISE EXCEPTION 'attempt three cannot remain retryable' USING ERRCODE='23514'; END IF;
  RETURN NEW;
 END $$;
 CREATE TRIGGER trg_platform_attempts_protect BEFORE UPDATE ON platform_operation_attempts FOR EACH ROW EXECUTE FUNCTION protect_platform_attempt_update();
@@ -412,8 +436,20 @@ DECLARE op platform_operations%ROWTYPE; entity_row JSONB; entity_id UUID; observ
 BEGIN
  IF TG_TABLE_NAME<>'platform_operations' THEN
    entity_id:=(to_jsonb(NEW)->>CASE TG_TABLE_NAME WHEN 'platform_campaigns' THEN 'platform_campaign_uuid' WHEN 'platform_ad_sets' THEN 'platform_ad_set_uuid' ELSE 'platform_ad_uuid' END)::uuid;
-   SELECT * INTO op FROM platform_operations WHERE status='SUCCEEDED' AND completed_at=NEW.updated_at
-     AND COALESCE(platform_campaign_uuid,platform_ad_set_uuid,platform_ad_uuid)=entity_id;
+    IF NEW.external_id IS DISTINCT FROM OLD.external_id THEN
+      SELECT * INTO op FROM platform_operations WHERE status='SUCCEEDED' AND operation_type LIKE 'CREATE_%'
+        AND COALESCE(platform_campaign_uuid,platform_ad_set_uuid,platform_ad_uuid)=entity_id
+        AND external_id=NEW.external_id;
+    ELSIF NEW.desired_state IS DISTINCT FROM OLD.desired_state THEN
+      SELECT * INTO op FROM platform_operations WHERE status='SUCCEEDED' AND operation_type IN ('PAUSE','RESUME')
+        AND COALESCE(platform_campaign_uuid,platform_ad_set_uuid,platform_ad_uuid)=entity_id
+        AND (request_payload->>'expectedEntityVersion')::bigint=OLD.version
+        AND request_payload->>'targetDesiredState'=NEW.desired_state;
+    ELSIF TG_TABLE_NAME='platform_ad_sets' AND NEW.budget_amount IS DISTINCT FROM OLD.budget_amount THEN
+      SELECT * INTO op FROM platform_operations WHERE operation_uuid=NEW.last_budget_operation_uuid AND status='SUCCEEDED';
+    ELSE
+      RAISE EXCEPTION 'entity result has no effective correlated mutation' USING ERRCODE='23514';
+    END IF;
    IF op.operation_uuid IS NULL THEN RAISE EXCEPTION 'entity result requires a matching successful operation' USING ERRCODE='23514'; END IF;
    observed_before:=OLD.observed_state; observed_after:=NEW.observed_state;
    IF op.outcome_evidence?'observedState' AND op.outcome_evidence->>'observedState' IS DISTINCT FROM observed_after THEN RAISE EXCEPTION 'entity observation differs from operation evidence' USING ERRCODE='23514'; END IF;
@@ -429,9 +465,9 @@ BEGIN
    IF NEW.entity_type='CAMPAIGN' THEN SELECT to_jsonb(e) INTO entity_row FROM platform_campaigns e WHERE e.platform_campaign_uuid=NEW.platform_campaign_uuid;
    ELSIF NEW.entity_type='AD_SET' THEN SELECT to_jsonb(e) INTO entity_row FROM platform_ad_sets e WHERE e.platform_ad_set_uuid=NEW.platform_ad_set_uuid;
    ELSE SELECT to_jsonb(e) INTO entity_row FROM platform_ads e WHERE e.platform_ad_uuid=NEW.platform_ad_uuid; END IF;
-   IF entity_row IS NULL OR (entity_row->>'updated_at')::timestamptz IS DISTINCT FROM NEW.completed_at THEN RAISE EXCEPTION 'successful operation has no atomic entity result' USING ERRCODE='23514'; END IF;
+    IF entity_row IS NULL THEN RAISE EXCEPTION 'successful operation has no atomic entity result' USING ERRCODE='23514'; END IF;
    IF NEW.operation_type LIKE 'CREATE_%' THEN
-     IF entity_row->>'external_id' IS DISTINCT FROM NEW.external_id OR NEW.outcome_evidence->>'externalIdFingerprint' IS DISTINCT FROM encode(sha256(convert_to(NEW.external_id,'UTF8')),'hex') THEN RAISE EXCEPTION 'successful create entity ID/fingerprint mismatch' USING ERRCODE='23514'; END IF;
+      IF entity_row->>'external_id' IS DISTINCT FROM NEW.external_id OR (entity_row->>'version')::bigint<>1 OR NEW.outcome_evidence->>'externalIdFingerprint' IS DISTINCT FROM encode(sha256(convert_to(NEW.external_id,'UTF8')),'hex') THEN RAISE EXCEPTION 'successful create entity ID/fingerprint mismatch' USING ERRCODE='23514'; END IF;
    ELSIF NEW.operation_type IN ('PAUSE','RESUME') THEN
      IF NEW.external_id IS NOT NULL OR entity_row->>'desired_state' IS DISTINCT FROM NEW.request_payload->>'targetDesiredState' OR (entity_row->>'version')::bigint IS DISTINCT FROM (NEW.request_payload->>'expectedEntityVersion')::bigint+1 OR NEW.outcome_evidence?'externalIdFingerprint' THEN RAISE EXCEPTION 'successful state mutation was not applied' USING ERRCODE='23514'; END IF;
    END IF;
