@@ -49,7 +49,7 @@ class PlatformOperationAuditRollbackIntegrationTest {
         transactions.claimSubmit(operation,created.getVersion(),Instant.now(),context);
         int auditBefore=jdbc.queryForObject("select count(*) from audit_logs where operation_uuid=?",Integer.class,operation);
         reset(audit); java.util.concurrent.atomic.AtomicInteger calls=new java.util.concurrent.atomic.AtomicInteger();
-        doAnswer(invocation->{int call=calls.incrementAndGet();if(call==failurePosition&&failurePosition<3)throw new IllegalStateException("synthetic audit failure");Object result=invocation.callRealMethod();if(call==failurePosition)throw new IllegalStateException("synthetic audit failure after append");return result;}).when(audit).write(any(),any());
+        doAnswer(invocation->{int call=calls.incrementAndGet();if(call==failurePosition&&failurePosition<3)throw new IllegalStateException("synthetic audit failure");Object result=invocation.callRealMethod();if(call==failurePosition)throw new IllegalStateException("synthetic audit failure after append");return result;}).when(audit).write(any(com.aicommerce.platform.delivery.application.audit.PlatformAuditEvent.class),any());
 
         assertThatThrownBy(()->transactions.recordWriteOutcome(operation,new com.aicommerce.platform.delivery.infrastructure.provider.DeterministicFakePlatformAdapter().submitCampaign(
                 new com.aicommerce.platform.delivery.application.port.PlatformCampaignCommand(

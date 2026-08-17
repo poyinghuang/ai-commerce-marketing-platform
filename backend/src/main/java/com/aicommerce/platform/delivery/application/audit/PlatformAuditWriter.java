@@ -1,3 +1,3 @@
 package com.aicommerce.platform.delivery.application.audit;
 import com.aicommerce.platform.audit.domain.AuditOperationContext;
-public interface PlatformAuditWriter { void write(PlatformAuditEvent event, AuditOperationContext context); }
+public interface PlatformAuditWriter { void write(PlatformAuditEvent event, AuditOperationContext context); void write(PlatformBudgetAuditEvent event, AuditOperationContext context); }

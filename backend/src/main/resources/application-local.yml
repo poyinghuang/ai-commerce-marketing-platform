@@ -12,3 +12,7 @@ app:
     startup-repair-enabled: true
 platform:
   adapter: fake
+  web:
+    enabled: true
+  stage4b:
+    enabled: true

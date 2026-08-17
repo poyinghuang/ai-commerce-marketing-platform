@@ -44,11 +44,11 @@ class MigrationCompatibilityTest {
     void emptyDatabaseRunsV1ThroughV12AndRepeatMigrationHasNoPendingWork() {
         Flyway flyway = flyway("empty_case", null);
 
-        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(13);
+        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(14);
         assertThat(List.of(flyway.info().applied()).stream()
                 .filter(info -> info.getVersion() != null)
                 .map(info -> info.getVersion().getVersion()))
-                .containsExactly("1", "2", "3", "4", "5", "6", "6.1", "7", "8", "9", "10", "11", "12");
+                .containsExactly("1", "2", "3", "4", "5", "6", "6.1", "7", "8", "9", "10", "11", "12", "13");
         assertThat(flyway.info().pending()).isEmpty();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
     }
@@ -380,13 +380,13 @@ class MigrationCompatibilityTest {
             return null;
         });
         Flyway latest=flyway(schema,null);
-        assertThat(latest.migrate().migrationsExecuted).isEqualTo(1);
+        assertThat(latest.migrate().migrationsExecuted).isEqualTo(2);
         assertThat(jdbc.queryForObject("SELECT review_status FROM ai_generation_outputs WHERE generation_output_uuid=?",String.class,output)).isEqualTo("APPROVED");
         assertThat(jdbc.queryForObject("SELECT decision FROM ai_review_decisions WHERE review_decision_uuid=?",String.class,decision)).isEqualTo("APPROVED");
         assertThat(jdbc.queryForMap("SELECT campaign_name,objective,budget_daily,currency,version FROM campaign_plans WHERE campaign_uuid=?",campaignPlan)).containsEntry("campaign_name","Preserved Campaign").containsEntry("objective","sales").containsEntry("currency","TWD").containsEntry("version",7L);
         assertThat(jdbc.queryForMap("SELECT product_uuid,campaign_uuid,asset_type,purpose,checksum_sha256,version FROM assets WHERE asset_uuid=?",asset)).containsEntry("product_uuid",product).containsEntry("campaign_uuid",campaignPlan).containsEntry("asset_type","IMAGE").containsEntry("purpose","PRESERVED").containsEntry("checksum_sha256","d".repeat(64)).containsEntry("version",8L);
         assertThat(jdbc.queryForObject("SELECT version FROM products WHERE product_uuid=?",Long.class,product)).isEqualTo(5L);
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM information_schema.tables WHERE table_schema=? AND table_name LIKE 'platform_%'",Integer.class,schema)).isEqualTo(7);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM information_schema.tables WHERE table_schema=? AND table_name LIKE 'platform_%'",Integer.class,schema)).isEqualTo(10);
         assertThat(latest.info().pending()).isEmpty();
     }
 
@@ -422,6 +422,23 @@ class MigrationCompatibilityTest {
         assertThat(jdbc.queryForObject("SELECT count(*) FROM information_schema.columns WHERE table_schema=? AND table_name='platform_accounts'",Integer.class,schema)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=? AND p.proname IN ('is_valid_platform_evidence','is_valid_platform_attempt_result','is_valid_platform_request')",Integer.class,schema)).isZero();
         assertThat(flyway(schema,MigrationVersion.fromVersion("11")).info().current().getVersion().getVersion()).isEqualTo("11");
+    }
+
+    @Test
+    void failedV13MigrationRollsBackEveryPartialV13Object() {
+        String schema="atomic_v13_case";
+        assertThat(flyway(schema,MigrationVersion.fromVersion("12")).migrate().migrationsExecuted).isEqualTo(13);
+        JdbcTemplate jdbc=jdbcTemplate();
+        jdbc.execute("CREATE TABLE "+schema+".platform_operation_batches(sentinel integer primary key)");
+
+        assertThatThrownBy(()->flyway(schema,null).migrate()).isInstanceOf(FlywayException.class);
+
+        for(String table:List.of("platform_budget_reservations","platform_account_budget_days")){
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM information_schema.tables WHERE table_schema=? AND table_name=?",Integer.class,schema,table)).isZero();
+        }
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM information_schema.columns WHERE table_schema=? AND table_name='platform_operation_batches'",Integer.class,schema)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=? AND p.proname LIKE 'platform_%budget%'",Integer.class,schema)).isZero();
+        assertThat(flyway(schema,MigrationVersion.fromVersion("12")).info().current().getVersion().getVersion()).isEqualTo("12");
     }
 
     @Test
