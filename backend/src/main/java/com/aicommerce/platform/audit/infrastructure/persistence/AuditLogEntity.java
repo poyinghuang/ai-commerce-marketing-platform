@@ -60,6 +60,9 @@ class AuditLogEntity {
     @Column(name = "occurred_at", nullable = false, updatable = false)
     private Instant occurredAt;
 
+    @Column(name = "stage4b_operation_ordinal", insertable = false, updatable = false)
+    private Short stage4bOperationOrdinal;
+
     @OneToMany(mappedBy = "auditLog", cascade = CascadeType.PERSIST, fetch = FetchType.LAZY)
     private List<AuditChangeEntity> changes = new ArrayList<>();
 

@@ -48,7 +48,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 @Testcontainers
-@SpringBootTest
+@SpringBootTest(properties={"spring.flyway.target=12","spring.jpa.hibernate.ddl-auto=none"})
 @ActiveProfiles("test")
 class PlatformTypedAuditAcceptanceIntegrationTest {
     @Container @ServiceConnection
@@ -133,7 +133,7 @@ class PlatformTypedAuditAcceptanceIntegrationTest {
         if("ATTEMPT_3".equals(scenario)){
             for(int number=1;number<=2;number++){
                 if(number==1)transactions.claimSubmit(fixture.operationUuid(),operation.getVersion(),Instant.now(),context);else transactions.claimRetry(fixture.operationUuid(),operation.getVersion(),operation.getNextAttemptAt(),context);
-                operation=transactions.recordWriteOutcome(fixture.operationUuid(),retryable("audit-retry",1),context);jdbc.queryForObject("select pg_sleep(1.2)",Object.class);
+                operation=transactions.recordWriteOutcome(fixture.operationUuid(),retryable("audit-retry",1),context);awaitDatabaseDue(operation.getNextAttemptAt());
             }
         }
         reset(audit);
@@ -150,6 +150,10 @@ class PlatformTypedAuditAcceptanceIntegrationTest {
                 attemptContent(fixture,"ATTEMPT_FINALIZED",attempt,"SUBMIT",number,"STARTED",finalStatus,code,trace),
                 operationContent(fixture,"SUBMITTING",finalStatus,code,trace)));
         assertThat(completed.getStatus().name()).isEqualTo(finalStatus);
+    }
+
+    private void awaitDatabaseDue(Instant dueAt) {
+        jdbc.queryForObject("select pg_sleep(greatest(0,extract(epoch from (?::timestamptz-statement_timestamp())))+0.05)",Object.class,java.sql.Timestamp.from(dueAt));
     }
 
     @ParameterizedTest(name="reconciliation audit {0}")

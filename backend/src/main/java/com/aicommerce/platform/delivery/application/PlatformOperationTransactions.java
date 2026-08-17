@@ -7,6 +7,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -14,6 +15,10 @@ import java.util.UUID;
 import com.aicommerce.platform.delivery.application.audit.PlatformAuditEvent;
 import com.aicommerce.platform.delivery.application.audit.PlatformAuditEventKind;
 import com.aicommerce.platform.delivery.application.audit.PlatformAuditWriter;
+import com.aicommerce.platform.delivery.application.audit.PlatformBudgetAuditEvent;
+import com.aicommerce.platform.delivery.application.audit.PlatformBudgetAuditEventKind;
+import com.aicommerce.platform.delivery.application.audit.PlatformAuditSubjectType;
+import com.aicommerce.platform.delivery.application.audit.PlatformReservationKind;
 import com.aicommerce.platform.audit.domain.AuditAction;
 import com.aicommerce.platform.audit.domain.AuditActor;
 import com.aicommerce.platform.audit.domain.AuditActorType;
@@ -110,12 +115,33 @@ public class PlatformOperationTransactions {
             return stored;
         }
         if(entityCreated) platformAudit.write(entityCreatedEvent(stored),context);
+        appendStage4BBudgetAudit(stored, context);
         append(context, AuditAction.CREATE, stored, List.of(
                 change("status", null, "CREATED", AuditValueType.ENUM, 0),
                 change("operationType", null, stored.getOperationType().name(), AuditValueType.ENUM, 1),
                 change("entityType", null, stored.getEntityType().name(), AuditValueType.ENUM, 2),
                 change("requestSha256", null, stored.getRequestSha256(), AuditValueType.STRING, 3)));
         return stored;
+    }
+
+    private void appendStage4BBudgetAudit(PlatformOperation operation, AuditOperationContext context) {
+        if(jdbc.queryForObject("SELECT to_regclass('platform_operation_batches') IS NOT NULL",Boolean.class)!=Boolean.TRUE)return;
+        List<Map<String,Object>> batches=jdbc.queryForList("SELECT operation_batch_uuid,business_date,reserved_amount,currency FROM platform_operation_batches WHERE operation_uuid=?",operation.getOperationUuid());
+        if(batches.isEmpty())return;
+        Map<String,Object> b=batches.getFirst();UUID batch=(UUID)b.get("operation_batch_uuid");
+        List<Map<String,Object>> reservations=jdbc.queryForList("SELECT budget_reservation_uuid,account_budget_day_uuid,reservation_kind,previous_budget_amount,new_budget_amount,reserved_amount FROM platform_budget_reservations WHERE operation_uuid=?",operation.getOperationUuid());
+        Optional<UUID> reservationUuid=reservations.isEmpty()?Optional.empty():Optional.of((UUID)reservations.getFirst().get("budget_reservation_uuid"));
+        Optional<UUID> dayUuid=reservations.isEmpty()?Optional.empty():Optional.of((UUID)reservations.getFirst().get("account_budget_day_uuid"));
+        Optional<PlatformReservationKind> kind=reservations.isEmpty()?Optional.empty():Optional.of(PlatformReservationKind.valueOf((String)reservations.getFirst().get("reservation_kind")));
+        Optional<BigDecimal> previous=reservations.isEmpty()?Optional.empty():Optional.ofNullable((BigDecimal)reservations.getFirst().get("previous_budget_amount"));
+        Optional<BigDecimal> next=reservations.isEmpty()?Optional.empty():Optional.of((BigDecimal)reservations.getFirst().get("new_budget_amount"));
+        BigDecimal reserved=(BigDecimal)b.get("reserved_amount");Object rawDate=b.get("business_date");java.time.LocalDate date=rawDate instanceof java.sql.Date sqlDate?sqlDate.toLocalDate():(java.time.LocalDate)rawDate;
+        platformAudit.write(new PlatformBudgetAuditEvent(PlatformAuditSubjectType.PLATFORM_OPERATION_BATCH,batch,AuditAction.CREATE,PlatformBudgetAuditEventKind.OPERATION_BATCH_CREATED,operation.getOperationUuid(),operation.getOperationType(),operation.getEntityType(),operation.getEntityUuid(),batch,reservationUuid,dayUuid,date,kind,"TWD",previous,next,reserved,Optional.empty(),Optional.empty()),context);
+        if(!reservations.isEmpty()){
+            Map<String,Object> r=reservations.getFirst();BigDecimal delta=(BigDecimal)r.get("reserved_amount");
+            platformAudit.write(new PlatformBudgetAuditEvent(PlatformAuditSubjectType.PLATFORM_BUDGET_RESERVATION,reservationUuid.orElseThrow(),AuditAction.CREATE,PlatformBudgetAuditEventKind.BUDGET_RESERVATION_CREATED,operation.getOperationUuid(),operation.getOperationType(),operation.getEntityType(),operation.getEntityUuid(),batch,reservationUuid,dayUuid,date,kind,"TWD",previous,next,delta,Optional.empty(),Optional.empty()),context);
+            if(delta.signum()>0){BigDecimal aggregate=jdbc.queryForObject("SELECT reserved_amount FROM platform_account_budget_days WHERE account_budget_day_uuid=?",BigDecimal.class,dayUuid.orElseThrow());platformAudit.write(new PlatformBudgetAuditEvent(PlatformAuditSubjectType.PLATFORM_ACCOUNT_BUDGET_DAY,dayUuid.orElseThrow(),AuditAction.UPDATE,PlatformBudgetAuditEventKind.ACCOUNT_DAY_RESERVED,operation.getOperationUuid(),operation.getOperationType(),operation.getEntityType(),operation.getEntityUuid(),batch,reservationUuid,dayUuid,date,kind,"TWD",Optional.empty(),Optional.empty(),delta,Optional.of(aggregate.subtract(delta)),Optional.of(aggregate)),context);}
+        }
     }
 
     @Transactional

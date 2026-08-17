@@ -44,7 +44,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.postgresql.util.PSQLException;
 
 @Testcontainers
-@SpringBootTest
+@SpringBootTest(properties={"spring.flyway.target=12","spring.jpa.hibernate.ddl-auto=none"})
 @ActiveProfiles("test")
 class PlatformOperationIntegrationTest {
     @Container @ServiceConnection
