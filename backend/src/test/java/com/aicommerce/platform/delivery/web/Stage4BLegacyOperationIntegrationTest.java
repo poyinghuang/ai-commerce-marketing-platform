@@ -71,6 +71,14 @@ class Stage4BLegacyOperationIntegrationTest {
     private static final Map<String,Object> V12_METRIC=new LinkedHashMap<>();
     private static final Map<String,Object> V12_AD_SET=new LinkedHashMap<>();
     private static final Map<String,String> V12_TABLES=new LinkedHashMap<>();
+    private static final List<String> V12_GRAPH_TABLES=List.of(
+        "platform_accounts","campaign_plans","products","campaign_products","assets",
+        "ai_prompt_templates","ai_prompt_template_versions","ai_generation_batches","ai_generation_jobs",
+        "ai_generation_outputs","ai_review_decisions","platform_campaigns","platform_ad_sets","platform_ads",
+        "platform_operations","platform_operation_attempts","platform_metric_snapshots");
+    private static final List<String> ROUTE_GRAPH_TABLES=java.util.stream.Stream.concat(
+        V12_GRAPH_TABLES.stream(),java.util.stream.Stream.of("audit_logs","audit_log_changes","platform_operation_batches","platform_budget_reservations","platform_account_budget_days"))
+        .toList();
 
     @Container @ServiceConnection
     static final PostgreSQLContainer postgres=new PostgreSQLContainer("postgres:17.6-alpine3.22");
@@ -85,33 +93,50 @@ class Stage4BLegacyOperationIntegrationTest {
         assertThat(row("platform_operation_attempts","operation_attempt_uuid",ATTEMPT)).isEqualTo(V12_ATTEMPT);
         assertThat(row("platform_metric_snapshots","metric_snapshot_uuid",METRIC)).isEqualTo(V12_METRIC);
         assertThat(row("platform_ad_sets","platform_ad_set_uuid",AD_SET)).isEqualTo(V12_AD_SET);
-        V12_TABLES.forEach((table,expected)->assertThat(rows(table,orderColumn(table))).as(table).isEqualTo(expected));
+        V12_TABLES.forEach((table,expected)->assertThat(v12Rows(jdbc,table,orderColumn(table))).as(table).isEqualTo(expected));
         assertThat(row("platform_ads","platform_ad_uuid",AD)).containsEntry("product_uuid",PRODUCT).containsEntry("asset_uuid",GENERATED_ASSET).containsEntry("generation_output_uuid",AI_OUTPUT).containsEntry("review_decision_uuid",REVIEW).containsEntry("approved_checksum_sha256","e".repeat(64));
         assertThat(jdbc.queryForObject("select count(*) from platform_operation_batches where operation_uuid=?",Integer.class,OPERATION)).isZero();
 
         assertThat(STATE_OPERATIONS.stream().map(operation->jdbc.queryForObject("select status from platform_operations where operation_uuid=?",String.class,operation)).toList()).containsExactlyElementsOf(EXPECTED_STATES);
 
-        Snapshot before=snapshot(); int calls=fake.invocationCount();
+        Map<String,String> before=snapshot(); int calls=fake.invocationCount();
         for(int index=0;index<STATE_OPERATIONS.size();index++){
             UUID operation=STATE_OPERATIONS.get(index);long version=jdbc.queryForObject("select version from platform_operations where operation_uuid=?",Long.class,operation);
+            Map<String,String> beforeGet=snapshot();
             mvc.perform(get("/api/platform-operations/"+operation)).andExpect(status().isOk()).andExpect(jsonPath("$.operationUuid").value(operation.toString())).andExpect(jsonPath("$.status").value(EXPECTED_STATES.get(index)));
+            assertThat(snapshot()).as("GET legacy operation "+operation).isEqualTo(beforeGet);
+            Map<String,String> beforeRetry=snapshot();
             mvc.perform(post("/api/platform-operations/"+operation+"/retry").header("If-Match","W/\""+version+"\"")) .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("PLATFORM_LEGACY_OPERATION_INERT"));
+            assertThat(snapshot()).as("retry legacy operation "+operation).isEqualTo(beforeRetry);
+            Map<String,String> beforeReconcile=snapshot();
             mvc.perform(post("/api/platform-operations/"+operation+"/reconcile").header("If-Match","W/\""+version+"\"")) .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("PLATFORM_LEGACY_OPERATION_INERT"));
+            assertThat(snapshot()).as("reconcile legacy operation "+operation).isEqualTo(beforeReconcile);
         }
         assertThat(snapshot()).isEqualTo(before);
         assertThat(fake.invocationCount()).isEqualTo(calls);
     }
 
     private Map<String,Object> row(String table,String key,UUID id){return jdbc.queryForMap("select * from "+table+" where "+key+"=?",id);}
-    private Snapshot snapshot(){return new Snapshot(
-        jdbc.queryForObject("select count(*) from platform_operations",Integer.class),
-        jdbc.queryForObject("select count(*) from platform_operation_attempts",Integer.class),
-        jdbc.queryForObject("select count(*) from platform_operation_batches",Integer.class),
-        jdbc.queryForObject("select count(*) from platform_budget_reservations",Integer.class),
-        jdbc.queryForObject("select count(*) from audit_logs",Integer.class),rows("platform_operations","operation_uuid"),rows("platform_operation_attempts","operation_attempt_uuid"),rows("platform_campaigns","platform_campaign_uuid"),rows("platform_ad_sets","platform_ad_set_uuid"),rows("platform_metric_snapshots","metric_snapshot_uuid"));}
-    private String rows(String table,String order){return jdbc.queryForObject("select coalesce(jsonb_agg(to_jsonb(t) order by "+order+"),'[]')::text from "+table+" t",String.class);}
-    private static String orderColumn(String table){return switch(table){case "products"->"product_uuid";case "assets"->"asset_uuid";case "ai_generation_outputs"->"generation_output_uuid";case "ai_review_decisions"->"review_decision_uuid";case "platform_campaigns"->"platform_campaign_uuid";case "platform_ad_sets"->"platform_ad_set_uuid";case "platform_ads"->"platform_ad_uuid";case "platform_operations"->"operation_uuid";case "platform_operation_attempts"->"operation_attempt_uuid";default->"metric_snapshot_uuid";};}
-    private record Snapshot(int operations,int attempts,int batches,int reservations,int audits,String operationRows,String attemptRows,String campaignRows,String adSetRows,String metricRows){}
+    private Map<String,String> snapshot(){Map<String,String> graph=new LinkedHashMap<>();ROUTE_GRAPH_TABLES.forEach(table->graph.put(table,rows(table,orderColumn(table))));return Map.copyOf(graph);}
+    private String rows(String table,String order){return rows(jdbc,table,order);}
+    private static String rows(JdbcTemplate jdbc,String table,String order){String json="audit_logs".equals(table)?"to_jsonb(t)-'stage4b_operation_ordinal'":"to_jsonb(t)";return jdbc.queryForObject("select coalesce(jsonb_agg("+json+" order by "+order+"),'[]')::text from "+table+" t",String.class);}
+    private static String v12Rows(JdbcTemplate jdbc,String table,String order){
+        String where=switch(table){case "ai_prompt_templates"->" where prompt_template_uuid='"+TEMPLATE+"'";case "ai_prompt_template_versions"->" where prompt_template_version_uuid='"+TEMPLATE_VERSION+"'";default->"";};
+        String json="audit_logs".equals(table)?"to_jsonb(t)-'stage4b_operation_ordinal'":"to_jsonb(t)";
+        return jdbc.queryForObject("select coalesce(jsonb_agg("+json+" order by "+order+"),'[]')::text from "+table+" t"+where,String.class);
+    }
+    private static String orderColumn(String table){return switch(table){
+        case "platform_accounts"->"platform_account_uuid";case "campaign_plans"->"campaign_uuid";case "products"->"product_uuid";
+        case "campaign_products"->"campaign_product_uuid";case "assets"->"asset_uuid";case "ai_prompt_templates"->"prompt_template_uuid";
+        case "ai_prompt_template_versions"->"prompt_template_version_uuid";case "ai_generation_batches"->"generation_batch_uuid";
+        case "ai_generation_jobs"->"generation_job_uuid";case "ai_generation_outputs"->"generation_output_uuid";
+        case "ai_review_decisions"->"review_decision_uuid";case "platform_campaigns"->"platform_campaign_uuid";
+        case "platform_ad_sets"->"platform_ad_set_uuid";case "platform_ads"->"platform_ad_uuid";
+        case "platform_operations"->"operation_uuid";case "platform_operation_attempts"->"operation_attempt_uuid";
+        case "platform_metric_snapshots"->"metric_snapshot_uuid";case "audit_logs"->"audit_uuid";
+        case "audit_log_changes"->"audit_uuid,change_order";case "platform_operation_batches"->"operation_batch_uuid";
+        case "platform_budget_reservations"->"budget_reservation_uuid";case "platform_account_budget_days"->"account_budget_day_uuid";
+        default->throw new IllegalArgumentException("No deterministic order for "+table);};}
 
     @TestConfiguration(proxyBeanMethods=false)
     static class LegacyFixtureMigration {
@@ -163,7 +188,7 @@ class Stage4BLegacyOperationIntegrationTest {
                 V12_ATTEMPT.putAll(jdbc.queryForMap("select * from platform_operation_attempts where operation_attempt_uuid=?",ATTEMPT));
                 V12_METRIC.putAll(jdbc.queryForMap("select * from platform_metric_snapshots where metric_snapshot_uuid=?",METRIC));
                 V12_AD_SET.putAll(jdbc.queryForMap("select * from platform_ad_sets where platform_ad_set_uuid=?",AD_SET));
-                for(String table:List.of("products","assets","ai_generation_outputs","ai_review_decisions","platform_campaigns","platform_ad_sets","platform_ads","platform_operations","platform_operation_attempts","platform_metric_snapshots"))V12_TABLES.put(table,rows(jdbc,table,orderColumn(table)));
+                for(String table:V12_GRAPH_TABLES)V12_TABLES.put(table,v12Rows(jdbc,table,orderColumn(table)));
                 latest.migrate();
             };
         }
@@ -173,6 +198,5 @@ class Stage4BLegacyOperationIntegrationTest {
         private static void claimReconcile(JdbcTemplate jdbc,TransactionTemplate tx,UUID operation){tx.executeWithoutResult(s->{jdbc.update("update platform_operations set status='RECONCILING',reconciliation_count=reconciliation_count+1,normalized_error_code=null,safe_provider_trace_id=null,outcome_evidence=null,claimed_at=statement_timestamp(),updated_at=statement_timestamp(),version=version+1 where operation_uuid=?",operation);jdbc.update("insert into platform_operation_attempts(operation_attempt_uuid,operation_uuid,attempt_kind,attempt_number,status,started_at,version) select ?,operation_uuid,'RECONCILE',reconciliation_count,'STARTED',claimed_at,0 from platform_operations where operation_uuid=?",UUID.randomUUID(),operation);});}
         private static void finalizeReconcileTerminal(JdbcTemplate jdbc,TransactionTemplate tx,UUID operation){String evidence="{\"schemaVersion\":1,\"providerKey\":\"FAKE\",\"attemptKind\":\"RECONCILE\",\"resultKind\":\"FAILED_TERMINAL\"}";tx.executeWithoutResult(s->{jdbc.update("update platform_operation_attempts set status='FAILED_TERMINAL',normalized_error_code='PLATFORM_RECONCILIATION_TERMINAL',safe_provider_trace_id='legacy-trace',evidence=?::jsonb,completed_at=statement_timestamp(),version=1 where operation_uuid=? and attempt_kind='RECONCILE'",evidence,operation);jdbc.update("update platform_operations set status='FAILED_TERMINAL',normalized_error_code='PLATFORM_RECONCILIATION_TERMINAL',safe_provider_trace_id='legacy-trace',outcome_evidence=?::jsonb,claimed_at=null,completed_at=statement_timestamp(),updated_at=statement_timestamp(),version=version+1 where operation_uuid=?",evidence,operation);});}
         private static String hex(UUID id){return id.toString().replace("-","").repeat(2);}
-        private static String rows(JdbcTemplate jdbc,String table,String order){return jdbc.queryForObject("select coalesce(jsonb_agg(to_jsonb(t) order by "+order+"),'[]')::text from "+table+" t",String.class);}
     }
 }

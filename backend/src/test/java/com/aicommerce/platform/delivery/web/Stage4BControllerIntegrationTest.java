@@ -29,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import com.aicommerce.platform.delivery.application.Stage4BService;
 import com.aicommerce.platform.delivery.application.Stage4BLedgerCriticalSectionHook;
+import com.aicommerce.platform.delivery.domain.PlatformBudgetType;
 import com.aicommerce.platform.delivery.infrastructure.provider.DeterministicFakePlatformAdapter;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -42,6 +43,7 @@ class Stage4BControllerIntegrationTest {
     @Autowired DeterministicFakePlatformAdapter fake;
     UUID plan;
     @BeforeEach void fixture(){
+        reset(ledgerHook);jdbc.execute("TRUNCATE platform_budget_reservations, platform_operation_batches, platform_account_budget_days, platform_operation_attempts, platform_operations, platform_ad_sets, platform_campaigns, campaign_plans, audit_log_changes, audit_logs RESTART IDENTITY CASCADE");
         plan=UUID.randomUUID();jdbc.update("""
           INSERT INTO campaign_plans(campaign_uuid,campaign_name,start_date,end_date,objective,platform,budget_daily,budget_total,currency)
           VALUES (?,'Stage 4B',?,?, 'OUTCOME_SALES','META',100.0000,300.0000,'TWD')
@@ -88,14 +90,14 @@ class Stage4BControllerIntegrationTest {
     }
     @Test void allFiveTransactionACommandsPersistExactOrderedAuditAndTypedBudgetChanges() throws Exception {
         UUID campaignRequest=UUID.randomUUID();
-        String campaign=createCampaign(plan,campaignRequest);UUID campaignOperation=operation(campaignRequest);
-        UUID adSetRequest=UUID.randomUUID();String adSet=createAdSet(campaign,"25",adSetRequest);UUID adSetOperation=operation(adSetRequest);
+        String campaign=createCampaign(plan,campaignRequest,"audit-campaign-create");UUID campaignOperation=operation(campaignRequest);
+        UUID adSetRequest=UUID.randomUUID();String adSet=createAdSet(campaign,"25",adSetRequest,"audit-adset-create");UUID adSetOperation=operation(adSetRequest);
         String campaignEtag=mvc.perform(get("/api/platforms/meta/campaigns/"+campaign)).andReturn().getResponse().getHeader("ETag");UUID stateRequest=UUID.randomUUID();
-        mvc.perform(post("/api/platforms/meta/campaigns/"+campaign+"/resume").header("If-Match",campaignEtag).contentType(MediaType.APPLICATION_JSON).content("{\"clientRequestUuid\":\""+stateRequest+"\",\"targetDesiredState\":\"ACTIVE\"}")) .andExpect(status().isAccepted());UUID stateOperation=operation(stateRequest);
+        mvc.perform(post("/api/platforms/meta/campaigns/"+campaign+"/resume").header("If-Match",campaignEtag).header("X-Request-ID","audit-campaign-state").contentType(MediaType.APPLICATION_JSON).content("{\"clientRequestUuid\":\""+stateRequest+"\",\"targetDesiredState\":\"ACTIVE\"}")) .andExpect(status().isAccepted());UUID stateOperation=operation(stateRequest);
         String adSetEtag=mvc.perform(get("/api/platforms/meta/ad-sets/"+adSet)).andReturn().getResponse().getHeader("ETag");UUID increaseRequest=UUID.randomUUID();
-        mvc.perform(post("/api/platforms/meta/ad-sets/"+adSet+"/budget").header("If-Match",adSetEtag).contentType(MediaType.APPLICATION_JSON).content("{\"clientRequestUuid\":\""+increaseRequest+"\",\"newBudgetAmount\":\"30\"}")) .andExpect(status().isAccepted());UUID increaseOperation=operation(increaseRequest);
+        mvc.perform(post("/api/platforms/meta/ad-sets/"+adSet+"/budget").header("If-Match",adSetEtag).header("X-Request-ID","audit-budget-increase").contentType(MediaType.APPLICATION_JSON).content("{\"clientRequestUuid\":\""+increaseRequest+"\",\"newBudgetAmount\":\"30\"}")) .andExpect(status().isAccepted());UUID increaseOperation=operation(increaseRequest);
         adSetEtag=mvc.perform(get("/api/platforms/meta/ad-sets/"+adSet)).andReturn().getResponse().getHeader("ETag");UUID decreaseRequest=UUID.randomUUID();
-        mvc.perform(post("/api/platforms/meta/ad-sets/"+adSet+"/budget").header("If-Match",adSetEtag).contentType(MediaType.APPLICATION_JSON).content("{\"clientRequestUuid\":\""+decreaseRequest+"\",\"newBudgetAmount\":\"20\"}")) .andExpect(status().isAccepted());UUID decreaseOperation=operation(decreaseRequest);
+        mvc.perform(post("/api/platforms/meta/ad-sets/"+adSet+"/budget").header("If-Match",adSetEtag).header("X-Request-ID","audit-budget-decrease").contentType(MediaType.APPLICATION_JSON).content("{\"clientRequestUuid\":\""+decreaseRequest+"\",\"newBudgetAmount\":\"20\"}")) .andExpect(status().isAccepted());UUID decreaseOperation=operation(decreaseRequest);
 
         assertThat(subjects(campaignOperation)).containsExactly("PLATFORM_CAMPAIGN","PLATFORM_OPERATION_BATCH","PLATFORM_OPERATION","PLATFORM_OPERATION_ATTEMPT","PLATFORM_OPERATION","PLATFORM_OPERATION_ATTEMPT","PLATFORM_OPERATION","PLATFORM_CAMPAIGN");
         assertThat(subjects(adSetOperation)).containsExactly("PLATFORM_AD_SET","PLATFORM_OPERATION_BATCH","PLATFORM_BUDGET_RESERVATION","PLATFORM_ACCOUNT_BUDGET_DAY","PLATFORM_OPERATION","PLATFORM_OPERATION_ATTEMPT","PLATFORM_OPERATION","PLATFORM_OPERATION_ATTEMPT","PLATFORM_OPERATION","PLATFORM_AD_SET");
@@ -111,16 +113,31 @@ class Stage4BControllerIntegrationTest {
         assertBudgetAudit(increaseOperation,"INCREASE","25","30","5",true);
         assertBudgetAudit(decreaseOperation,"DECREASE_NO_RELEASE","30","20","0",false);
         assertBatchAudit(campaignOperation,"0",false);assertBatchAudit(stateOperation,"0",false);
+        assertAuditEnvelope(campaignOperation,"audit-campaign-create");assertAuditEnvelope(adSetOperation,"audit-adset-create");
+        assertAuditEnvelope(stateOperation,"audit-campaign-state");assertAuditEnvelope(increaseOperation,"audit-budget-increase");assertAuditEnvelope(decreaseOperation,"audit-budget-decrease");
         assertThat(jdbc.queryForObject("select count(*) from audit_logs where operation_uuid in (?,?,?,?,?) and actor_type='LOCAL_ADMIN' and actor_id='local-admin' and source='API' and request_id ~ '^[A-Za-z0-9._:-]{1,128}$'",Integer.class,campaignOperation,adSetOperation,stateOperation,increaseOperation,decreaseOperation)).isEqualTo(subjects(campaignOperation).size()+subjects(adSetOperation).size()+subjects(stateOperation).size()+subjects(increaseOperation).size()+subjects(decreaseOperation).size());
         assertThat(jdbc.queryForObject("select count(*) from audit_log_changes c join audit_logs l on l.audit_uuid=c.audit_uuid where l.operation_uuid in (?,?,?,?,?) and lower(coalesce(c.old_value,'')||coalesce(c.new_value,'')) ~ '(secret|token|credential|authorization|cookie|https?://)'",Integer.class,campaignOperation,adSetOperation,stateOperation,increaseOperation,decreaseOperation)).isZero();
     }
     @Test void replayReturnsExistingOperationWithoutCapacityChange() throws Exception {
         UUID request=UUID.randomUUID();String body="{\"clientRequestUuid\":\""+request+"\",\"campaignUuid\":\""+plan+"\",\"expectedCampaignPlanVersion\":0}";
         mvc.perform(post("/api/platforms/meta/campaigns").contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isAccepted());
-        int audit=count("audit_logs"),changes=count("audit_log_changes");
+        int audit=count("audit_logs"),changes=count("audit_log_changes");String auditBefore=auditSnapshot();
         mvc.perform(post("/api/platforms/meta/campaigns").contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk());
         assertThat(jdbc.queryForObject("SELECT count(*) FROM platform_operation_batches WHERE client_request_uuid=?",Integer.class,request)).isEqualTo(1);
-        assertThat(count("audit_logs")).isEqualTo(audit);assertThat(count("audit_log_changes")).isEqualTo(changes);
+        assertThat(count("audit_logs")).isEqualTo(audit);assertThat(count("audit_log_changes")).isEqualTo(changes);assertThat(auditSnapshot()).isEqualTo(auditBefore);
+    }
+    @Test void invalidStaleAndCapFailuresPreserveByteEquivalentAuditGraph() throws Exception {
+        String before=auditSnapshot();
+        mvc.perform(post("/api/platforms/meta/campaigns/preview").contentType(MediaType.APPLICATION_JSON).content("{\"clientRequestUuid\":\""+UUID.randomUUID()+"\",\"campaignUuid\":\""+plan+"\",\"budgetAmount\":\"1e1\"}"))
+            .andExpect(status().isBadRequest());assertThat(auditSnapshot()).isEqualTo(before);
+        String staleCampaign=createCampaign(plan),oldEtag=mvc.perform(get("/api/platforms/meta/campaigns/"+staleCampaign)).andReturn().getResponse().getHeader("ETag");
+        mvc.perform(post("/api/platforms/meta/campaigns/"+staleCampaign+"/resume").header("If-Match",oldEtag).contentType(MediaType.APPLICATION_JSON).content("{\"clientRequestUuid\":\""+UUID.randomUUID()+"\",\"targetDesiredState\":\"ACTIVE\"}")) .andExpect(status().isAccepted());
+        before=auditSnapshot();mvc.perform(post("/api/platforms/meta/campaigns/"+staleCampaign+"/pause").header("If-Match",oldEtag).contentType(MediaType.APPLICATION_JSON).content("{\"clientRequestUuid\":\""+UUID.randomUUID()+"\",\"targetDesiredState\":\"PAUSED\"}"))
+            .andExpect(status().isPreconditionFailed()).andExpect(jsonPath("$.code").value("PLATFORM_ENTITY_STALE"));assertThat(auditSnapshot()).isEqualTo(before);
+        for(int i=0;i<3;i++){String c=createCampaign(newPlan());createAdSet(c,"300",PlatformBudgetType.LIFETIME);}String finalCampaign=createCampaign(newPlan());createAdSet(finalCampaign,"100",PlatformBudgetType.DAILY);
+        String cappedCampaign=createCampaign(newPlan()),etag=mvc.perform(get("/api/platforms/meta/campaigns/"+cappedCampaign)).andReturn().getResponse().getHeader("ETag");before=auditSnapshot();
+        mvc.perform(post("/api/platforms/meta/campaigns/"+cappedCampaign+"/ad-sets").header("If-Match",etag).contentType(MediaType.APPLICATION_JSON).content("{\"clientRequestUuid\":\""+UUID.randomUUID()+"\",\"budgetType\":\"DAILY\",\"budgetAmount\":\"1\",\"expectedCampaignPlanVersion\":0}"))
+            .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("PLATFORM_BUDGET_CAP_EXCEEDED"));assertThat(auditSnapshot()).isEqualTo(before);
     }
     @Test void adSetReplayPreservesOriginalParentVersionAndChangedIntentHasZeroSideEffects() throws Exception {
         UUID campaignRequest=UUID.randomUUID();String campaignJson=mvc.perform(post("/api/platforms/meta/campaigns").contentType(MediaType.APPLICATION_JSON).content("{\"clientRequestUuid\":\""+campaignRequest+"\",\"campaignUuid\":\""+plan+"\",\"expectedCampaignPlanVersion\":0}"))
@@ -162,9 +179,9 @@ class Stage4BControllerIntegrationTest {
             .andExpect(status().isPreconditionRequired()).andExpect(jsonPath("$.fieldErrors[0].field").value("If-Match")).andExpect(jsonPath("$.fieldErrors[0].message").value("Invalid If-Match"));
     }
 
-    @Test void canonicalMoneyBoundaryPreservesDeclaredFieldForEveryInvalidLexicalScaleAndRangeCase() throws Exception {
+    @Test void canonicalMoneyBoundaryPreservesDeclaredFieldForEveryInvalidLexicalAndStructuralCase() throws Exception {
         String campaign=createCampaign(plan),adSet=createAdSet(campaign,"10");
-        String[] invalid={"1e1","+1","01","1.0","1.230","1.0000001","0","-1","301","999999999999999999999999999999"};
+        String[] invalid={"1e1","+1","01","1.0","1.230","1.0000001","0","-1"};
         int operations=count("platform_operations"),audits=count("audit_logs");
         for(String amount:invalid){
             mvc.perform(post("/api/platforms/meta/campaigns/"+campaign+"/ad-sets/preview").contentType(MediaType.APPLICATION_JSON)
@@ -176,10 +193,33 @@ class Stage4BControllerIntegrationTest {
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("PLATFORM_REQUEST_INVALID"))
                 .andExpect(jsonPath("$.fieldErrors[0].field").value("newBudgetAmount"));
         }
-        mvc.perform(post("/api/platforms/meta/campaigns/"+campaign+"/ad-sets/preview").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"clientRequestUuid\":\""+UUID.randomUUID()+"\",\"budgetType\":\"DAILY\",\"budgetAmount\":\"101\"}"))
-            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.fieldErrors[0].field").value("budgetAmount"));
         assertThat(count("platform_operations")).isEqualTo(operations);assertThat(count("audit_logs")).isEqualTo(audits);
+    }
+
+    @Test void canonicalPolicyAmountsUse409AtDailyAndLifetimeCreateAndUpdateBounds() throws Exception {
+        for(var budgetType:java.util.List.of(PlatformBudgetType.DAILY,PlatformBudgetType.LIFETIME)){
+            String boundary=budgetType==PlatformBudgetType.DAILY?"100":"300",over=budgetType==PlatformBudgetType.DAILY?"101":"301";
+            String boundaryCampaign=createCampaign(newPlan()),boundaryEtag=mvc.perform(get("/api/platforms/meta/campaigns/"+boundaryCampaign)).andReturn().getResponse().getHeader("ETag");
+            mvc.perform(post("/api/platforms/meta/campaigns/"+boundaryCampaign+"/ad-sets").header("If-Match",boundaryEtag).contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"clientRequestUuid\":\""+UUID.randomUUID()+"\",\"budgetType\":\""+budgetType+"\",\"budgetAmount\":\""+boundary+"\",\"expectedCampaignPlanVersion\":0}"))
+                .andExpect(status().isAccepted());
+            String overCampaign=createCampaign(newPlan()),overEtag=mvc.perform(get("/api/platforms/meta/campaigns/"+overCampaign)).andReturn().getResponse().getHeader("ETag");
+            String before=persistentSnapshot();
+            mvc.perform(post("/api/platforms/meta/campaigns/"+overCampaign+"/ad-sets").header("If-Match",overEtag).contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"clientRequestUuid\":\""+UUID.randomUUID()+"\",\"budgetType\":\""+budgetType+"\",\"budgetAmount\":\""+over+"\",\"expectedCampaignPlanVersion\":0}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("PLATFORM_POLICY_REJECTED")).andExpect(jsonPath("$.fieldErrors").doesNotExist());
+            assertThat(persistentSnapshot()).isEqualTo(before);
+
+            String updateCampaign=createCampaign(newPlan()),updateAdSet=createAdSet(updateCampaign,"10",budgetType);String updateEtag=mvc.perform(get("/api/platforms/meta/ad-sets/"+updateAdSet)).andReturn().getResponse().getHeader("ETag");
+            mvc.perform(post("/api/platforms/meta/ad-sets/"+updateAdSet+"/budget").header("If-Match",updateEtag).contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"clientRequestUuid\":\""+UUID.randomUUID()+"\",\"newBudgetAmount\":\""+boundary+"\"}"))
+                .andExpect(status().isAccepted());
+            updateEtag=mvc.perform(get("/api/platforms/meta/ad-sets/"+updateAdSet)).andReturn().getResponse().getHeader("ETag");before=persistentSnapshot();
+            mvc.perform(post("/api/platforms/meta/ad-sets/"+updateAdSet+"/budget").header("If-Match",updateEtag).contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"clientRequestUuid\":\""+UUID.randomUUID()+"\",\"newBudgetAmount\":\""+over+"\"}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("PLATFORM_POLICY_REJECTED")).andExpect(jsonPath("$.fieldErrors").doesNotExist());
+            assertThat(persistentSnapshot()).isEqualTo(before);
+        }
     }
 
     @ParameterizedTest @ValueSource(strings={"40001","40P01"})
@@ -244,9 +284,21 @@ class Stage4BControllerIntegrationTest {
     private int auditCount(String subject){return jdbc.queryForObject("SELECT count(*) FROM audit_logs WHERE entity_type=?",Integer.class,subject);}
     private int count(String table){return jdbc.queryForObject("SELECT count(*) FROM "+table,Integer.class);}
     private String persistentSnapshot(){return jdbc.queryForObject("SELECT jsonb_build_object('operations',(SELECT jsonb_agg(to_jsonb(t) ORDER BY operation_uuid) FROM platform_operations t),'attempts',(SELECT jsonb_agg(to_jsonb(t) ORDER BY operation_attempt_uuid) FROM platform_operation_attempts t),'batches',(SELECT jsonb_agg(to_jsonb(t) ORDER BY operation_batch_uuid) FROM platform_operation_batches t),'reservations',(SELECT jsonb_agg(to_jsonb(t) ORDER BY budget_reservation_uuid) FROM platform_budget_reservations t),'days',(SELECT jsonb_agg(to_jsonb(t) ORDER BY account_budget_day_uuid) FROM platform_account_budget_days t),'campaigns',(SELECT jsonb_agg(to_jsonb(t) ORDER BY platform_campaign_uuid) FROM platform_campaigns t),'adsets',(SELECT jsonb_agg(to_jsonb(t) ORDER BY platform_ad_set_uuid) FROM platform_ad_sets t),'audit',(SELECT jsonb_agg(to_jsonb(t) ORDER BY audit_uuid) FROM audit_logs t),'changes',(SELECT jsonb_agg(to_jsonb(t) ORDER BY audit_uuid,change_order) FROM audit_log_changes t))::text",String.class);}
+    private String auditSnapshot(){return jdbc.queryForObject("SELECT jsonb_build_object('audit',(SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY audit_uuid),'[]') FROM audit_logs t),'changes',(SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY audit_uuid,change_order),'[]') FROM audit_log_changes t))::text",String.class);}
     private UUID operation(UUID request){return jdbc.queryForObject("select operation_uuid from platform_operations where client_request_uuid=?",UUID.class,request);}
     private java.util.List<String> subjects(UUID operation){var rows=jdbc.queryForList("select stage4b_operation_ordinal,entity_type from audit_logs where operation_uuid=? order by stage4b_operation_ordinal",operation);for(int i=0;i<rows.size();i++)assertThat(((Number)rows.get(i).get("stage4b_operation_ordinal")).intValue()).isEqualTo(i);return rows.stream().map(row->(String)row.get("entity_type")).toList();}
     private java.util.List<String> changes(UUID operation,String subject){return jdbc.queryForList("select c.field_name||':'||c.value_type from audit_log_changes c join audit_logs l on l.audit_uuid=c.audit_uuid where l.operation_uuid=? and l.entity_type=? order by c.change_order",String.class,operation,subject);}
+    private void assertAuditEnvelope(UUID operation,String requestId){
+        var rows=jdbc.queryForList("select stage4b_operation_ordinal,action,entity_type,entity_uuid,actor_type,actor_id,source,request_id from audit_logs where operation_uuid=? order by stage4b_operation_ordinal",operation);
+        assertThat(rows).isNotEmpty();
+        for(int ordinal=0;ordinal<rows.size();ordinal++){
+            var row=rows.get(ordinal);assertThat(((Number)row.get("stage4b_operation_ordinal")).intValue()).isEqualTo(ordinal);
+            assertThat(row.get("actor_type")).isEqualTo("LOCAL_ADMIN");assertThat(row.get("actor_id")).isEqualTo("local-admin");
+            assertThat(row.get("source")).isEqualTo("API");assertThat(row.get("request_id")).isEqualTo(requestId);
+            assertThat(row.get("action")).isIn("CREATE","UPDATE");assertThat(row.get("entity_uuid")).isNotNull();
+        }
+        assertThat(jdbc.queryForObject("select count(*) from audit_log_changes c join audit_logs l on l.audit_uuid=c.audit_uuid where l.operation_uuid=? and (c.change_order<0 or c.field_name is null or c.value_type is null)",Integer.class,operation)).isZero();
+    }
     private void assertBudgetAudit(UUID operation,String kind,String previous,String next,String reserved,boolean dayEvent){
         UUID batch=jdbc.queryForObject("select operation_batch_uuid from platform_operation_batches where operation_uuid=?",UUID.class,operation),reservation=jdbc.queryForObject("select budget_reservation_uuid from platform_budget_reservations where operation_uuid=?",UUID.class,operation),day=jdbc.queryForObject("select account_budget_day_uuid from platform_budget_reservations where operation_uuid=?",UUID.class,operation);
         java.time.LocalDate date=jdbc.queryForObject("select business_date from platform_operation_batches where operation_uuid=?",java.time.LocalDate.class,operation);
@@ -261,6 +313,10 @@ class Stage4BControllerIntegrationTest {
     private String change(UUID operation,String subject,String field,String column){return jdbc.queryForObject("select c."+column+" from audit_log_changes c join audit_logs l on l.audit_uuid=c.audit_uuid where l.operation_uuid=? and l.entity_type=? and c.field_name=?",String.class,operation,subject,field);}
     private String createCampaign(UUID campaignPlan) throws Exception {String json=mvc.perform(post("/api/platforms/meta/campaigns").contentType(MediaType.APPLICATION_JSON).content("{\"clientRequestUuid\":\""+UUID.randomUUID()+"\",\"campaignUuid\":\""+campaignPlan+"\",\"expectedCampaignPlanVersion\":0}")) .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString();return json.replaceAll(".*\\\"entityUuid\\\":\\\"([^\\\"]+)\\\".*","$1");}
     private String createCampaign(UUID campaignPlan,UUID request) throws Exception {String json=mvc.perform(post("/api/platforms/meta/campaigns").contentType(MediaType.APPLICATION_JSON).content("{\"clientRequestUuid\":\""+request+"\",\"campaignUuid\":\""+campaignPlan+"\",\"expectedCampaignPlanVersion\":0}")) .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString();return json.replaceAll(".*\\\"entityUuid\\\":\\\"([^\\\"]+)\\\".*","$1");}
+    private String createCampaign(UUID campaignPlan,UUID request,String requestId) throws Exception {String json=mvc.perform(post("/api/platforms/meta/campaigns").header("X-Request-ID",requestId).contentType(MediaType.APPLICATION_JSON).content("{\"clientRequestUuid\":\""+request+"\",\"campaignUuid\":\""+campaignPlan+"\",\"expectedCampaignPlanVersion\":0}")) .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString();return json.replaceAll(".*\\\"entityUuid\\\":\\\"([^\\\"]+)\\\".*","$1");}
     private String createAdSet(String campaign,String amount) throws Exception {String etag=mvc.perform(get("/api/platforms/meta/campaigns/"+campaign)).andReturn().getResponse().getHeader("ETag");String json=mvc.perform(post("/api/platforms/meta/campaigns/"+campaign+"/ad-sets").header("If-Match",etag).contentType(MediaType.APPLICATION_JSON).content("{\"clientRequestUuid\":\""+UUID.randomUUID()+"\",\"budgetType\":\"DAILY\",\"budgetAmount\":\""+amount+"\",\"expectedCampaignPlanVersion\":0}")) .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString();return json.replaceAll(".*\\\"entityUuid\\\":\\\"([^\\\"]+)\\\".*","$1");}
+    private String createAdSet(String campaign,String amount,PlatformBudgetType type) throws Exception {String etag=mvc.perform(get("/api/platforms/meta/campaigns/"+campaign)).andReturn().getResponse().getHeader("ETag");String json=mvc.perform(post("/api/platforms/meta/campaigns/"+campaign+"/ad-sets").header("If-Match",etag).contentType(MediaType.APPLICATION_JSON).content("{\"clientRequestUuid\":\""+UUID.randomUUID()+"\",\"budgetType\":\""+type+"\",\"budgetAmount\":\""+amount+"\",\"expectedCampaignPlanVersion\":0}")) .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString();return json.replaceAll(".*\\\"entityUuid\\\":\\\"([^\\\"]+)\\\".*","$1");}
     private String createAdSet(String campaign,String amount,UUID request) throws Exception {String etag=mvc.perform(get("/api/platforms/meta/campaigns/"+campaign)).andReturn().getResponse().getHeader("ETag");String json=mvc.perform(post("/api/platforms/meta/campaigns/"+campaign+"/ad-sets").header("If-Match",etag).contentType(MediaType.APPLICATION_JSON).content("{\"clientRequestUuid\":\""+request+"\",\"budgetType\":\"DAILY\",\"budgetAmount\":\""+amount+"\",\"expectedCampaignPlanVersion\":0}")) .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString();return json.replaceAll(".*\\\"entityUuid\\\":\\\"([^\\\"]+)\\\".*","$1");}
+    private String createAdSet(String campaign,String amount,UUID request,String requestId) throws Exception {String etag=mvc.perform(get("/api/platforms/meta/campaigns/"+campaign)).andReturn().getResponse().getHeader("ETag");String json=mvc.perform(post("/api/platforms/meta/campaigns/"+campaign+"/ad-sets").header("If-Match",etag).header("X-Request-ID",requestId).contentType(MediaType.APPLICATION_JSON).content("{\"clientRequestUuid\":\""+request+"\",\"budgetType\":\"DAILY\",\"budgetAmount\":\""+amount+"\",\"expectedCampaignPlanVersion\":0}")) .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString();return json.replaceAll(".*\\\"entityUuid\\\":\\\"([^\\\"]+)\\\".*","$1");}
+    private UUID newPlan(){UUID value=UUID.randomUUID();jdbc.update("INSERT INTO campaign_plans(campaign_uuid,campaign_name,start_date,end_date,objective,platform,budget_daily,budget_total,currency) VALUES (?,'Stage 4B additional',?,?, 'OUTCOME_SALES','META',100.0000,300.0000,'TWD')",value,LocalDate.now().plusDays(10),LocalDate.now().plusDays(20));return value;}
 }
