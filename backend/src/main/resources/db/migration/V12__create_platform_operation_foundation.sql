@@ -28,12 +28,34 @@ CREATE FUNCTION is_valid_platform_request(value JSONB,op TEXT,entity TEXT,entity
   AND NOT EXISTS (SELECT 1 FROM jsonb_each(value) e WHERE jsonb_typeof(e.value) IN ('null','array','object'))
   AND NOT EXISTS (SELECT 1 FROM jsonb_object_keys(value) k WHERE lower(k) SIMILAR TO '%(authorization|cookie|credential|password|secret|token|url)%')
   AND CASE op
-   WHEN 'CREATE_CAMPAIGN' THEN value?&ARRAY['platformCampaignUuid','campaignUuid','objective','desiredState','accountTimezone'] AND NOT EXISTS (SELECT 1 FROM jsonb_object_keys(value) k WHERE k<>ALL(ARRAY['schemaVersion','operationType','entityType','entityUuid','platformCampaignUuid','campaignUuid','objective','desiredState','accountTimezone','scheduleStart','scheduleEnd']))
-   WHEN 'CREATE_AD_SET' THEN value?&ARRAY['platformAdSetUuid','platformCampaignUuid','budgetType','budgetAmount','currency','accountTimezone','optimizationGoal','targetingProfileKey','placementProfileKey','desiredState'] AND NOT EXISTS (SELECT 1 FROM jsonb_object_keys(value) k WHERE k<>ALL(ARRAY['schemaVersion','operationType','entityType','entityUuid','platformAdSetUuid','platformCampaignUuid','budgetType','budgetAmount','currency','accountTimezone','optimizationGoal','targetingProfileKey','placementProfileKey','desiredState','scheduleStart','scheduleEnd']))
-   WHEN 'CREATE_AD' THEN value?&ARRAY['platformAdUuid','platformAdSetUuid','productUuid','assetUuid','generationOutputUuid','reviewDecisionUuid','approvedChecksumSha256','creativeMappingKey','desiredState'] AND NOT EXISTS (SELECT 1 FROM jsonb_object_keys(value) k WHERE k<>ALL(ARRAY['schemaVersion','operationType','entityType','entityUuid','platformAdUuid','platformAdSetUuid','productUuid','assetUuid','generationOutputUuid','reviewDecisionUuid','approvedChecksumSha256','creativeMappingKey','desiredState']))
-   WHEN 'PAUSE' THEN value?&ARRAY['expectedEntityVersion','targetDesiredState'] AND value->>'targetDesiredState'='PAUSED' AND NOT EXISTS (SELECT 1 FROM jsonb_object_keys(value) k WHERE k<>ALL(ARRAY['schemaVersion','operationType','entityType','entityUuid','expectedEntityVersion','targetDesiredState']))
-   WHEN 'RESUME' THEN value?&ARRAY['expectedEntityVersion','targetDesiredState'] AND value->>'targetDesiredState'='ACTIVE' AND NOT EXISTS (SELECT 1 FROM jsonb_object_keys(value) k WHERE k<>ALL(ARRAY['schemaVersion','operationType','entityType','entityUuid','expectedEntityVersion','targetDesiredState']))
-   WHEN 'UPDATE_BUDGET' THEN value?&ARRAY['platformAdSetUuid','expectedEntityVersion','budgetType','currency','previousBudgetAmount','newBudgetAmount'] AND NOT EXISTS (SELECT 1 FROM jsonb_object_keys(value) k WHERE k<>ALL(ARRAY['schemaVersion','operationType','entityType','entityUuid','platformAdSetUuid','expectedEntityVersion','budgetType','currency','previousBudgetAmount','newBudgetAmount']))
+   WHEN 'CREATE_CAMPAIGN' THEN entity='CAMPAIGN' AND value?&ARRAY['platformCampaignUuid','campaignUuid','objective','desiredState','accountTimezone']
+     AND NOT EXISTS (SELECT 1 FROM jsonb_object_keys(value) k WHERE k<>ALL(ARRAY['schemaVersion','operationType','entityType','entityUuid','platformCampaignUuid','campaignUuid','objective','desiredState','accountTimezone','scheduleStart','scheduleEnd']))
+     AND value->>'platformCampaignUuid'=lower(entity_id::text) AND value->>'campaignUuid'~'^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+     AND value->>'objective'='OUTCOME_SALES' AND value->>'desiredState'='PAUSED' AND value->>'accountTimezone'='Asia/Taipei'
+     AND (value?'scheduleStart')=(value?'scheduleEnd')
+     AND (NOT value?'scheduleStart' OR (jsonb_typeof(value->'scheduleStart')='string' AND jsonb_typeof(value->'scheduleEnd')='string' AND value->>'scheduleStart'~'^20[0-9]{2}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,6})?Z$' AND (value->>'scheduleEnd')::timestamptz>(value->>'scheduleStart')::timestamptz))
+   WHEN 'CREATE_AD_SET' THEN entity='AD_SET' AND value?&ARRAY['platformAdSetUuid','platformCampaignUuid','budgetType','budgetAmount','currency','accountTimezone','optimizationGoal','targetingProfileKey','placementProfileKey','desiredState']
+     AND NOT EXISTS (SELECT 1 FROM jsonb_object_keys(value) k WHERE k<>ALL(ARRAY['schemaVersion','operationType','entityType','entityUuid','platformAdSetUuid','platformCampaignUuid','budgetType','budgetAmount','currency','accountTimezone','optimizationGoal','targetingProfileKey','placementProfileKey','desiredState','scheduleStart','scheduleEnd']))
+     AND value->>'platformAdSetUuid'=lower(entity_id::text) AND value->>'platformCampaignUuid'~'^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+     AND jsonb_typeof(value->'budgetAmount')='number' AND value->>'budgetAmount'~'^(0|[1-9][0-9]*)(\.[0-9]{1,6})?$'
+     AND ((value->>'budgetType'='DAILY' AND (value->>'budgetAmount')::numeric>0 AND (value->>'budgetAmount')::numeric<=100) OR (value->>'budgetType'='LIFETIME' AND (value->>'budgetAmount')::numeric>0 AND (value->>'budgetAmount')::numeric<=300))
+     AND value->>'currency'='TWD' AND value->>'accountTimezone'='Asia/Taipei' AND jsonb_typeof(value->'optimizationGoal')='string' AND btrim(value->>'optimizationGoal')<>''
+     AND value->>'targetingProfileKey'='TW_BROAD_FEEDS_V1' AND value->>'placementProfileKey'='TW_BROAD_FEEDS_V1' AND value->>'desiredState'='PAUSED'
+     AND (value?'scheduleStart')=(value?'scheduleEnd')
+     AND (NOT value?'scheduleStart' OR (jsonb_typeof(value->'scheduleStart')='string' AND jsonb_typeof(value->'scheduleEnd')='string' AND value->>'scheduleStart'~'^20[0-9]{2}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,6})?Z$' AND (value->>'scheduleEnd')::timestamptz>(value->>'scheduleStart')::timestamptz))
+   WHEN 'CREATE_AD' THEN entity='AD' AND value?&ARRAY['platformAdUuid','platformAdSetUuid','productUuid','assetUuid','generationOutputUuid','reviewDecisionUuid','approvedChecksumSha256','creativeMappingKey','desiredState']
+     AND NOT EXISTS (SELECT 1 FROM jsonb_object_keys(value) k WHERE k<>ALL(ARRAY['schemaVersion','operationType','entityType','entityUuid','platformAdUuid','platformAdSetUuid','productUuid','assetUuid','generationOutputUuid','reviewDecisionUuid','approvedChecksumSha256','creativeMappingKey','desiredState']))
+     AND value->>'platformAdUuid'=lower(entity_id::text) AND value->>'platformAdSetUuid'~'^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+     AND value->>'productUuid'~'^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' AND value->>'assetUuid'~'^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+     AND value->>'generationOutputUuid'~'^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' AND value->>'reviewDecisionUuid'~'^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+     AND value->>'approvedChecksumSha256'~'^[0-9a-f]{64}$' AND jsonb_typeof(value->'creativeMappingKey')='string' AND btrim(value->>'creativeMappingKey')<>'' AND value->>'desiredState'='PAUSED'
+   WHEN 'PAUSE' THEN jsonb_typeof(value->'expectedEntityVersion')='number' AND value->>'expectedEntityVersion'~'^(0|[1-9][0-9]*)$' AND value->>'targetDesiredState'='PAUSED' AND NOT EXISTS (SELECT 1 FROM jsonb_object_keys(value) k WHERE k<>ALL(ARRAY['schemaVersion','operationType','entityType','entityUuid','expectedEntityVersion','targetDesiredState']))
+   WHEN 'RESUME' THEN jsonb_typeof(value->'expectedEntityVersion')='number' AND value->>'expectedEntityVersion'~'^(0|[1-9][0-9]*)$' AND value->>'targetDesiredState'='ACTIVE' AND NOT EXISTS (SELECT 1 FROM jsonb_object_keys(value) k WHERE k<>ALL(ARRAY['schemaVersion','operationType','entityType','entityUuid','expectedEntityVersion','targetDesiredState']))
+   WHEN 'UPDATE_BUDGET' THEN entity='AD_SET' AND value?&ARRAY['platformAdSetUuid','expectedEntityVersion','budgetType','currency','previousBudgetAmount','newBudgetAmount'] AND NOT EXISTS (SELECT 1 FROM jsonb_object_keys(value) k WHERE k<>ALL(ARRAY['schemaVersion','operationType','entityType','entityUuid','platformAdSetUuid','expectedEntityVersion','budgetType','currency','previousBudgetAmount','newBudgetAmount']))
+     AND value->>'platformAdSetUuid'=lower(entity_id::text) AND jsonb_typeof(value->'expectedEntityVersion')='number' AND value->>'expectedEntityVersion'~'^(0|[1-9][0-9]*)$' AND value->>'currency'='TWD'
+     AND jsonb_typeof(value->'previousBudgetAmount')='number' AND jsonb_typeof(value->'newBudgetAmount')='number' AND value->>'previousBudgetAmount'~'^(0|[1-9][0-9]*)(\.[0-9]{1,6})?$' AND value->>'newBudgetAmount'~'^(0|[1-9][0-9]*)(\.[0-9]{1,6})?$'
+     AND (value->>'previousBudgetAmount')::numeric>0 AND (value->>'newBudgetAmount')::numeric<>(value->>'previousBudgetAmount')::numeric
+     AND ((value->>'budgetType'='DAILY' AND (value->>'newBudgetAmount')::numeric<=100) OR (value->>'budgetType'='LIFETIME' AND (value->>'newBudgetAmount')::numeric<=300))
    ELSE FALSE END;
 $$;
 CREATE TABLE platform_accounts (
@@ -269,7 +291,7 @@ END $$;
 CREATE TRIGGER trg_platform_accounts_protect BEFORE UPDATE ON platform_accounts FOR EACH ROW EXECUTE FUNCTION protect_platform_account_update();
 
 CREATE FUNCTION protect_platform_entity_update() RETURNS TRIGGER LANGUAGE plpgsql AS $$
-DECLARE old_desired TEXT; new_desired TEXT;
+DECLARE old_desired TEXT; new_desired TEXT; allowed_shape BOOLEAN;
 BEGIN
  IF TG_TABLE_NAME='platform_campaigns' THEN
    IF (NEW.platform_campaign_uuid,NEW.campaign_uuid,NEW.platform_account_uuid,NEW.objective,NEW.schedule_start,NEW.schedule_end,NEW.account_timezone,NEW.created_at) IS DISTINCT FROM (OLD.platform_campaign_uuid,OLD.campaign_uuid,OLD.platform_account_uuid,OLD.objective,OLD.schedule_start,OLD.schedule_end,OLD.account_timezone,OLD.created_at) THEN RAISE EXCEPTION 'campaign policy is immutable' USING ERRCODE='23514'; END IF;
@@ -282,7 +304,16 @@ BEGIN
  IF OLD.observed_state='DELETED' AND NEW.observed_state IS DISTINCT FROM OLD.observed_state THEN RAISE EXCEPTION 'deleted observation is terminal' USING ERRCODE='23514'; END IF;
  old_desired:=OLD.desired_state; new_desired:=NEW.desired_state;
  IF new_desired IS DISTINCT FROM old_desired AND NOT ((old_desired='DRAFT' AND new_desired='PAUSED') OR (old_desired='PAUSED' AND new_desired IN ('ACTIVE','ARCHIVED')) OR (old_desired='ACTIVE' AND new_desired='PAUSED')) THEN RAISE EXCEPTION 'invalid desired state transition' USING ERRCODE='23514'; END IF;
- IF NEW IS NOT DISTINCT FROM OLD THEN RETURN NEW; END IF;
+ IF TG_TABLE_NAME='platform_ad_sets' THEN
+   allowed_shape:=
+     (OLD.external_id IS NULL AND NEW.external_id IS NOT NULL AND NEW.desired_state=OLD.desired_state AND NEW.budget_amount=OLD.budget_amount AND NEW.last_budget_operation_uuid IS NOT DISTINCT FROM OLD.last_budget_operation_uuid)
+     OR (NEW.external_id IS NOT DISTINCT FROM OLD.external_id AND NEW.desired_state IS DISTINCT FROM OLD.desired_state AND NEW.budget_amount=OLD.budget_amount AND NEW.last_budget_operation_uuid IS NOT DISTINCT FROM OLD.last_budget_operation_uuid)
+     OR (NEW.external_id IS NOT DISTINCT FROM OLD.external_id AND NEW.desired_state=OLD.desired_state AND NEW.budget_amount IS DISTINCT FROM OLD.budget_amount AND NEW.last_budget_operation_uuid IS DISTINCT FROM OLD.last_budget_operation_uuid);
+ ELSE
+   allowed_shape:=(OLD.external_id IS NULL AND NEW.external_id IS NOT NULL AND NEW.desired_state=OLD.desired_state)
+     OR (NEW.external_id IS NOT DISTINCT FROM OLD.external_id AND NEW.desired_state IS DISTINCT FROM OLD.desired_state);
+ END IF;
+ IF NOT allowed_shape THEN RAISE EXCEPTION 'entity update must apply exactly one operation result' USING ERRCODE='23514'; END IF;
  IF NEW.version<>OLD.version+1 THEN RAISE EXCEPTION 'entity version must increment once' USING ERRCODE='23514'; END IF;
  RETURN NEW;
 END $$;
@@ -375,6 +406,42 @@ BEGIN
 END $$;
 CREATE CONSTRAINT TRIGGER trg_platform_ad_set_budget_coherence AFTER INSERT OR UPDATE OF budget_amount,last_budget_operation_uuid,version ON platform_ad_sets DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION verify_platform_budget_operation_coherence();
 CREATE CONSTRAINT TRIGGER trg_platform_operation_budget_coherence AFTER UPDATE OF status ON platform_operations DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION verify_platform_budget_operation_coherence();
+
+CREATE FUNCTION verify_platform_entity_operation_coherence() RETURNS TRIGGER LANGUAGE plpgsql AS $$
+DECLARE op platform_operations%ROWTYPE; entity_row JSONB; entity_id UUID; observed_before TEXT; observed_after TEXT;
+BEGIN
+ IF TG_TABLE_NAME<>'platform_operations' THEN
+   entity_id:=(to_jsonb(NEW)->>CASE TG_TABLE_NAME WHEN 'platform_campaigns' THEN 'platform_campaign_uuid' WHEN 'platform_ad_sets' THEN 'platform_ad_set_uuid' ELSE 'platform_ad_uuid' END)::uuid;
+   SELECT * INTO op FROM platform_operations WHERE status='SUCCEEDED' AND completed_at=NEW.updated_at
+     AND COALESCE(platform_campaign_uuid,platform_ad_set_uuid,platform_ad_uuid)=entity_id;
+   IF op.operation_uuid IS NULL THEN RAISE EXCEPTION 'entity result requires a matching successful operation' USING ERRCODE='23514'; END IF;
+   observed_before:=OLD.observed_state; observed_after:=NEW.observed_state;
+   IF op.outcome_evidence?'observedState' AND op.outcome_evidence->>'observedState' IS DISTINCT FROM observed_after THEN RAISE EXCEPTION 'entity observation differs from operation evidence' USING ERRCODE='23514'; END IF;
+   IF NOT op.outcome_evidence?'observedState' AND observed_after IS DISTINCT FROM observed_before THEN RAISE EXCEPTION 'entity observation changed without operation evidence' USING ERRCODE='23514'; END IF;
+   IF op.operation_type LIKE 'CREATE_%' THEN
+     IF OLD.external_id IS NOT NULL OR NEW.external_id IS NULL OR op.external_id IS DISTINCT FROM NEW.external_id OR op.outcome_evidence->>'externalIdFingerprint' IS DISTINCT FROM encode(sha256(convert_to(NEW.external_id,'UTF8')),'hex') THEN RAISE EXCEPTION 'create result ID/fingerprint is incoherent' USING ERRCODE='23514'; END IF;
+   ELSIF op.operation_type IN ('PAUSE','RESUME') THEN
+     IF NEW.external_id IS DISTINCT FROM OLD.external_id OR op.external_id IS NOT NULL OR (op.request_payload->>'expectedEntityVersion')::bigint IS DISTINCT FROM OLD.version OR op.request_payload->>'targetDesiredState' IS DISTINCT FROM NEW.desired_state OR NEW.desired_state IS NOT DISTINCT FROM OLD.desired_state OR op.outcome_evidence?'externalIdFingerprint' THEN RAISE EXCEPTION 'state mutation result is incoherent' USING ERRCODE='23514'; END IF;
+   ELSIF op.operation_type<>'UPDATE_BUDGET' THEN RAISE EXCEPTION 'unsupported entity result operation' USING ERRCODE='23514';
+   END IF;
+ ELSE
+   IF NEW.status<>'SUCCEEDED' THEN RETURN NULL; END IF;
+   IF NEW.entity_type='CAMPAIGN' THEN SELECT to_jsonb(e) INTO entity_row FROM platform_campaigns e WHERE e.platform_campaign_uuid=NEW.platform_campaign_uuid;
+   ELSIF NEW.entity_type='AD_SET' THEN SELECT to_jsonb(e) INTO entity_row FROM platform_ad_sets e WHERE e.platform_ad_set_uuid=NEW.platform_ad_set_uuid;
+   ELSE SELECT to_jsonb(e) INTO entity_row FROM platform_ads e WHERE e.platform_ad_uuid=NEW.platform_ad_uuid; END IF;
+   IF entity_row IS NULL OR (entity_row->>'updated_at')::timestamptz IS DISTINCT FROM NEW.completed_at THEN RAISE EXCEPTION 'successful operation has no atomic entity result' USING ERRCODE='23514'; END IF;
+   IF NEW.operation_type LIKE 'CREATE_%' THEN
+     IF entity_row->>'external_id' IS DISTINCT FROM NEW.external_id OR NEW.outcome_evidence->>'externalIdFingerprint' IS DISTINCT FROM encode(sha256(convert_to(NEW.external_id,'UTF8')),'hex') THEN RAISE EXCEPTION 'successful create entity ID/fingerprint mismatch' USING ERRCODE='23514'; END IF;
+   ELSIF NEW.operation_type IN ('PAUSE','RESUME') THEN
+     IF NEW.external_id IS NOT NULL OR entity_row->>'desired_state' IS DISTINCT FROM NEW.request_payload->>'targetDesiredState' OR (entity_row->>'version')::bigint IS DISTINCT FROM (NEW.request_payload->>'expectedEntityVersion')::bigint+1 OR NEW.outcome_evidence?'externalIdFingerprint' THEN RAISE EXCEPTION 'successful state mutation was not applied' USING ERRCODE='23514'; END IF;
+   END IF;
+ END IF;
+ RETURN NULL;
+END $$;
+CREATE CONSTRAINT TRIGGER trg_platform_campaign_operation_coherence AFTER UPDATE OF external_id,desired_state,observed_state,version ON platform_campaigns DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION verify_platform_entity_operation_coherence();
+CREATE CONSTRAINT TRIGGER trg_platform_ad_set_operation_coherence AFTER UPDATE OF external_id,desired_state,observed_state,budget_amount,version ON platform_ad_sets DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION verify_platform_entity_operation_coherence();
+CREATE CONSTRAINT TRIGGER trg_platform_ad_operation_coherence AFTER UPDATE OF external_id,desired_state,observed_state,version ON platform_ads DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION verify_platform_entity_operation_coherence();
+CREATE CONSTRAINT TRIGGER trg_platform_success_entity_coherence AFTER UPDATE OF status ON platform_operations DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION verify_platform_entity_operation_coherence();
 
 CREATE FUNCTION verify_platform_metric_insert() RETURNS TRIGGER LANGUAGE plpgsql AS $$
 DECLARE expected_revision INTEGER; last_fetch TIMESTAMPTZ;

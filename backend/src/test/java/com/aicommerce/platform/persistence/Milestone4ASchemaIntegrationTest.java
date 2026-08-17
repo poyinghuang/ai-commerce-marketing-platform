@@ -8,9 +8,26 @@ import org.junit.jupiter.api.Test; import org.springframework.beans.factory.anno
  @Container @ServiceConnection static final PostgreSQLContainer postgres=new PostgreSQLContainer("postgres:17.6-alpine3.22");
  @Autowired JdbcTemplate jdbc;
  @Test void createsAllFoundationTablesWithNumericMoney(){
-  assertThat(jdbc.queryForList("select table_name from information_schema.tables where table_schema='public' and table_name like 'platform_%'",String.class)).contains("platform_accounts","platform_campaigns","platform_ad_sets","platform_ads","platform_operations","platform_operation_attempts","platform_metric_snapshots");
+  assertThat(jdbc.queryForList("select table_name from information_schema.tables where table_schema='public' and table_name like 'platform_%'",String.class)).containsExactlyInAnyOrder("platform_accounts","platform_campaigns","platform_ad_sets","platform_ads","platform_operations","platform_operation_attempts","platform_metric_snapshots");
   assertThat(jdbc.queryForObject("select numeric_scale from information_schema.columns where table_name='platform_ad_sets' and column_name='budget_amount'",Integer.class)).isEqualTo(6);
   assertThat(jdbc.queryForList("select numeric_scale from information_schema.columns where table_name='platform_metric_snapshots' and column_name in ('spend','revenue') order by column_name",Integer.class)).containsExactly(6,6);
+ }
+ @Test void rejectsUnsupportedAccountsNonPristineEntitiesAndMalformedDurableCommands(){
+  assertThatThrownBy(()->jdbc.update("insert into platform_accounts(platform_account_uuid,provider_key,environment,account_reference,external_account_fingerprint,currency,timezone) values (?,'META','PRODUCTION','forbidden',?,'TWD','Asia/Taipei')",UUID.randomUUID(),"d".repeat(64))).isInstanceOf(RuntimeException.class);
+  UUID account=account(), plan=UUID.randomUUID(), campaign=UUID.randomUUID();
+  jdbc.update("insert into campaign_plans(campaign_uuid,campaign_name) values (?,'Strict')",plan);
+  assertThatThrownBy(()->jdbc.update("insert into platform_campaigns(platform_campaign_uuid,campaign_uuid,platform_account_uuid,objective,desired_state,account_timezone) values (?,?,?,'OUTCOME_SALES','ACTIVE','Asia/Taipei')",campaign,plan,account)).isInstanceOf(RuntimeException.class);
+  jdbc.update("insert into platform_campaigns(platform_campaign_uuid,campaign_uuid,platform_account_uuid,objective,account_timezone) values (?,?,?,'OUTCOME_SALES','Asia/Taipei')",campaign,plan,account);
+  assertThatThrownBy(()->jdbc.update("update platform_campaigns set version=version+1,updated_at=current_timestamp where platform_campaign_uuid=?",campaign)).isInstanceOf(RuntimeException.class);
+  assertThatThrownBy(()->jdbc.update("update platform_campaigns set external_id='direct-sql-id',version=version+1,updated_at=current_timestamp where platform_campaign_uuid=?",campaign)).isInstanceOf(RuntimeException.class);
+  assertThatThrownBy(()->jdbc.update("update platform_campaigns set desired_state='ACTIVE',version=version+1,updated_at=current_timestamp where platform_campaign_uuid=?",campaign)).isInstanceOf(RuntimeException.class);
+  String base="{\"schemaVersion\":1,\"operationType\":\"CREATE_CAMPAIGN\",\"entityType\":\"CAMPAIGN\",\"entityUuid\":\""+campaign+"\",\"platformCampaignUuid\":\""+campaign+"\",\"campaignUuid\":\""+plan+"\",\"objective\":\"OUTCOME_SALES\",\"desiredState\":\"PAUSED\",\"accountTimezone\":\"Asia/Taipei\"}";
+  String malformed=base.substring(0,base.length()-1)+",\"secretToken\":\"sentinel\"}";
+  assertThatThrownBy(()->insertOperation(account,campaign,malformed)).isInstanceOf(RuntimeException.class);
+  String wrongType=base.replace("\"schemaVersion\":1","\"schemaVersion\":\"1\"");
+  assertThatThrownBy(()->insertOperation(account,campaign,wrongType)).isInstanceOf(RuntimeException.class);
+  UUID operation=insertOperation(account,campaign,base);
+  assertThatThrownBy(()->jdbc.update("insert into platform_operation_attempts(operation_attempt_uuid,operation_uuid,attempt_kind,attempt_number,status,started_at,version) values (?,?, 'SUBMIT',1,'STARTED',current_timestamp,0)",UUID.randomUUID(),operation)).isInstanceOf(RuntimeException.class);
  }
  @Test void operationInputAndTerminalRowsCannotBeChangedOrDeleted(){
   UUID account=account(); UUID plan=UUID.randomUUID(); UUID campaign=UUID.randomUUID();
@@ -46,4 +63,5 @@ import org.junit.jupiter.api.Test; import org.springframework.beans.factory.anno
   assertThatThrownBy(()->jdbc.update("insert into platform_ad_sets(platform_ad_set_uuid,platform_campaign_uuid,platform_account_uuid,budget_type,budget_amount,currency,account_timezone,optimization_goal,targeting_profile_key,placement_profile_key) values (?,?,?,'LIFETIME',99999999999999.000000,'TWD','Asia/Taipei','SALES','T','P')",UUID.randomUUID(),campaign,account)).isInstanceOf(RuntimeException.class);
  }
  private UUID account(){UUID id=UUID.randomUUID();String fingerprint=id.toString().replace("-","")+"c".repeat(32);jdbc.update("insert into platform_accounts(platform_account_uuid,provider_key,environment,account_reference,external_account_fingerprint,currency,timezone) values (?,'FAKE','TEST',?,?, 'TWD','Asia/Taipei')",id,"acct-"+id,fingerprint);return id;}
+ private UUID insertOperation(UUID account,UUID campaign,String payload){UUID operation=UUID.randomUUID();jdbc.update("insert into platform_operations(operation_uuid,platform_account_uuid,operation_type,entity_type,platform_campaign_uuid,client_request_uuid,idempotency_key,request_payload,request_sha256,requested_actor_type,requested_actor_id,request_id,max_attempts) values (?,?, 'CREATE_CAMPAIGN','CAMPAIGN',?,?,?, ?::jsonb,?,'LOCAL_ADMIN','strict-tester',?,3)",operation,account,campaign,UUID.randomUUID(),UUID.randomUUID().toString().replace("-","").repeat(2),payload,UUID.randomUUID().toString().replace("-","").repeat(2),"strict-"+operation);return operation;}
 }
