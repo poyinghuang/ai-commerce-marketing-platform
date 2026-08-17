@@ -230,6 +230,66 @@ Manager Decision: `REQUEST_CHANGES`
 
 There is no human-escalation trigger. PR #62 remains Draft; merge and Stage 4C remain locked.
 
+## Re-review cycle 4
+
+### Identity and evidence
+
+- Correction commit: `223b7b484e33ce29bc904c86943bf7956462072e`
+- Reviewed superseding Head: `c8789cb778146e4a1a1455c5b016b87e14ba7e2f`
+- Exact-head Push CI `32041474659` and Pull Request CI `32041476709` — Passed.
+- Both exact-head runs executed Backend 422/422, Frontend verification, Compose, Playwright 16/16, Smoke, actionlint, dependency audit, and Gitleaks; only the conditional failure-artifact upload was skipped.
+- Branch, base, upstream, clean worktree, diff check, V1-V12 immutability, additive V13, and all forbidden-boundary exclusions were independently verified.
+
+Required-field presence, stale-preview invalidation, post-final-append rollback, deterministic BFF timeout and limit-plus-one behavior, eight coherent operation status fixtures, and malformed deferred transactions materially improved. The following required gaps remain.
+
+### 4B-RR4-001 — BLOCKING — canonical money field errors and provider-outcome matrix remain incomplete
+
+Exponent, leading-plus, and trailing-zero money can pass the controller and fail only in the service, losing the declared `budgetAmount` or `newBudgetAmount` field. Tests cover excessive scale but not the complete canonical-money set. The required HTTP 429 and safe operation DTO matrix across create, state, budget, retry, and reconciliation routes is not executable.
+
+Required correction: use one strict canonical route-boundary money validator that preserves the declared field, test exponent/plus/trailing-zero/scale/range cases for both money fields, and execute the complete route-family provider-outcome status/header/body/forbidden-field matrix.
+
+### 4B-RR4-002 — BLOCKING — Audit order is not durable
+
+Audit tests order rows using PostgreSQL `ctid`, a physical locator rather than an immutable logical event sequence. This cannot guarantee the approved per-operation Transaction A event order for runtime consumers.
+
+Required correction: within the unmerged additive V13 boundary, add an immutable per-operation Audit ordinal with the required uniqueness and ownership constraints, persist it atomically for the ordered Stage 4B events, and assert exact order, values, context, and correlation by the durable ordinal. Preserve Stage 4A behavior and prove migration/Hibernate/direct-SQL compatibility.
+
+### 4B-RR4-003 / 4B-DB-005 — BLOCKING — concurrency and direct-SQL evidence still does not match the approved cases
+
+Exact-at and above-cap scenarios pre-populate reservations rather than using fresh account/day identities; decrease starts after positive reservations instead of being the first V13 ledger action on an absent row. Snapshot assertions do not compare the complete deterministic entity, operation, batch, reservation, day, attempt, Audit, and AuditChange graph with exact timestamps. The direct-SQL unapproved-operation case uses an invalid V12 CREATE_AD/AD_SET pair, and wrong account/Ad Set, forged day bootstrap, extra aggregate, delta/ceiling, committed zero-release, and database-derived date cases remain incomplete.
+
+Required correction: use fresh isolated account/day identities and separate parent Campaigns for below/exact/above/decrease-first, with the barrier inside the ledger critical section and complete winner/loser snapshots. Exercise a valid V12 CREATE_AD/AD graph and the remaining malformed INSERT/deferred cases. Prove a committed zero reservation leaves the day aggregate unchanged and derive expected business date from the database anchor.
+
+### 4B-RR4-004 — BLOCKING — serialization/deadlock mapping lacks route/transaction evidence
+
+The `40001`/`40P01` test invokes the exception handler directly and does not prove a route calls the service/transaction once, propagates the commit-time failure, performs no automatic retry or Provider call, and leaves all persistent state unchanged.
+
+Required correction: add route-level controlled SQL-state injection or a controlled real database failure and assert exactly one transaction/service invocation, the stable HTTP 409 response, no retry, no Provider call, and complete zero side effects.
+
+### 4B-RR4-005 — BLOCKING — populated V12 byte-preservation and legacy scope remain incomplete
+
+The fixture has eight operation statuses but omits Product, Asset, output, review evidence, Ad, and successful budget provenance. Only a subset of operations/attempts and related rows is snapshotted before and after migration.
+
+Required correction: add the full coherent related V12 platform graph and compare every relevant row/value for all states before and after V13. GET every legacy operation and prove retry/reconciliation inertness with zero writes, calls, or Audit.
+
+### 4B-RR4-006 — BLOCKING — Audit exact values, context, and no-event paths remain incomplete
+
+Persisted tests assert selected subjects, names, and types but not all old/new UUID/date/kind/currency/budget/delta/aggregate values, exact correlation context, and the complete replay/invalid/stale/cap/concurrency/legacy zero-Audit matrix. Durable ordering is also covered by RR4-002.
+
+Required correction: assert the complete five-command persisted event and change content plus explicit zero-Audit cases using durable event order.
+
+### 4B-RR4-007 — MAJOR — completion report remains overstated
+
+The report describes fresh first-use concurrency, a complete direct-SQL matrix, full V12 byte preservation, deterministic money/429 behavior, and durable exact Audit ordering that the current executable evidence does not establish.
+
+Required correction: update the report only after each test exists and record the final superseding Head and its complete exact-head CI.
+
+### Cycle-4 decision
+
+Manager Decision: `REQUEST_CHANGES`
+
+There is no human-escalation trigger. PR #62 remains Draft; merge and Stage 4C remain locked.
+
 ## Stage Gate decision
 
 Manager Decision: `REQUEST_CHANGES`
