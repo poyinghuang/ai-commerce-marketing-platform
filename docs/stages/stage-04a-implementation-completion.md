@@ -6,7 +6,7 @@
 - Base: `681a51e7cca769e579bddc3f8157f2ab52c19497`
 - Scope: internal PostgreSQL/provider-neutral foundation only
 - Migration: additive `V12__create_platform_operation_foundation.sql`; V1-V11 unchanged
-- Status: Manager findings resolved by Developer; full local re-verification passed and Remote CI re-verification is pending
+- Status: Manager findings resolved by Developer; full local and Remote CI re-verification passed
 - Manager Decision: `REQUEST_CHANGES` at reviewed Head `85832f0be732bf50f5196fea0994c730fb70e184`; preserved pending independent re-review
 - Merge: Not started
 - Stage 4B: Locked
@@ -65,8 +65,8 @@ Known non-blocking warnings: Mockito/Byte Buddy reports its existing dynamic-age
 ## Remote delivery status
 
 - Draft PR: #60 (remains Draft)
-- Push CI: Pending
-- Pull Request CI: Pending
+- Push CI: Run `31990405676` passed at implementation Head `a6add8534e2d8dbc45c5c6b12b1aef1e47e60a96`
+- Pull Request CI: Run `31990407839` passed at implementation Head `a6add8534e2d8dbc45c5c6b12b1aef1e47e60a96`
 - Independent Manager Review: Re-review pending after exact-head CI
 - Manager Decision: `REQUEST_CHANGES` preserved
 - Merge and post-merge verification: Not started
