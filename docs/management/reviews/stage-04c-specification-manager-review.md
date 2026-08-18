@@ -8,7 +8,7 @@
 - Repository: `ai-commerce-marketing-platform`
 - Branch: `codex/stage-04c-ad-creative-publication-specification`
 - Base Commit: `dcfb5e7dcb284bba824c6c81d91ad6ad8b3cd785`
-- Head Commit: `73a9a9f874f0bda44a477f2316a0f76d03e3b7ac`
+- Head Commit: initial review `73a9a9f874f0bda44a477f2316a0f76d03e3b7ac`; re-review `1b7858b2927366df55286683e9d335aba47e6855`
 - Pull Request: #63
 
 ## Status before review
@@ -121,6 +121,36 @@ Developer correction status: all findings below are `RESOLVED_PENDING_RE_REVIEW`
 - Impact: The approved new payload is rejected or silently mapped to the wrong creative contract.
 - Required correction: Define dual legacy/new canonicalizer behavior, mandatory new-command shape, exact numeric canonicalization/replay comparison, and removal/rejection of provider-command defaults with regression tests for all non-CREATE_AD payloads.
 - Developer disposition: `RESOLVED_PENDING_RE_REVIEW` — `canonicalizePersisted` accepts the two exact historical shapes, `canonicalizeNewCreateAd` requires the new shape, and expected parent version has one unsigned integer encoding. Provider reconstruction requires `APPROVED_IMAGE_ASSET_V1`; `DEFAULT_IMAGE_V1` is removed/rejected with zero-call tests.
+
+## Independent re-review — `1b7858b2927366df55286683e9d335aba47e6855`
+
+- Re-review date: 2026-08-18
+- Scope: correction commit `1b7858b2927366df55286683e9d335aba47e6855`; Stage 4C specification and review status only
+- Repository evidence: local/upstream/PR Head exact; base/merge-base `dcfb5e7dcb284bba824c6c81d91ad6ad8b3cd785`; clean worktree; Draft/Open/MERGEABLE/CLEAN; `git diff --check` passed
+- Push CI `32103568050`: `SUCCESS`; PR CI `32103570812`: `SUCCESS`; both ran `quality-and-compose` and `secret-scan`, including Backend/Testcontainers, frontend verification, pinned Chromium, Compose, Playwright, Smoke, actionlint, cleanup, and Gitleaks. Only conditional Playwright failure-artifact upload skipped after success
+- Prior findings materially resolved: Stage 4C provenance/legacy inertness, guarded initial/retry claim, direct/reconciled predicates and bounded recovery, Stage 4A Audit compatibility, and dual CREATE_AD canonicalizer/provider mapping
+
+### 4C-RR-001 — BLOCKING — ETag contract breaks inherited weak-tag compatibility
+
+- Evidence: Stage 4C requires strong operation and Ad ETags, while approved Stage 4B and actual `ResourceEtag` emit and accept only weak `W/"<version>"` and reject strong tags.
+- Required correction: Require exactly one weak `W/"<non-negative decimal version>"` ETag/If-Match token. Reject strong, wildcard, list, padded, negative, quoted-without-`W/`, and malformed forms; add Backend/BFF/UI snapshots and 400 malformed tests.
+
+### 4C-RR-002 — BLOCKING — Public confirmation JSON shape is contradictory
+
+- Evidence: The specification declares `Confirmation(operation,replay)` as an exact JSON record while separately requiring the response body to be direct `PlatformOperationApiView`. Stage 4B uses Confirmation internally and serializes only its operation.
+- Required correction: Mark `Confirmation` internal/non-serialized and make every route return direct `PlatformOperationApiView`, with replay represented only by `200` versus new `202`; or obtain human approval for a breaking wrapper change. Add exact top-level-key snapshots.
+
+### 4C-RR-003 — MAJOR (required) — JSONB cannot enforce original numeric token spelling
+
+- Evidence: PostgreSQL JSONB normalizes numeric lexical forms before a V14 function sees them, so database validation cannot distinguish an original `1e0` token from integral `1` without raw lexical storage.
+- Required correction: Assign exponent/sign/fraction/leading-zero lexical rejection to the HTTP/Java boundary before JSONB conversion. PostgreSQL must enforce JSON number type, integral value, `0..BIGINT_MAX`, exact keys, and stored canonical/hash coherence. Remove impossible SQL lexical-parity claims and test the separated responsibilities.
+
+### 4C-RR-004 — MAJOR (required) — One-argument SQL provenance cannot know the active profile account
+
+- Evidence: `is_stage4c_owned_operation(operation_uuid)` compares with `fixedAccountUuid`, but LOCAL and TEST use different durable UUID/reference/fingerprint tuples and active Spring profile is not trustworthy database state.
+- Required correction: Define SQL ownership through the closed durable approved LOCAL/TEST account tuple set, while the application additionally requires the active fixed-account resolver; or pass a required account UUID and validate it against that durable set. Add LOCAL/TEST cross-profile, wrong-account, forged-account, and direct-SQL/application parity tests; do not use forgeable session settings.
+
+Re-review Decision: `REQUEST_CHANGES`. No human-escalation trigger exists if weak ETag/direct DTO compatibility is retained and the two database contracts are corrected within the approved additive V14 and FAKE LOCAL/TEST boundary.
 
 ## Known limitations
 
