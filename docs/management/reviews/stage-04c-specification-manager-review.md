@@ -13,17 +13,17 @@
 
 ## Status before review
 
-- Specification: Drafting unlocked; full product and implementation contract not yet submitted
+- Specification: Complete developer draft submitted; repository-owner settings approval pending
 - Runtime implementation: Locked; not started
 - Local Verification: Pending
 - Remote CI: Pending
-- Human Review Required: Pending specification decisions
+- Human Review Required: Yes — nine recommended product decisions require explicit repository-owner approval
 - Merge: Not started
 - Stage 4D: Locked
 
 ## Scope reviewed
 
-- Approved scope: Pending complete Stage 4C specification submission
+- Approved scope: Pending repository-owner approval and independent review of the submitted Stage 4C Ad creative publication specification
 - Explicit out of scope: Runtime, migration, REST, BFF, UI, adapter, real provider/network, credentials, production, spend, Auth/RBAC/Tenant, delivery/metrics, and Stage 4D+
 - Files reviewed: Pending
 - Forbidden or unexpected files: Pending
@@ -77,7 +77,7 @@ No review findings recorded. Independent Manager Review has not started.
 ## Known limitations
 
 - This is a pending review scaffold, not an approval.
-- Stage 4C product decisions and exact implementation contracts are not yet complete.
+- Stage 4C product decisions are not approved; the submitted implementation contract remains a draft until owner approval and independent review.
 - Deterministic FAKE LOCAL/TEST is the maximum currently authorized provider boundary; all real-provider behavior remains forbidden.
 
 ## Manager Decision
