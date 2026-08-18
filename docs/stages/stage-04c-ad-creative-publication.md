@@ -2,11 +2,11 @@
 
 ## Gate status
 
-- Status: Draft specification; repository-owner settings approval pending
+- Status: Product settings approved; Independent Manager Review pending
 - Branch: `codex/stage-04c-ad-creative-publication-specification`
 - Base: `dcfb5e7dcb284bba824c6c81d91ad6ad8b3cd785`
 - Stage 4B prerequisite: Passed; PR #62 merged at `dcfb5e7dcb284bba824c6c81d91ad6ad8b3cd785`; post-merge main CI Run `32055963526` passed
-- Product specification: Draft; requires repository-owner approval and Independent Manager Review
+- Product specification: Repository-owner settings approved on 2026-08-18; Independent Manager Review pending
 - Runtime implementation: Locked; not started
 - Manager Decision: Pending
 - Merge: Not started
@@ -20,7 +20,7 @@ Deliver a deterministic-FAKE, LOCAL/TEST-only Ad creative publication vertical s
 
 The slice proves approved creative evidence publication. It does not deliver ads, spend money, accept arbitrary creative text, call Meta, or collect metrics.
 
-## Recommended product decisions requiring owner approval
+## Repository-owner approved product decisions
 
 1. The only creative mapping is server-owned `APPROVED_IMAGE_ASSET_V1`.
 2. The mapping contains exactly the immutable Product/Asset/IMAGE output/review/checksum identities already present in the Stage 4A `CREATE_AD` payload. No Browser-supplied headline, primary text, description, CTA, destination URL, provider field, or arbitrary JSON is accepted.
@@ -32,7 +32,7 @@ The slice proves approved creative evidence publication. It does not deliver ads
 8. No Ad-level budget, targeting, placement, schedule, text-copy, destination, delivery, or metrics configuration is added in 4C.
 9. V14 is additive and narrowly updates the V12 request-validation/dispatch-integrity contract; it does not add a new business table or modify V1–V13 files.
 
-These recommendations are not approved until the repository owner explicitly accepts them.
+The repository owner explicitly approved all nine decisions through the Codex task on 2026-08-18. This approval fixes the product settings for Independent Manager Review; it does not approve runtime implementation, credentials, network access, paid delivery, production, or merge.
 
 ## Inherited boundaries
 
@@ -215,7 +215,7 @@ The existing `/platforms/meta` page gains an Ad section only when the server-sid
 
 Stage 4C runtime implementation remains locked until all are true:
 
-- [ ] Repository owner explicitly approves the nine recommended product decisions.
+- [x] Repository owner explicitly approved the nine product decisions on 2026-08-18.
 - [ ] Independent Manager Review records exactly `APPROVE` for a complete exact Head.
 - [ ] Any approval-record commit passes full exact-head Push and Pull Request CI.
 - [ ] The specification PR merges to `main` and post-merge main CI passes.

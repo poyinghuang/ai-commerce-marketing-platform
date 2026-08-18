@@ -13,17 +13,17 @@
 
 ## Status before review
 
-- Specification: Complete developer draft submitted; repository-owner settings approval pending
+- Specification: Complete developer draft submitted; repository-owner settings approved on 2026-08-18
 - Runtime implementation: Locked; not started
 - Local Verification: Pending
 - Remote CI: Pending
-- Human Review Required: Yes — nine recommended product decisions require explicit repository-owner approval
+- Human Review Required: Satisfied — repository owner explicitly approved all nine product decisions on 2026-08-18
 - Merge: Not started
 - Stage 4D: Locked
 
 ## Scope reviewed
 
-- Approved scope: Pending repository-owner approval and independent review of the submitted Stage 4C Ad creative publication specification
+- Approved scope: Repository-owner-approved Stage 4C deterministic-FAKE Ad creative publication specification; Independent Manager Review pending
 - Explicit out of scope: Runtime, migration, REST, BFF, UI, adapter, real provider/network, credentials, production, spend, Auth/RBAC/Tenant, delivery/metrics, and Stage 4D+
 - Files reviewed: Pending
 - Forbidden or unexpected files: Pending
@@ -74,10 +74,17 @@
 
 No review findings recorded. Independent Manager Review has not started.
 
+## Repository-owner decision
+
+- Decision date: 2026-08-18
+- Decision: Approved all nine proposed Stage 4C product decisions without modification
+- Boundary retained: deterministic `FAKE` in `LOCAL`/`TEST` only; no credential, network, real Provider, spend, billing, production, Auth/RBAC/Tenant, delivery, metrics, or Stage 4D behavior
+- Effect: Specification may enter Independent Manager Review; runtime implementation remains locked
+
 ## Known limitations
 
 - This is a pending review scaffold, not an approval.
-- Stage 4C product decisions are not approved; the submitted implementation contract remains a draft until owner approval and independent review.
+- Product decisions are approved, but the implementation contract remains unapproved until Independent Manager Review reaches `APPROVE`, the specification PR merges, and post-merge main CI passes.
 - Deterministic FAKE LOCAL/TEST is the maximum currently authorized provider boundary; all real-provider behavior remains forbidden.
 
 ## Manager Decision
