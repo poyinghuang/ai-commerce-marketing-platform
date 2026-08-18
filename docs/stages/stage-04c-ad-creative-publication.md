@@ -2,13 +2,13 @@
 
 ## Gate status
 
-- Status: Product settings approved; Independent Manager Review pending
+- Status: Independent Manager Review `REQUEST_CHANGES`
 - Branch: `codex/stage-04c-ad-creative-publication-specification`
 - Base: `dcfb5e7dcb284bba824c6c81d91ad6ad8b3cd785`
 - Stage 4B prerequisite: Passed; PR #62 merged at `dcfb5e7dcb284bba824c6c81d91ad6ad8b3cd785`; post-merge main CI Run `32055963526` passed
-- Product specification: Repository-owner settings approved on 2026-08-18; Independent Manager Review pending
+- Product specification: Repository-owner settings approved on 2026-08-18; specification corrections required before re-review
 - Runtime implementation: Locked; not started
-- Manager Decision: Pending
+- Manager Decision: `REQUEST_CHANGES` for reviewed Head `73a9a9f874f0bda44a477f2316a0f76d03e3b7ac`
 - Merge: Not started
 - Stage 4D: Locked
 
