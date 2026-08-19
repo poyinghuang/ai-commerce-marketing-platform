@@ -2,17 +2,17 @@
 
 ## Gate status
 
-- Status: Cycle-3 developer corrections for `4C-RR-001`..`4C-RR-004` are in the working copy; Independent Manager Re-Review is required
+- Status: Independent Manager Re-Review `APPROVE` for content Head `c19f4d4`; approval-record commit pending exact-head CI
 - Branch: `codex/stage-04c-ad-creative-publication-specification`
 - Base: `dcfb5e7dcb284bba824c6c81d91ad6ad8b3cd785`
 - Stage 4B prerequisite: Passed; PR #62 merged at `dcfb5e7dcb284bba824c6c81d91ad6ad8b3cd785`; post-merge main CI Run `32055963526` passed
 - Product specification: Repository-owner settings approved on 2026-08-18
 - Runtime implementation: Locked; not started
-- Manager Decision: `REQUEST_CHANGES` remains recorded for re-reviewed Head `1b7858b2927366df55286683e9d335aba47e6855`; this correction cycle does not self-approve
-- Merge: Not started; PR #63 remains Draft
+- Manager Decision: `APPROVE` for reviewed content Head `c19f4d4d9e8366865c3d011fb54e672b19c3cbb6`
+- Merge: Not started; PR #63 remains Draft until this approval-record commit passes exact-head Push/PR CI
 - Stage 4D: Locked
 
-This is a proposed implementation contract, not an approval. It authorizes no migration, runtime, REST, BFF, UI, adapter, provider, credential, network, production, paid-delivery, activation, or Stage 4D change until the specification Gate passes.
+This approval authorizes the Stage 4C specification contract only. It authorizes no migration, runtime, REST, BFF, UI, adapter, provider, credential, network, production, paid-delivery, activation, or Stage 4D change until the specification PR merges and post-merge main CI passes.
 
 ## Objective
 
@@ -446,8 +446,8 @@ The existing `/platforms/meta` page gains an Ad section only when the server-sid
 Stage 4C runtime implementation remains locked until all are true:
 
 - [x] Repository owner explicitly approved the nine product decisions on 2026-08-18.
-- [ ] Independent Manager Review records exactly `APPROVE` for a complete exact Head.
-- [ ] Any approval-record commit passes full exact-head Push and Pull Request CI.
+- [x] Independent Manager Review records exactly `APPROVE` for reviewed content Head `c19f4d4d9e8366865c3d011fb54e672b19c3cbb6`.
+- [ ] The approval-record commit passes full exact-head Push and Pull Request CI.
 - [ ] The specification PR merges to `main` and post-merge main CI passes.
 
 Stage 4D remains locked through Stage 4C implementation merge and post-merge verification.

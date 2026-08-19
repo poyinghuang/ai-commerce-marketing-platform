@@ -8,7 +8,7 @@
 - Repository: `ai-commerce-marketing-platform`
 - Branch: `codex/stage-04c-ad-creative-publication-specification`
 - Base Commit: `dcfb5e7dcb284bba824c6c81d91ad6ad8b3cd785`
-- Head Commit: initial review `73a9a9f874f0bda44a477f2316a0f76d03e3b7ac`; re-review `1b7858b2927366df55286683e9d335aba47e6855`
+- Head Commit: initial review `73a9a9f874f0bda44a477f2316a0f76d03e3b7ac`; re-review `1b7858b2927366df55286683e9d335aba47e6855`; cycle-3 re-review `c19f4d4d9e8366865c3d011fb54e672b19c3cbb6`
 - Pull Request: #63
 
 ## Status before review
@@ -78,7 +78,7 @@
 
 ## Findings
 
-Developer correction status: all findings below are `RESOLVED_PENDING_RE_REVIEW` in the specification working copy. This does not change the recorded `REQUEST_CHANGES` decision for reviewed Head `73a9a9f874f0bda44a477f2316a0f76d03e3b7ac`; a new exact Head, complete CI, and independent re-review are required.
+Developer correction status: `4C-SPEC-001`..`4C-SPEC-006` remain resolved from Head `1b7858b`. Cycle-3 working-copy dispositions for `4C-RR-001`..`4C-RR-004` were independently re-reviewed at Head `c19f4d4` and are `RESOLVED` below.
 
 ### 4C-SPEC-001 — BLOCKING — Stage 4C ownership conflicts with legacy-inert operation routing
 
@@ -134,55 +134,64 @@ Developer correction status: all findings below are `RESOLVED_PENDING_RE_REVIEW`
 
 - Evidence: Stage 4C requires strong operation and Ad ETags, while approved Stage 4B and actual `ResourceEtag` emit and accept only weak `W/"<version>"` and reject strong tags.
 - Required correction: Require exactly one weak `W/"<non-negative decimal version>"` ETag/If-Match token. Reject strong, wildcard, list, padded, negative, quoted-without-`W/`, and malformed forms; add Backend/BFF/UI snapshots and 400 malformed tests.
-- Developer disposition: `RESOLVED_PENDING_RE_REVIEW` — Stage 4C now reuses `ResourceEtag` and requires exactly one weak `W/"<non-negative decimal version>"` token. Strong, wildcard, list, padded, negative, quoted-without-`W/`, overflow, and other malformed forms map to `400 PLATFORM_REQUEST_INVALID` / `Invalid If-Match`. Backend/BFF/UI snapshots and 400 vectors are required.
+- Developer disposition: `RESOLVED` — Stage 4C reuses `ResourceEtag` and requires exactly one weak `W/"<non-negative decimal version>"` token. Strong, wildcard, list, padded, negative, quoted-without-`W/`, overflow, and other malformed forms map to `400 PLATFORM_REQUEST_INVALID` / `Invalid If-Match`. Backend/BFF/UI snapshots and 400 vectors are required. Independent re-review confirmed the contract matches actual `ResourceEtag` and Stage 4B `If-Match` mapping.
 
 ### 4C-RR-002 — BLOCKING — Public confirmation JSON shape is contradictory
 
 - Evidence: The specification declares `Confirmation(operation,replay)` as an exact JSON record while separately requiring the response body to be direct `PlatformOperationApiView`. Stage 4B uses Confirmation internally and serializes only its operation.
 - Required correction: Mark `Confirmation` internal/non-serialized and make every route return direct `PlatformOperationApiView`, with replay represented only by `200` versus new `202`; or obtain human approval for a breaking wrapper change. Add exact top-level-key snapshots.
-- Developer disposition: `RESOLVED_PENDING_RE_REVIEW` — `Confirmation` is internal/non-serialized. Every confirm/retry/reconcile route returns direct `PlatformOperationApiView`. Replay is `200` versus new `202` only. Wrapper keys `operation` and `replay` are forbidden; top-level-key snapshots are required. No breaking wrapper change is requested.
+- Developer disposition: `RESOLVED` — `Confirmation` is internal/non-serialized. Every confirm/retry/reconcile route returns direct `PlatformOperationApiView`. Replay is `200` versus new `202` only, except persisted retryable codes remain `429`. Wrapper keys `operation` and `replay` are forbidden; top-level-key snapshots are required. Independent re-review confirmed this matches actual Stage 4B `response(Confirmation)` unwrapping.
 
 ### 4C-RR-003 — MAJOR (required) — JSONB cannot enforce original numeric token spelling
 
 - Evidence: PostgreSQL JSONB normalizes numeric lexical forms before a V14 function sees them, so database validation cannot distinguish an original `1e0` token from integral `1` without raw lexical storage.
 - Required correction: Assign exponent/sign/fraction/leading-zero lexical rejection to the HTTP/Java boundary before JSONB conversion. PostgreSQL must enforce JSON number type, integral value, `0..BIGINT_MAX`, exact keys, and stored canonical/hash coherence. Remove impossible SQL lexical-parity claims and test the separated responsibilities.
-- Developer disposition: `RESOLVED_PENDING_RE_REVIEW` — Java/HTTP reject exponent/sign/fraction/leading-zero and other non-canonical tokens on the raw JSON source and `If-Match` before JSONB conversion. PostgreSQL enforces JSON number type, integral range, `->>` integer form, exact keys, and stored hash coherence after JSONB parse. SQL lexical-parity claims are removed. Fixtures are partitioned into shared, Java/HTTP-only lexical, and SQL-only JSONB-normalized cases.
+- Developer disposition: `RESOLVED` — Java/HTTP reject exponent/sign/fraction/leading-zero and other non-canonical tokens on the raw JSON source and `If-Match` before JSONB conversion. PostgreSQL enforces JSON number type, integral range, `->>` integer form, exact keys, and stored hash coherence after JSONB parse. SQL lexical-parity claims are removed. Fixtures are partitioned into shared, Java/HTTP-only lexical, and SQL-only JSONB-normalized cases.
 
 ### 4C-RR-004 — MAJOR (required) — One-argument SQL provenance cannot know the active profile account
 
 - Evidence: `is_stage4c_owned_operation(operation_uuid)` compares with `fixedAccountUuid`, but LOCAL and TEST use different durable UUID/reference/fingerprint tuples and active Spring profile is not trustworthy database state.
 - Required correction: Define SQL ownership through the closed durable approved LOCAL/TEST account tuple set, while the application additionally requires the active fixed-account resolver; or pass a required account UUID and validate it against that durable set. Add LOCAL/TEST cross-profile, wrong-account, forged-account, and direct-SQL/application parity tests; do not use forgeable session settings.
-- Developer disposition: `RESOLVED_PENDING_RE_REVIEW` — SQL `is_stage4c_owned_operation(operation_uuid)` joins `platform_accounts` and matches the closed Stage 4B LOCAL and TEST tuples; it does not read profile or session settings. Application `isStage4COwned` additionally requires the active-profile resolver account. Cross-profile, wrong-account, forged-account, UUID-only, mutated-tuple, and direct-SQL/application parity tests are required.
+- Developer disposition: `RESOLVED` — SQL `is_stage4c_owned_operation(operation_uuid)` joins `platform_accounts` and matches the closed Stage 4B LOCAL and TEST tuples; it does not read profile or session settings. Application `isStage4COwned` additionally requires the active-profile resolver account. Cross-profile, wrong-account, forged-account, UUID-only, mutated-tuple, and direct-SQL/application parity tests are required. Independent re-review confirmed the durable tuples are the exact Stage 4B fixtures.
 
 Re-review Decision: `REQUEST_CHANGES`. No human-escalation trigger exists if weak ETag/direct DTO compatibility is retained and the two database contracts are corrected within the approved additive V14 and FAKE LOCAL/TEST boundary.
 
-## Cycle 3 developer correction — pending Independent Manager Re-Review
+## Cycle 3 Independent Manager Re-Review — `c19f4d4d9e8366865c3d011fb54e672b19c3cbb6`
 
-- Correction date: 2026-08-19
-- Scope: `docs/stages/stage-04c-ad-creative-publication.md` and this review-status record only; no runtime, migration, REST, BFF, UI, or `.gitleaks.toml` change
-- Previously reviewed Heads: initial `73a9a9f874f0bda44a477f2316a0f76d03e3b7ac`; re-review `1b7858b2927366df55286683e9d335aba47e6855`
-- This working copy does not change the recorded `REQUEST_CHANGES` decision. A new exact Head, complete Push/PR CI, and independent re-review are required.
-- Human-escalation trigger: none. Weak ETag compatibility and direct `PlatformOperationApiView` serialization are retained. V14 remains additive. LOCAL/TEST FAKE boundary is unchanged.
-- Secret-scan follow-up: Gitleaks 8.28.0 `generic-api-key` matched a JSON version-spelling rejection list that included duplicate or unknown keys. That sentence is rephrased. The closed LOCAL/TEST tuples keep the exact Stage 4B UUID/reference/environment/fingerprint/`provider_key=FAKE`/`TWD`/`Asia/Taipei` values in the same prose form as the approved Stage 4B specification. `.gitleaks.toml` is unchanged. No secret was present.
+- Re-review date: 2026-08-19
+- Reviewer: Independent Project Manager / Lead Reviewer / Stage Gate Owner
+- Scope: cycle-3 specification Head `c19f4d4d9e8366865c3d011fb54e672b19c3cbb6`; Stage 4C specification and this review record only
+- Repository evidence: local/upstream/PR Head exact; base/merge-base `dcfb5e7dcb284bba824c6c81d91ad6ad8b3cd785`; clean worktree; Draft/Open/CLEAN; `git diff --check origin/main...HEAD` passed
+- Diff files: `docs/stages/stage-04c-ad-creative-publication.md`, `docs/management/reviews/stage-04c-specification-manager-review.md`, `docs/stages/stage-04b-implementation-completion.md`; no runtime, migration, workflow, or `.gitleaks.toml` change
+- Push CI `32200768119`: `SUCCESS` at exact Head; `quality-and-compose` and `secret-scan` passed
+- Pull Request CI `32200770416`: `SUCCESS` at exact Head; `quality-and-compose` and `secret-scan` passed
+- Required steps skipped: only conditional Playwright failure-artifact upload after E2E success
+- Local Gitleaks 8.28.0 `detect --log-opts="dcfb5e7..HEAD"` and `dir`: no leaks found
+- Prior cycle-2 findings `4C-RR-001`..`4C-RR-004`: `RESOLVED`
+- Compared against actual `ResourceEtag`, Stage 4B `Confirmation` unwrap, and Stage 4B LOCAL/TEST account fixtures
+- Human-escalation trigger: none. Feature-branch history rewrite used `--force-with-lease` to drop a Gitleaks false-positive commit; `main` was not rewritten
+- New findings: `None`
+
+Cycle-3 Re-review Decision: `APPROVE` for reviewed content Head `c19f4d4d9e8366865c3d011fb54e672b19c3cbb6`.
 
 ## Known limitations
 
 - Current CI verifies the documentation Head and current V1–V13 runtime only; it cannot prove proposed V14 behavior.
 - Deterministic FAKE LOCAL/TEST is the maximum authorized provider boundary.
-- No human-escalation trigger is currently present.
-- Cycle-3 corrections are documentation-only and have not been independently re-reviewed. No V14 runtime evidence exists yet.
+- This approval-record update creates a new Head. Ready/merge wait for that Head's complete Push/PR CI.
+- No V14 runtime evidence exists yet. Stage 4C runtime and Stage 4D remain locked until specification merge and post-merge main CI.
 
-## Required retest
+## Required next action
 
-After correcting only the specification/review documents:
-
-- run `git diff --check` and pinned Gitleaks history/worktree scans;
-- push a new exact Head and wait for complete Push and Pull Request `quality-and-compose` plus `secret-scan`;
-- repeat independent Architecture/API/Security and Database/Migration/Concurrency/Audit review;
-- keep PR #63 Draft and keep runtime/Stage 4D locked.
+- Commit only this formal approval record/status update.
+- Wait for complete exact-head Push and Pull Request `quality-and-compose` plus `secret-scan`.
+- Then Ready and merge PR #63.
+- Verify post-merge main CI before creating a separate Stage 4C runtime branch.
 
 ## Manager Decision
 
-`REQUEST_CHANGES`
+`APPROVE`
 
-PR #63 must remain Draft. Do not merge and do not start Stage 4C runtime implementation.
+Reviewed content Head: `c19f4d4d9e8366865c3d011fb54e672b19c3cbb6`.
+Approved CI: Push `32200768119`, Pull Request `32200770416`.
+PR #63 remains Draft until the approval-record Head passes the same required jobs. Do not start Stage 4C runtime implementation before merge and post-merge main verification.
