@@ -134,30 +134,43 @@ Developer correction status: all findings below are `RESOLVED_PENDING_RE_REVIEW`
 
 - Evidence: Stage 4C requires strong operation and Ad ETags, while approved Stage 4B and actual `ResourceEtag` emit and accept only weak `W/"<version>"` and reject strong tags.
 - Required correction: Require exactly one weak `W/"<non-negative decimal version>"` ETag/If-Match token. Reject strong, wildcard, list, padded, negative, quoted-without-`W/`, and malformed forms; add Backend/BFF/UI snapshots and 400 malformed tests.
+- Developer disposition: `RESOLVED_PENDING_RE_REVIEW` — Stage 4C now reuses `ResourceEtag` and requires exactly one weak `W/"<non-negative decimal version>"` token. Strong, wildcard, list, padded, negative, quoted-without-`W/`, overflow, and other malformed forms map to `400 PLATFORM_REQUEST_INVALID` / `Invalid If-Match`. Backend/BFF/UI snapshots and 400 vectors are required.
 
 ### 4C-RR-002 — BLOCKING — Public confirmation JSON shape is contradictory
 
 - Evidence: The specification declares `Confirmation(operation,replay)` as an exact JSON record while separately requiring the response body to be direct `PlatformOperationApiView`. Stage 4B uses Confirmation internally and serializes only its operation.
 - Required correction: Mark `Confirmation` internal/non-serialized and make every route return direct `PlatformOperationApiView`, with replay represented only by `200` versus new `202`; or obtain human approval for a breaking wrapper change. Add exact top-level-key snapshots.
+- Developer disposition: `RESOLVED_PENDING_RE_REVIEW` — `Confirmation` is internal/non-serialized. Every confirm/retry/reconcile route returns direct `PlatformOperationApiView`. Replay is `200` versus new `202` only. Wrapper keys `operation` and `replay` are forbidden; top-level-key snapshots are required. No breaking wrapper change is requested.
 
 ### 4C-RR-003 — MAJOR (required) — JSONB cannot enforce original numeric token spelling
 
 - Evidence: PostgreSQL JSONB normalizes numeric lexical forms before a V14 function sees them, so database validation cannot distinguish an original `1e0` token from integral `1` without raw lexical storage.
 - Required correction: Assign exponent/sign/fraction/leading-zero lexical rejection to the HTTP/Java boundary before JSONB conversion. PostgreSQL must enforce JSON number type, integral value, `0..BIGINT_MAX`, exact keys, and stored canonical/hash coherence. Remove impossible SQL lexical-parity claims and test the separated responsibilities.
+- Developer disposition: `RESOLVED_PENDING_RE_REVIEW` — Java/HTTP reject exponent/sign/fraction/leading-zero and other non-canonical tokens on the raw JSON source and `If-Match` before JSONB conversion. PostgreSQL enforces JSON number type, integral range, `->>` integer form, exact keys, and stored hash coherence after JSONB parse. SQL lexical-parity claims are removed. Fixtures are partitioned into shared, Java/HTTP-only lexical, and SQL-only JSONB-normalized cases.
 
 ### 4C-RR-004 — MAJOR (required) — One-argument SQL provenance cannot know the active profile account
 
 - Evidence: `is_stage4c_owned_operation(operation_uuid)` compares with `fixedAccountUuid`, but LOCAL and TEST use different durable UUID/reference/fingerprint tuples and active Spring profile is not trustworthy database state.
 - Required correction: Define SQL ownership through the closed durable approved LOCAL/TEST account tuple set, while the application additionally requires the active fixed-account resolver; or pass a required account UUID and validate it against that durable set. Add LOCAL/TEST cross-profile, wrong-account, forged-account, and direct-SQL/application parity tests; do not use forgeable session settings.
+- Developer disposition: `RESOLVED_PENDING_RE_REVIEW` — SQL `is_stage4c_owned_operation(operation_uuid)` joins `platform_accounts` and matches the closed Stage 4B LOCAL and TEST tuples; it does not read profile or session settings. Application `isStage4COwned` additionally requires the active-profile resolver account. Cross-profile, wrong-account, forged-account, UUID-only, mutated-tuple, and direct-SQL/application parity tests are required.
 
 Re-review Decision: `REQUEST_CHANGES`. No human-escalation trigger exists if weak ETag/direct DTO compatibility is retained and the two database contracts are corrected within the approved additive V14 and FAKE LOCAL/TEST boundary.
+
+## Cycle 3 developer correction — pending Independent Manager Re-Review
+
+- Correction date: 2026-08-19
+- Scope: `docs/stages/stage-04c-ad-creative-publication.md` and this review-status record only; no runtime, migration, REST, BFF, UI, or `.gitleaks.toml` change
+- Previously reviewed Heads: initial `73a9a9f874f0bda44a477f2316a0f76d03e3b7ac`; re-review `1b7858b2927366df55286683e9d335aba47e6855`
+- This working copy does not change the recorded `REQUEST_CHANGES` decision. A new exact Head, complete Push/PR CI, and independent re-review are required.
+- Human-escalation trigger: none. Weak ETag compatibility and direct `PlatformOperationApiView` serialization are retained. V14 remains additive. LOCAL/TEST FAKE boundary is unchanged.
+- Secret-scan follow-up: Gitleaks 8.28.0 `generic-api-key` matched a JSON version-spelling rejection list that included duplicate or unknown keys. That sentence is rephrased. The closed LOCAL/TEST tuples keep the exact Stage 4B UUID/reference/environment/fingerprint/`provider_key=FAKE`/`TWD`/`Asia/Taipei` values in the same prose form as the approved Stage 4B specification. `.gitleaks.toml` is unchanged. No secret was present.
 
 ## Known limitations
 
 - Current CI verifies the documentation Head and current V1–V13 runtime only; it cannot prove proposed V14 behavior.
 - Deterministic FAKE LOCAL/TEST is the maximum authorized provider boundary.
-- No human-escalation trigger is currently present. The desired-versus-observed parent-state choice requires owner confirmation only if it was not included in the recorded product approval.
-- Corrections are documentation-only and have not been independently re-reviewed. No V14 runtime evidence exists yet.
+- No human-escalation trigger is currently present.
+- Cycle-3 corrections are documentation-only and have not been independently re-reviewed. No V14 runtime evidence exists yet.
 
 ## Required retest
 
