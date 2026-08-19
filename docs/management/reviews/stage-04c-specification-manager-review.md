@@ -174,19 +174,24 @@ Re-review Decision: `REQUEST_CHANGES`. No human-escalation trigger exists if wea
 
 Cycle-3 Re-review Decision: `APPROVE` for reviewed content Head `c19f4d4d9e8366865c3d011fb54e672b19c3cbb6`.
 
+## Post-merge integration verification
+
+- Approval-record Head: `d1210ced9a2e5d866998346769dda20884d9684e`.
+- Approval-record Push CI Run `32201581792` and Pull Request CI Run `32201584294` passed before Ready and merge. Both required jobs `quality-and-compose` and `secret-scan` succeeded. Only the conditional Playwright failure-artifact upload was skipped because E2E passed.
+- PR #63 was marked Ready and squash-merged to `main` at `c321dc0124375e13fd09785b0c827326e996207f`.
+- Post-merge main CI Run `32204183690` passed. `quality-and-compose` and `secret-scan` completed successfully. Required steps executed; only the conditional Playwright failure-artifact upload was skipped because E2E passed.
+- Stage 4C specification is closed on `main`. Runtime implementation is unlocked on `codex/stage-04c-ad-creative-publication-runtime` from that merge SHA. Stage 4D remains locked.
+
 ## Known limitations
 
 - Current CI verifies the documentation Head and current V1–V13 runtime only; it cannot prove proposed V14 behavior.
 - Deterministic FAKE LOCAL/TEST is the maximum authorized provider boundary.
-- This approval-record update creates a new Head. Ready/merge wait for that Head's complete Push/PR CI.
-- No V14 runtime evidence exists yet. Stage 4C runtime and Stage 4D remain locked until specification merge and post-merge main CI.
+- No V14 runtime evidence exists yet. Implementation has not started.
 
 ## Required next action
 
-- Commit only this formal approval record/status update.
-- Wait for complete exact-head Push and Pull Request `quality-and-compose` plus `secret-scan`.
-- Then Ready and merge PR #63.
-- Verify post-merge main CI before creating a separate Stage 4C runtime branch.
+- Implement Stage 4C runtime on `codex/stage-04c-ad-creative-publication-runtime` from merge SHA `c321dc0124375e13fd09785b0c827326e996207f`.
+- Keep Stage 4D locked until Stage 4C implementation merge and post-merge verification.
 
 ## Manager Decision
 
@@ -194,4 +199,7 @@ Cycle-3 Re-review Decision: `APPROVE` for reviewed content Head `c19f4d4d9e83668
 
 Reviewed content Head: `c19f4d4d9e8366865c3d011fb54e672b19c3cbb6`.
 Approved CI: Push `32200768119`, Pull Request `32200770416`.
-PR #63 remains Draft until the approval-record Head passes the same required jobs. Do not start Stage 4C runtime implementation before merge and post-merge main verification.
+Approval-record CI: Push `32201581792`, Pull Request `32201584294`.
+Specification merge: `c321dc0124375e13fd09785b0c827326e996207f`.
+Post-merge main CI: Run `32204183690`.
+Stage 4C runtime implementation is unlocked. Stage 4D remains locked.

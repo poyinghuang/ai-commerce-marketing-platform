@@ -2,17 +2,17 @@
 
 ## Gate status
 
-- Status: Independent Manager Re-Review `APPROVE` for content Head `c19f4d4`; approval-record commit pending exact-head CI
-- Branch: `codex/stage-04c-ad-creative-publication-specification`
-- Base: `dcfb5e7dcb284bba824c6c81d91ad6ad8b3cd785`
+- Status: Specification merged; post-merge main CI passed; runtime implementation unlocked and not started
+- Branch: `codex/stage-04c-ad-creative-publication-runtime`
+- Base: `c321dc0124375e13fd09785b0c827326e996207f`
 - Stage 4B prerequisite: Passed; PR #62 merged at `dcfb5e7dcb284bba824c6c81d91ad6ad8b3cd785`; post-merge main CI Run `32055963526` passed
-- Product specification: Repository-owner settings approved on 2026-08-18
-- Runtime implementation: Locked; not started
+- Product specification: Repository-owner settings approved on 2026-08-18; specification PR #63 squash-merged at `c321dc0124375e13fd09785b0c827326e996207f`
+- Runtime implementation: Unlocked; not started
 - Manager Decision: `APPROVE` for reviewed content Head `c19f4d4d9e8366865c3d011fb54e672b19c3cbb6`
-- Merge: Not started; PR #63 remains Draft until this approval-record commit passes exact-head Push/PR CI
+- Merge: Squash merge `c321dc0124375e13fd09785b0c827326e996207f`; post-merge main CI Run `32204183690` passed
 - Stage 4D: Locked
 
-This approval authorizes the Stage 4C specification contract only. It authorizes no migration, runtime, REST, BFF, UI, adapter, provider, credential, network, production, paid-delivery, activation, or Stage 4D change until the specification PR merges and post-merge main CI passes.
+The approved specification contract is now on `main`. Runtime implementation may begin on this separate branch from that merge SHA. It remains inside the deterministic-FAKE LOCAL/TEST boundary and still authorizes no credential, network, real Provider, production, paid-delivery, activation, Auth/RBAC/Tenant, or Stage 4D change.
 
 ## Objective
 
@@ -443,11 +443,11 @@ The existing `/platforms/meta` page gains an Ad section only when the server-sid
 
 ## Stage gate
 
-Stage 4C runtime implementation remains locked until all are true:
+Stage 4C specification gates are complete. Runtime implementation is unlocked on `codex/stage-04c-ad-creative-publication-runtime` from merge SHA `c321dc0124375e13fd09785b0c827326e996207f` after post-merge main CI Run `32204183690`.
 
 - [x] Repository owner explicitly approved the nine product decisions on 2026-08-18.
 - [x] Independent Manager Review records exactly `APPROVE` for reviewed content Head `c19f4d4d9e8366865c3d011fb54e672b19c3cbb6`.
-- [ ] The approval-record commit passes full exact-head Push and Pull Request CI.
-- [ ] The specification PR merges to `main` and post-merge main CI passes.
+- [x] The approval-record commit passed full exact-head Push CI `32201581792` and Pull Request CI `32201584294`.
+- [x] Specification PR #63 squash-merged to `main` at `c321dc0124375e13fd09785b0c827326e996207f`; post-merge main CI Run `32204183690` passed.
 
 Stage 4D remains locked through Stage 4C implementation merge and post-merge verification.

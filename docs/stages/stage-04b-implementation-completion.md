@@ -9,7 +9,7 @@
 - Status: Complete; merged to `main` and post-merge verification passed
 - Manager Decision: `APPROVE`
 - Merge: Squash merge `dcfb5e7dcb284bba824c6c81d91ad6ad8b3cd785`
-- Stage 4C: Specification phase unlocked; runtime implementation remains locked
+- Stage 4C: Specification merged at `c321dc0124375e13fd09785b0c827326e996207f`; post-merge main CI Run `32204183690` passed; runtime implementation unlocked and not started
 
 ## Implemented scope
 
@@ -180,4 +180,4 @@ This evidence-only documentation commit creates a superseding Head. Its exact Pu
 - Approval-record Push CI Run `32055155559` and Pull Request CI Run `32055158475` passed before Ready and merge.
 - PR #62 was squash merged to `main` at `dcfb5e7dcb284bba824c6c81d91ad6ad8b3cd785`.
 - Post-merge main CI Run `32055963526` passed. `quality-and-compose` and `secret-scan` completed successfully; Backend, frontend verification, Compose health, Playwright 16/16, Smoke, actionlint, and Gitleaks executed. Only the conditional Playwright failure-artifact upload was skipped because Playwright passed.
-- Stage 4B is closed. This satisfies the prerequisite to begin the Stage 4C specification phase. It does not approve or start Stage 4C runtime implementation.
+- Stage 4B is closed. Stage 4C specification PR #63 later squash-merged at `c321dc0124375e13fd09785b0c827326e996207f`; post-merge main CI Run `32204183690` passed. That unlocks Stage 4C runtime implementation; it does not start implementation or unlock Stage 4D.
