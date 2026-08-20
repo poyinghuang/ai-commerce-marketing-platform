@@ -47,25 +47,34 @@ final class Stage4BRequestBoundaryFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request,HttpServletResponse response,FilterChain chain)
             throws ServletException,IOException {
-        if(request.getQueryString()!=null){reject(response,request,"PLATFORM_REQUEST_INVALID",400,"Platform request is invalid");return;}
-        String path=request.getRequestURI();Matcher pathUuid=UUID_TOKEN.matcher(path);while(pathUuid.find())if(!pathUuid.group().equals(pathUuid.group().toLowerCase(Locale.ROOT))){reject(response,request,"PLATFORM_REQUEST_INVALID",400,"Platform request is invalid");return;}boolean mutationBody="POST".equals(request.getMethod())&&!path.endsWith("/retry")&&!path.endsWith("/reconcile");
+        if(request.getQueryString()!=null){reject(response,request,"PLATFORM_REQUEST_INVALID",400,"Platform request is invalid","query");return;}
+        String path=request.getRequestURI();Matcher pathUuid=UUID_TOKEN.matcher(path);while(pathUuid.find())if(!pathUuid.group().equals(pathUuid.group().toLowerCase(Locale.ROOT))){reject(response,request,"PLATFORM_REQUEST_INVALID",400,"Platform request is invalid","path");return;}boolean mutationBody="POST".equals(request.getMethod())&&!path.endsWith("/retry")&&!path.endsWith("/reconcile");
         String contentType=request.getContentType();
-        if((mutationBody&&!MediaType.APPLICATION_JSON_VALUE.equals(contentType))||(!mutationBody&&contentType!=null)){reject(response,request,"PLATFORM_REQUEST_INVALID",400,"Platform request is invalid");return;}
+        if((mutationBody&&!MediaType.APPLICATION_JSON_VALUE.equals(contentType))||(!mutationBody&&contentType!=null)){reject(response,request,"PLATFORM_REQUEST_INVALID",400,"Platform request is invalid","body");return;}
         byte[] body=request.getInputStream().readNBytes(MAX_REQUEST_BYTES+1);
-        if(body.length>MAX_REQUEST_BYTES){reject(response,request,"PAYLOAD_TOO_LARGE",413,"Request body is too large");return;}
-        if(!mutationBody&&!new String(body,StandardCharsets.UTF_8).isBlank()){reject(response,request,"PLATFORM_REQUEST_INVALID",400,"Platform request is invalid");return;}
-        if(mutationBody){String json=new String(body,StandardCharsets.UTF_8);if(!Normalizer.isNormalized(json,Normalizer.Form.NFC)||FORBIDDEN_KEY.matcher(json).find()||hasDuplicateKey(json)){reject(response,request,"PLATFORM_REQUEST_INVALID",400,"Platform request is invalid");return;}Matcher uuid=UUID_FIELD.matcher(json);while(uuid.find())if(!canonicalUuid(uuid.group(1))){reject(response,request,"PLATFORM_REQUEST_INVALID",400,"Platform request is invalid");return;}}
+        if(body.length>MAX_REQUEST_BYTES){reject(response,request,"PAYLOAD_TOO_LARGE",413,"Request body is too large",null);return;}
+        if(!mutationBody&&!new String(body,StandardCharsets.UTF_8).isBlank()){reject(response,request,"PLATFORM_REQUEST_INVALID",400,"Platform request is invalid","body");return;}
+        if(mutationBody){String json=new String(body,StandardCharsets.UTF_8);if(!Normalizer.isNormalized(json,Normalizer.Form.NFC)||FORBIDDEN_KEY.matcher(json).find()||hasDuplicateKey(json)){reject(response,request,"PLATFORM_REQUEST_INVALID",400,"Platform request is invalid","body");return;}Matcher uuid=UUID_FIELD.matcher(json);while(uuid.find())if(!canonicalUuid(uuid.group(1))){reject(response,request,"PLATFORM_REQUEST_INVALID",400,"Platform request is invalid","body");return;}}
         chain.doFilter(new CachedRequest(request,body),response);
     }
 
     private static boolean canonicalUuid(String value){try{return UUID_TOKEN.matcher(value).matches()&&java.util.UUID.fromString(value).toString().equals(value);}catch(IllegalArgumentException ignored){return false;}}
     private static boolean hasDuplicateKey(String json){Set<String> keys=new HashSet<>();Matcher key=JSON_KEY.matcher(json);while(key.find())if(!keys.add(key.group(1)))return true;return false;}
 
-    private static void reject(HttpServletResponse response,HttpServletRequest request,String code,int status,String message)throws IOException{
+    private static void reject(HttpServletResponse response,HttpServletRequest request,String code,int status,String message,String field)throws IOException{
         response.setStatus(status);response.setContentType(MediaType.APPLICATION_JSON_VALUE);response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         String requestId=String.valueOf(request.getAttribute(RequestIdFilter.REQUEST_ATTRIBUTE));
-        String fieldErrors="PLATFORM_REQUEST_INVALID".equals(code)?"[{\"field\":\"body\",\"message\":\"Invalid request body\"}]":"[]";
+        String fieldErrors=field==null?"[]":"[{\"field\":\""+field+"\",\"message\":\""+fieldMessage(field)+"\"}]";
         response.getWriter().write("{\"code\":\""+code+"\",\"message\":\""+message+"\",\"requestId\":\""+requestId+"\",\"timestamp\":\""+Instant.now()+"\",\"path\":\""+request.getRequestURI()+"\",\"fieldErrors\":"+fieldErrors+"}");
+    }
+    private static String fieldMessage(String field){
+        return switch(field){
+            case "query"->"Query parameters are not allowed";
+            case "path"->"Invalid path";
+            case "If-Match"->"Invalid If-Match";
+            case "body"->"Invalid request body";
+            default->"Invalid value";
+        };
     }
 
     private static final class CachedRequest extends HttpServletRequestWrapper {

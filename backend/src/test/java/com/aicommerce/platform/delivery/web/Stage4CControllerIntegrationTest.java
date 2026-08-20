@@ -179,6 +179,53 @@ class Stage4CControllerIntegrationTest {
                 .andExpect(jsonPath("$.fieldErrors[0].message").value("Invalid If-Match"));
     }
 
+    @Test void queryParametersAreRejectedOnAdRoutesWithQueryField() throws Exception {
+        String campaign = createCampaign();
+        String adSet = createAdSet(campaign);
+        Evidence evidence = evidence(plan, UUID.fromString(adSet));
+        String etag = mvc.perform(get("/api/platforms/meta/ad-sets/" + adSet)).andReturn().getResponse().getHeader("ETag");
+        mvc.perform(post("/api/platforms/meta/ad-sets/" + adSet + "/ads/preview?account=x").header("If-Match", etag)
+                        .contentType(MediaType.APPLICATION_JSON).content(createBody(UUID.randomUUID(), evidence)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PLATFORM_REQUEST_INVALID"))
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("query"))
+                .andExpect(jsonPath("$.fieldErrors[0].message").value("Query parameters are not allowed"));
+        mvc.perform(get("/api/platforms/meta/ads/" + UUID.randomUUID() + "?account=x"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("query"));
+    }
+
+    @Test void unknownDuplicateAndNullFieldsAreRejectedOnAdRoutes() throws Exception {
+        String campaign = createCampaign();
+        String adSet = createAdSet(campaign);
+        Evidence evidence = evidence(plan, UUID.fromString(adSet));
+        String etag = mvc.perform(get("/api/platforms/meta/ad-sets/" + adSet)).andReturn().getResponse().getHeader("ETag");
+        String valid = createBody(UUID.randomUUID(), evidence);
+        mvc.perform(post("/api/platforms/meta/ad-sets/" + adSet + "/ads/preview").header("If-Match", etag)
+                        .contentType(MediaType.APPLICATION_JSON).content(valid.replace("}", ",\"extraField\":\"x\"}")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PLATFORM_REQUEST_INVALID"));
+        mvc.perform(post("/api/platforms/meta/ad-sets/" + adSet + "/ads/preview").header("If-Match", etag)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clientRequestUuid\":\"" + UUID.randomUUID()
+                                + "\",\"clientRequestUuid\":\"" + UUID.randomUUID()
+                                + "\",\"productUuid\":\"" + evidence.product()
+                                + "\",\"assetUuid\":\"" + evidence.asset()
+                                + "\",\"generationOutputUuid\":\"" + evidence.output()
+                                + "\",\"reviewDecisionUuid\":\"" + evidence.review() + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PLATFORM_REQUEST_INVALID"))
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("body"));
+        mvc.perform(post("/api/platforms/meta/ad-sets/" + adSet + "/ads/preview").header("If-Match", etag)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clientRequestUuid\":null,\"productUuid\":\"" + evidence.product()
+                                + "\",\"assetUuid\":\"" + evidence.asset()
+                                + "\",\"generationOutputUuid\":\"" + evidence.output()
+                                + "\",\"reviewDecisionUuid\":\"" + evidence.review() + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("clientRequestUuid"));
+    }
+
     private String createCampaign() throws Exception {
         String json = mvc.perform(post("/api/platforms/meta/campaigns").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"clientRequestUuid\":\"" + UUID.randomUUID() + "\",\"campaignUuid\":\"" + plan + "\",\"expectedCampaignPlanVersion\":0}"))

@@ -55,17 +55,19 @@ public class Stage4CController {
         String uri=request.getRequestURI();boolean createOrResume=uri.contains("/ads")&&!uri.endsWith("/pause");
         String code=switch(ex.code()){
             case PLATFORM_OPERATION_NOT_FOUND->"PLATFORM_RESOURCE_NOT_FOUND";
-            case PLATFORM_STALE_VERSION->"PLATFORM_ENTITY_STALE";
+            case PLATFORM_STALE_VERSION->uri.startsWith("/api/platform-operations/")?"PLATFORM_OPERATION_STALE":"PLATFORM_ENTITY_STALE";
             case PLATFORM_ACCOUNT_INACTIVE,PLATFORM_ACCOUNT_ENVIRONMENT_MISMATCH,PLATFORM_PROVIDER_UNSUPPORTED->"PLATFORM_ACCOUNT_CONFIGURATION_INVALID";
             case PLATFORM_EVIDENCE_INVALID->createOrResume?"PLATFORM_AD_EVIDENCE_INVALID":"PLATFORM_EVIDENCE_INVALID";
             case PLATFORM_PARENT_STATE_INVALID->"PLATFORM_PARENT_STATE_INVALID";
             default->ex.code().name();
         };
         HttpStatus status=switch(code){
-            case "PLATFORM_CONTRACT_INVALID"->HttpStatus.BAD_REQUEST;
+            case "PLATFORM_CONTRACT_INVALID","PLATFORM_REQUEST_INVALID"->HttpStatus.BAD_REQUEST;
             case "PLATFORM_RESOURCE_NOT_FOUND","PLATFORM_AD_NOT_FOUND"->HttpStatus.NOT_FOUND;
             case "PLATFORM_ENTITY_STALE","PLATFORM_OPERATION_STALE"->HttpStatus.PRECONDITION_FAILED;
+            case "PLATFORM_IF_MATCH_REQUIRED"->HttpStatus.PRECONDITION_REQUIRED;
             case "PLATFORM_ADAPTER_UNAVAILABLE","PLATFORM_ACCOUNT_CONFIGURATION_INVALID"->HttpStatus.SERVICE_UNAVAILABLE;
+            case "PLATFORM_PROVIDER_RETRYABLE"->HttpStatus.TOO_MANY_REQUESTS;
             default->HttpStatus.CONFLICT;
         };
         return ResponseEntity.status(status).body(error(code,request));
@@ -74,6 +76,12 @@ public class Stage4CController {
         Throwable cause=ex.getMostSpecificCause();String state=cause instanceof java.sql.SQLException sql?sql.getSQLState():null;
         String message=cause.getMessage()==null?"":cause.getMessage();
         if("40001".equals(state)||"40P01".equals(state))return ResponseEntity.status(HttpStatus.CONFLICT).body(error("PLATFORM_LEDGER_CONCURRENCY_CONFLICT",request));
+        if("23514".equals(state)&&message.contains("ct_platform_ad_submit_claim_stale")){
+            return ResponseEntity.status(HttpStatus.PRECONDITION_FAILED).body(error("PLATFORM_ENTITY_STALE",request));
+        }
+        if("23514".equals(state)&&message.contains("ct_platform_ad_submit_claim_parent_state")){
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(error("PLATFORM_PARENT_STATE_INVALID",request));
+        }
         if("23514".equals(state)&&message.contains("ct_platform_ad_submit_claim_evidence")){
             boolean createOrResume=request.getRequestURI().contains("/ads")&&!request.getRequestURI().endsWith("/pause");
             return ResponseEntity.status(HttpStatus.CONFLICT).body(error(createOrResume?"PLATFORM_AD_EVIDENCE_INVALID":"PLATFORM_EVIDENCE_INVALID",request));
@@ -95,7 +103,9 @@ public class Stage4CController {
     private static String requestId(HttpServletRequest r){return (String)r.getAttribute(RequestIdFilter.REQUEST_ATTRIBUTE);}
     private static ApiError error(String code,HttpServletRequest r){return error(code,r,null);}
     private static ApiError error(String code,HttpServletRequest r,String field){
-        List<FieldErrorDetail> fields=field==null?List.of():List.of(new FieldErrorDetail(field,"If-Match".equals(field)?"Invalid If-Match":"body".equals(field)?"Invalid request body":"Invalid value"));
+        List<FieldErrorDetail> fields=field==null?List.of():List.of(new FieldErrorDetail(field,
+                "If-Match".equals(field)?"Invalid If-Match":"body".equals(field)?"Invalid request body"
+                        :"query".equals(field)?"Query parameters are not allowed":"path".equals(field)?"Invalid path":"Invalid value"));
         return new ApiError(code,message(code),requestId(r),Instant.now(),r.getRequestURI(),fields);
     }
     private static String message(String code){return switch(code){

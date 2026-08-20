@@ -85,17 +85,109 @@ class Stage4CControllerErrorMappingTest {
         assertThat(json).doesNotContain("completedAt").doesNotContain("evidence").doesNotContain("payload");
     }
 
+    @ParameterizedTest(name = "{0} on {3} -> {1} {2}")
+    @MethodSource("stageErrors")
+    void mapsEveryStageExceptionToStablePublicStatusCodeMessageAndField(String source, HttpStatus status, String code,
+            String uri, String field) {
+        var response = controller.stageError(new com.aicommerce.platform.delivery.application.Stage4BException(source, status, field),
+                request(uri));
+        assertThat(response.getStatusCode()).isEqualTo(status);
+        assertThat(response.getBody().code()).isEqualTo(code);
+        assertThat(response.getBody().message()).isEqualTo(expectedMessage(code));
+        if (field == null) {
+            assertThat(response.getBody().fieldErrors()).isEmpty();
+        } else {
+            assertThat(response.getBody().fieldErrors()).hasSize(1);
+            assertThat(response.getBody().fieldErrors().get(0).field()).isEqualTo(field);
+        }
+        verifyNoInteractions(service);
+    }
+
     static Stream<Arguments> operationErrors() {
         String create = "/api/platforms/meta/ad-sets/00000000-0000-4000-8000-000000000001/ads";
         String resume = "/api/platforms/meta/ads/00000000-0000-4000-8000-000000000001/resume";
         String pause = "/api/platforms/meta/ads/00000000-0000-4000-8000-000000000001/pause";
+        String retry = "/api/platform-operations/00000000-0000-4000-8000-000000000001/retry";
+        String reconcile = "/api/platform-operations/00000000-0000-4000-8000-000000000001/reconcile";
+        return Stream.of(create, resume, pause, retry, reconcile).flatMap(uri -> Stream.of(
+                mapped(PlatformStableErrorCode.PLATFORM_STALE_VERSION, uri),
+                mapped(PlatformStableErrorCode.PLATFORM_EVIDENCE_INVALID, uri),
+                mapped(PlatformStableErrorCode.PLATFORM_PARENT_STATE_INVALID, uri),
+                mapped(PlatformStableErrorCode.PLATFORM_CONTRACT_INVALID, uri),
+                mapped(PlatformStableErrorCode.PLATFORM_OPERATION_NOT_FOUND, uri),
+                mapped(PlatformStableErrorCode.PLATFORM_ACCOUNT_INACTIVE, uri),
+                mapped(PlatformStableErrorCode.PLATFORM_ACCOUNT_ENVIRONMENT_MISMATCH, uri),
+                mapped(PlatformStableErrorCode.PLATFORM_PROVIDER_UNSUPPORTED, uri),
+                mapped(PlatformStableErrorCode.PLATFORM_ADAPTER_UNAVAILABLE, uri),
+                mapped(PlatformStableErrorCode.PLATFORM_IDEMPOTENCY_CONFLICT, uri),
+                mapped(PlatformStableErrorCode.PLATFORM_INVALID_OPERATION_STATE, uri),
+                mapped(PlatformStableErrorCode.PLATFORM_RETRY_NOT_DUE, uri),
+                mapped(PlatformStableErrorCode.PLATFORM_MAX_ATTEMPTS_EXCEEDED, uri),
+                mapped(PlatformStableErrorCode.PLATFORM_MAX_RECONCILIATIONS_EXCEEDED, uri),
+                mapped(PlatformStableErrorCode.PLATFORM_POLICY_REJECTED, uri)));
+    }
+
+    static Stream<Arguments> stageErrors() {
+        String create = "/api/platforms/meta/ad-sets/00000000-0000-4000-8000-000000000001/ads";
+        String adGet = "/api/platforms/meta/ads/00000000-0000-4000-8000-000000000001";
+        String retry = "/api/platform-operations/00000000-0000-4000-8000-000000000001/retry";
+        String reconcile = "/api/platform-operations/00000000-0000-4000-8000-000000000001/reconcile";
         return Stream.of(
-                Arguments.of(PlatformStableErrorCode.PLATFORM_STALE_VERSION, HttpStatus.PRECONDITION_FAILED, "PLATFORM_ENTITY_STALE", create),
-                Arguments.of(PlatformStableErrorCode.PLATFORM_EVIDENCE_INVALID, HttpStatus.CONFLICT, "PLATFORM_AD_EVIDENCE_INVALID", create),
-                Arguments.of(PlatformStableErrorCode.PLATFORM_EVIDENCE_INVALID, HttpStatus.CONFLICT, "PLATFORM_AD_EVIDENCE_INVALID", resume),
-                Arguments.of(PlatformStableErrorCode.PLATFORM_EVIDENCE_INVALID, HttpStatus.CONFLICT, "PLATFORM_EVIDENCE_INVALID", pause),
-                Arguments.of(PlatformStableErrorCode.PLATFORM_PARENT_STATE_INVALID, HttpStatus.CONFLICT, "PLATFORM_PARENT_STATE_INVALID", create),
-                Arguments.of(PlatformStableErrorCode.PLATFORM_CONTRACT_INVALID, HttpStatus.BAD_REQUEST, "PLATFORM_CONTRACT_INVALID", create));
+                Arguments.of("PLATFORM_AD_NOT_FOUND", HttpStatus.NOT_FOUND, "PLATFORM_AD_NOT_FOUND", adGet, null),
+                Arguments.of("PLATFORM_IF_MATCH_REQUIRED", HttpStatus.PRECONDITION_REQUIRED, "PLATFORM_IF_MATCH_REQUIRED", create, "If-Match"),
+                Arguments.of("PLATFORM_REQUEST_INVALID", HttpStatus.BAD_REQUEST, "PLATFORM_REQUEST_INVALID", create, "query"),
+                Arguments.of("PLATFORM_REQUEST_INVALID", HttpStatus.BAD_REQUEST, "PLATFORM_REQUEST_INVALID", create, "If-Match"),
+                Arguments.of("PLATFORM_REQUEST_INVALID", HttpStatus.BAD_REQUEST, "PLATFORM_REQUEST_INVALID", create, "body"),
+                Arguments.of("PLATFORM_LEGACY_OPERATION_INERT", HttpStatus.CONFLICT, "PLATFORM_LEGACY_OPERATION_INERT", retry, null),
+                Arguments.of("PLATFORM_LEGACY_OPERATION_INERT", HttpStatus.CONFLICT, "PLATFORM_LEGACY_OPERATION_INERT", reconcile, null),
+                Arguments.of("PLATFORM_ENTITY_STALE", HttpStatus.PRECONDITION_FAILED, "PLATFORM_ENTITY_STALE", create, null),
+                Arguments.of("PLATFORM_PARENT_STATE_INVALID", HttpStatus.CONFLICT, "PLATFORM_PARENT_STATE_INVALID", create, null),
+                Arguments.of("PLATFORM_AD_EVIDENCE_INVALID", HttpStatus.CONFLICT, "PLATFORM_AD_EVIDENCE_INVALID", create, null));
+    }
+
+    private static Arguments mapped(PlatformStableErrorCode source, String uri) {
+        boolean operationRoute = uri.startsWith("/api/platform-operations/");
+        boolean createOrResume = uri.contains("/ads") && !uri.endsWith("/pause");
+        String code = switch (source) {
+            case PLATFORM_OPERATION_NOT_FOUND -> "PLATFORM_RESOURCE_NOT_FOUND";
+            case PLATFORM_STALE_VERSION -> operationRoute ? "PLATFORM_OPERATION_STALE" : "PLATFORM_ENTITY_STALE";
+            case PLATFORM_ACCOUNT_INACTIVE, PLATFORM_ACCOUNT_ENVIRONMENT_MISMATCH, PLATFORM_PROVIDER_UNSUPPORTED ->
+                "PLATFORM_ACCOUNT_CONFIGURATION_INVALID";
+            case PLATFORM_EVIDENCE_INVALID -> createOrResume ? "PLATFORM_AD_EVIDENCE_INVALID" : "PLATFORM_EVIDENCE_INVALID";
+            case PLATFORM_PARENT_STATE_INVALID -> "PLATFORM_PARENT_STATE_INVALID";
+            default -> source.name();
+        };
+        HttpStatus status = switch (code) {
+            case "PLATFORM_CONTRACT_INVALID", "PLATFORM_REQUEST_INVALID" -> HttpStatus.BAD_REQUEST;
+            case "PLATFORM_RESOURCE_NOT_FOUND", "PLATFORM_AD_NOT_FOUND" -> HttpStatus.NOT_FOUND;
+            case "PLATFORM_ENTITY_STALE", "PLATFORM_OPERATION_STALE" -> HttpStatus.PRECONDITION_FAILED;
+            case "PLATFORM_IF_MATCH_REQUIRED" -> HttpStatus.PRECONDITION_REQUIRED;
+            case "PLATFORM_ADAPTER_UNAVAILABLE", "PLATFORM_ACCOUNT_CONFIGURATION_INVALID" -> HttpStatus.SERVICE_UNAVAILABLE;
+            case "PLATFORM_PROVIDER_RETRYABLE" -> HttpStatus.TOO_MANY_REQUESTS;
+            default -> HttpStatus.CONFLICT;
+        };
+        return Arguments.of(source, status, code, uri);
+    }
+
+    @org.junit.jupiter.api.Test
+    void sqlClaimConstraintMessagesMapToDistinctPublicCodes() {
+        String create = "/api/platforms/meta/ad-sets/00000000-0000-4000-8000-000000000001/ads";
+        String pause = "/api/platforms/meta/ads/00000000-0000-4000-8000-000000000001/pause";
+        assertSql("23514", "ERROR: ct_platform_ad_submit_claim_stale", create, HttpStatus.PRECONDITION_FAILED, "PLATFORM_ENTITY_STALE");
+        assertSql("23514", "ERROR: ct_platform_ad_submit_claim_parent_state", create, HttpStatus.CONFLICT, "PLATFORM_PARENT_STATE_INVALID");
+        assertSql("23514", "ERROR: ct_platform_ad_submit_claim_evidence", create, HttpStatus.CONFLICT, "PLATFORM_AD_EVIDENCE_INVALID");
+        assertSql("23514", "ERROR: ct_platform_ad_submit_claim_evidence", pause, HttpStatus.CONFLICT, "PLATFORM_EVIDENCE_INVALID");
+        assertSql("40001", "could not serialize", create, HttpStatus.CONFLICT, "PLATFORM_LEDGER_CONCURRENCY_CONFLICT");
+        assertSql("40P01", "deadlock detected", create, HttpStatus.CONFLICT, "PLATFORM_LEDGER_CONCURRENCY_CONFLICT");
+    }
+
+    private void assertSql(String state, String message, String uri, HttpStatus status, String code) {
+        var exception = org.mockito.Mockito.mock(org.springframework.dao.DataAccessException.class);
+        org.mockito.Mockito.when(exception.getMostSpecificCause()).thenReturn(new java.sql.SQLException(message, state));
+        var response = controller.databaseError(exception, request(uri));
+        assertThat(response.getStatusCode()).isEqualTo(status);
+        assertThat(response.getBody().code()).isEqualTo(code);
+        assertThat(response.getBody().message()).isEqualTo(expectedMessage(code));
     }
 
     static Stream<Arguments> rateLimitedRoutes() {
@@ -115,7 +207,22 @@ class Stage4CControllerErrorMappingTest {
             case "PLATFORM_PARENT_STATE_INVALID" -> "The parent platform state does not allow this action";
             case "PLATFORM_EVIDENCE_INVALID" -> "Platform evidence is inconsistent";
             case "PLATFORM_CONTRACT_INVALID" -> "Platform contract is invalid";
-            default -> code;
+            case "PLATFORM_RESOURCE_NOT_FOUND" -> "Platform resource was not found";
+            case "PLATFORM_ACCOUNT_CONFIGURATION_INVALID" -> "The local platform account is unavailable";
+            case "PLATFORM_ADAPTER_UNAVAILABLE" -> "The fake platform adapter is unavailable";
+            case "PLATFORM_IDEMPOTENCY_CONFLICT" -> "The request conflicts with an existing operation";
+            case "PLATFORM_INVALID_OPERATION_STATE" -> "The operation is not eligible for this action";
+            case "PLATFORM_RETRY_NOT_DUE" -> "The operation is not yet eligible for retry";
+            case "PLATFORM_MAX_ATTEMPTS_EXCEEDED" -> "The operation has no retry attempts remaining";
+            case "PLATFORM_MAX_RECONCILIATIONS_EXCEEDED" -> "The operation has no reconciliation attempts remaining";
+            case "PLATFORM_POLICY_REJECTED" -> "Platform policy rejected the request";
+            case "PLATFORM_OPERATION_STALE" -> "The platform operation changed; reload and retry";
+            case "PLATFORM_LEDGER_CONCURRENCY_CONFLICT" -> "The budget authorization changed concurrently";
+            case "PLATFORM_AD_NOT_FOUND" -> "Platform Ad was not found";
+            case "PLATFORM_IF_MATCH_REQUIRED" -> "If-Match is required";
+            case "PLATFORM_REQUEST_INVALID" -> "Platform request is invalid";
+            case "PLATFORM_LEGACY_OPERATION_INERT" -> "The legacy operation is read-only";
+            default -> "The operation is not eligible for this action";
         };
     }
 

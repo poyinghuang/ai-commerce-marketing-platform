@@ -38,7 +38,7 @@ class MigrationCompatibilityTest {
     private static final String V11_SHA256 = "761371c64dc2283c7ba3f644802d0b523a50ab5fe342e89da8c8c6b9befc0a1c";
     private static final String V12_SHA256 = "828be0d98a681501e0572ad038698002275f72fd66c0095b44def10da7ddfcf3";
     private static final String V13_SHA256 = "5078ef1c025b512bd4f99008c240122689d423e8b8188c09becc37c953f1497c";
-    private static final String V14_SHA256 = "69a090562be9b6977f840f587e042d36637a38954293bac3ccc88d2b8f213159";
+    private static final String V14_SHA256 = "03acc103faa2bd1cf94324cd2e7255e31d0e583cc5da7a88db9fab803289ad25";
 
     @Container
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17.6-alpine3.22");
@@ -459,10 +459,25 @@ class MigrationCompatibilityTest {
 
         assertThatThrownBy(()->flyway(schema,null).migrate()).isInstanceOf(FlywayException.class);
 
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=? AND p.proname IN ('is_stage4c_new_create_ad','is_approved_stage4c_account')",Integer.class,schema)).isZero();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=? AND p.proname IN ('is_stage4c_new_create_ad','is_approved_stage4c_account','stage4c_create_ad_canonical_json')",Integer.class,schema)).isZero();
         assertThat(jdbc.queryForObject("SELECT count(*) FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=? AND t.tgname LIKE 'ct_platform_ad_%'",Integer.class,schema)).isZero();
         assertThat(jdbc.queryForObject("SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=? AND p.proname='is_stage4c_owned_operation'",Integer.class,schema)).isEqualTo(1);
         assertThat(flyway(schema,MigrationVersion.fromVersion("13")).info().current().getVersion().getVersion()).isEqualTo("13");
+    }
+
+    @Test
+    void failedForwardOnlyV15CollisionLeavesEveryV14ObjectInPlace() {
+        String schema="forward_v15_case";
+        assertThat(flyway(schema,null).migrate().migrationsExecuted).isEqualTo(15);
+        var colliding=org.flywaydb.core.Flyway.configure()
+                .dataSource(postgres.getJdbcUrl(),postgres.getUsername(),postgres.getPassword())
+                .locations("classpath:db/migration","classpath:db/test-forward-v15")
+                .defaultSchema(schema).schemas(schema).createSchemas(true).cleanDisabled(true).load();
+        assertThatThrownBy(colliding::migrate).isInstanceOf(FlywayException.class);
+        JdbcTemplate jdbc=jdbcTemplate(schema);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=? AND p.proname='is_stage4c_owned_operation'",Integer.class,schema)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=? AND p.proname='stage4c_create_ad_canonical_json'",Integer.class,schema)).isEqualTo(1);
+        assertThat(colliding.info().current().getVersion().getVersion()).isEqualTo("14");
     }
 
     @Test

@@ -45,9 +45,28 @@ export async function forwardStage4B(request: NextRequest, backendPath: string) 
 }
 
 async function readBounded(stream:ReadableStream<Uint8Array>|null,limit:number):Promise<Uint8Array<ArrayBuffer>>{if(!stream)return new Uint8Array(0);const reader=stream.getReader();const chunks:Uint8Array[]=[];let size=0;try{while(true){const {done,value}=await reader.read();if(done)break;if(!value)continue;size+=value.byteLength;if(size>limit){await reader.cancel();throw new Error("limit");}chunks.push(value);}const result=new Uint8Array(new ArrayBuffer(size));let offset=0;for(const chunk of chunks){result.set(chunk,offset);offset+=chunk.byteLength;}return result;}finally{reader.releaseLock();}}
-function safeJson(bytes:Uint8Array){try{const value=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(bytes));return !containsForbidden(value);}catch{return false;}}
-function containsForbidden(value:unknown):boolean{if(Array.isArray(value))return value.some(containsForbidden);if(value&&typeof value==="object")return Object.entries(value).some(([key,item])=>forbiddenKey(key)||containsForbidden(item));return false;}
-function forbiddenKey(key:string):boolean{if(key==="evidenceEligible")return false;return /account.*(?:uuid|reference)|externalId$|canonical|payload|evidence|trace|authorization|cookie|token|credential|secret|provider.*(?:body|url)/i.test(key);}
+function safeJson(bytes:Uint8Array){try{const value=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(bytes));return isAllowlisted(value);}catch{return false;}}
+function isAllowlisted(value:unknown):boolean{
+  if(Array.isArray(value))return value.every(isAllowlisted);
+  if(value&&typeof value==="object"){
+    return Object.entries(value).every(([key,item])=>SAFE_KEYS.has(key)&&key!=="operation"&&key!=="replay"&&isAllowlisted(item));
+  }
+  return true;
+}
+const SAFE_KEYS=new Set([
+  "clientRequestUuid","platformAdSetUuid","expectedParentVersion","productUuid","assetUuid","generationOutputUuid",
+  "reviewDecisionUuid","approvedChecksumFingerprint","creativeMappingKey","parentCampaignDesiredState",
+  "parentAdSetDesiredState","newAdDesiredState","evidenceEligible","warnings","confirmable","entityType","entityUuid",
+  "expectedEntityVersion","previousDesiredState","targetDesiredState","platformAdUuid","desiredState","observedState",
+  "externalIdFingerprint","createdAt","updatedAt","version","operationUuid","operationType","status","attemptCount",
+  "reconciliationCount","maxAttempts","normalizedErrorCode","nextAttemptAt","completedAt","platformCampaignUuid",
+  "campaignUuid","campaignPlanVersion","objective","accountTimezone","scheduleStart","scheduleEnd","budgetType",
+  "budgetAmount","currency","optimizationGoal","targetingProfile","placementProfile","expectedCampaignPlanVersion",
+  "policy","reservation","kind","previousAmount","newAmount","reservedDelta","businessDate","batchReservedAfter",
+  "accountDayReservedBefore","accountDayReservedAfter","accountDayRemainingAfter","businessZone","targetingProfileKey",
+  "placementProfileKey","maxEntityAmount","maxBatchAmount","maxAccountDayAmount","code","message","requestId",
+  "timestamp","path","fieldErrors","field",
+]);
 
 function backendOrigin(){const value=process.env.BACKEND_INTERNAL_URL;if(!value)return null;try{const url=new URL(value);if(!["http:","https:"].includes(url.protocol)||url.username||url.password||url.search||url.hash)return null;url.pathname=url.pathname.replace(/\/*$/,"/");return url;}catch{return null;}}
 function error(code:string,message:string,status:number){return NextResponse.json({code,message},{status});}

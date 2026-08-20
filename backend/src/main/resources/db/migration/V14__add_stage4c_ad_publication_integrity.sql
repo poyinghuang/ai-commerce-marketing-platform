@@ -89,6 +89,27 @@ BEGIN
  RETURN FALSE;
 END $$;
 
+-- PostgreSQL JSONB cannot see original lexical tokens. Coherence is SHA-256 of the Java
+-- TreeMap/Jackson compact canonical CREATE_AD bytes reconstructed from stored JSONB keys.
+CREATE FUNCTION stage4c_create_ad_canonical_json(value JSONB) RETURNS TEXT LANGUAGE sql IMMUTABLE AS $$
+ SELECT '{'
+  || '"approvedChecksumSha256":' || to_json(value->>'approvedChecksumSha256') || ','
+  || '"assetUuid":' || to_json(value->>'assetUuid') || ','
+  || '"creativeMappingKey":' || to_json(value->>'creativeMappingKey') || ','
+  || '"desiredState":' || to_json(value->>'desiredState') || ','
+  || '"entityType":' || to_json(value->>'entityType') || ','
+  || '"entityUuid":' || to_json(value->>'entityUuid') || ','
+  || '"expectedParentVersion":' || (value->>'expectedParentVersion') || ','
+  || '"generationOutputUuid":' || to_json(value->>'generationOutputUuid') || ','
+  || '"operationType":' || to_json(value->>'operationType') || ','
+  || '"platformAdSetUuid":' || to_json(value->>'platformAdSetUuid') || ','
+  || '"platformAdUuid":' || to_json(value->>'platformAdUuid') || ','
+  || '"productUuid":' || to_json(value->>'productUuid') || ','
+  || '"reviewDecisionUuid":' || to_json(value->>'reviewDecisionUuid') || ','
+  || '"schemaVersion":' || (value->>'schemaVersion')
+  || '}';
+$$;
+
 CREATE FUNCTION protect_platform_create_ad_insert() RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
  IF NEW.operation_type<>'CREATE_AD' THEN RETURN NEW; END IF;
@@ -98,7 +119,8 @@ BEGIN
  IF NEW.request_payload->>'creativeMappingKey' IS DISTINCT FROM 'APPROVED_IMAGE_ASSET_V1' THEN
    RAISE EXCEPTION 'CREATE_AD inserted after V14 must use APPROVED_IMAGE_ASSET_V1' USING ERRCODE='23514';
  END IF;
- IF NEW.request_sha256 IS NULL OR NEW.request_sha256 !~ '^[0-9a-f]{64}$' THEN
+ IF NEW.request_sha256 IS NULL OR NEW.request_sha256 !~ '^[0-9a-f]{64}$'
+    OR NEW.request_sha256 IS DISTINCT FROM encode(sha256(convert_to(stage4c_create_ad_canonical_json(NEW.request_payload),'UTF8')),'hex') THEN
    RAISE EXCEPTION 'CREATE_AD request_sha256 is incoherent' USING ERRCODE='23514';
  END IF;
  RETURN NEW;
@@ -129,8 +151,11 @@ BEGIN
    IF aset.platform_campaign_uuid IS DISTINCT FROM camp.platform_campaign_uuid THEN RAISE EXCEPTION 'ct_platform_ad_submit_claim_evidence' USING ERRCODE='23514'; END IF;
    SELECT * INTO ad FROM platform_ads WHERE platform_ad_uuid=NEW.platform_ad_uuid AND platform_account_uuid=NEW.platform_account_uuid FOR UPDATE;
    parent_version:=(NEW.request_payload->>'expectedParentVersion')::bigint;
-   IF camp.desired_state<>'PAUSED' OR aset.desired_state<>'PAUSED' OR camp.external_id IS NULL OR btrim(camp.external_id)='' OR aset.external_id IS NULL OR btrim(aset.external_id)='' OR aset.version IS DISTINCT FROM parent_version THEN
-     RAISE EXCEPTION 'ct_platform_ad_submit_claim_evidence' USING ERRCODE='23514';
+   IF aset.version IS DISTINCT FROM parent_version THEN
+     RAISE EXCEPTION 'ct_platform_ad_submit_claim_stale' USING ERRCODE='23514';
+   END IF;
+   IF camp.desired_state<>'PAUSED' OR aset.desired_state<>'PAUSED' OR camp.external_id IS NULL OR btrim(camp.external_id)='' OR aset.external_id IS NULL OR btrim(aset.external_id)='' THEN
+     RAISE EXCEPTION 'ct_platform_ad_submit_claim_parent_state' USING ERRCODE='23514';
    END IF;
    SELECT TRUE INTO ok FROM products p
      JOIN assets a ON a.asset_uuid=ad.asset_uuid AND a.product_uuid=p.product_uuid
@@ -156,10 +181,12 @@ BEGIN
    SELECT * INTO camp FROM platform_campaigns WHERE platform_campaign_uuid=camp_id AND platform_account_uuid=NEW.platform_account_uuid FOR UPDATE;
    SELECT * INTO aset FROM platform_ad_sets WHERE platform_ad_set_uuid=aset_id AND platform_account_uuid=NEW.platform_account_uuid FOR UPDATE;
    SELECT * INTO ad FROM platform_ads WHERE platform_ad_uuid=NEW.platform_ad_uuid AND platform_account_uuid=NEW.platform_account_uuid FOR UPDATE;
+   IF ad.version IS DISTINCT FROM (NEW.request_payload->>'expectedEntityVersion')::bigint THEN
+     RAISE EXCEPTION 'ct_platform_ad_submit_claim_stale' USING ERRCODE='23514';
+   END IF;
    IF camp.desired_state<>'ACTIVE' OR aset.desired_state<>'ACTIVE' OR camp.external_id IS NULL OR aset.external_id IS NULL OR ad.external_id IS NULL
-      OR ad.desired_state<>'PAUSED' OR ad.version IS DISTINCT FROM (NEW.request_payload->>'expectedEntityVersion')::bigint
-      OR NEW.request_payload->>'targetDesiredState'<>'ACTIVE' THEN
-     RAISE EXCEPTION 'ct_platform_ad_submit_claim_evidence' USING ERRCODE='23514';
+      OR ad.desired_state<>'PAUSED' OR NEW.request_payload->>'targetDesiredState'<>'ACTIVE' THEN
+     RAISE EXCEPTION 'ct_platform_ad_submit_claim_parent_state' USING ERRCODE='23514';
    END IF;
    SELECT TRUE INTO ok FROM products p
      JOIN assets a ON a.asset_uuid=ad.asset_uuid AND a.product_uuid=p.product_uuid
@@ -176,8 +203,10 @@ BEGIN
    END IF;
    SELECT * INTO acc FROM platform_accounts WHERE platform_account_uuid=NEW.platform_account_uuid FOR UPDATE;
    SELECT * INTO ad FROM platform_ads WHERE platform_ad_uuid=NEW.platform_ad_uuid AND platform_account_uuid=NEW.platform_account_uuid FOR UPDATE;
+   IF ad.version IS DISTINCT FROM (NEW.request_payload->>'expectedEntityVersion')::bigint THEN
+     RAISE EXCEPTION 'ct_platform_ad_submit_claim_stale' USING ERRCODE='23514';
+   END IF;
    IF ad.external_id IS NULL OR btrim(ad.external_id)='' OR ad.desired_state<>'ACTIVE'
-      OR ad.version IS DISTINCT FROM (NEW.request_payload->>'expectedEntityVersion')::bigint
       OR NEW.request_payload->>'targetDesiredState'<>'PAUSED' THEN
      RAISE EXCEPTION 'ct_platform_ad_submit_claim_evidence' USING ERRCODE='23514';
    END IF;
@@ -205,16 +234,44 @@ BEGIN
    op:=NEW;
  ELSE
    IF TG_OP<>'UPDATE' THEN RETURN NULL; END IF;
-   SELECT * INTO op FROM platform_operations
-    WHERE status='SUCCEEDED' AND entity_type='AD' AND platform_ad_uuid=NEW.platform_ad_uuid
-      AND platform_account_uuid=NEW.platform_account_uuid
-      AND (
-        (operation_type='CREATE_AD' AND OLD.external_id IS NULL AND NEW.external_id IS NOT NULL)
-        OR (operation_type IN ('PAUSE','RESUME') AND OLD.desired_state IS DISTINCT FROM NEW.desired_state
-            AND (request_payload->>'expectedEntityVersion')::bigint=OLD.version)
-      )
-    ORDER BY updated_at DESC LIMIT 1;
-   IF op.operation_uuid IS NULL THEN RETURN NULL; END IF;
+   IF OLD.external_id IS NULL AND NEW.external_id IS NOT NULL THEN
+     IF OLD.version IS DISTINCT FROM 0 OR NEW.version IS DISTINCT FROM 1 OR NEW.desired_state IS DISTINCT FROM 'PAUSED' THEN
+       RAISE EXCEPTION 'ct_platform_ad_dispatch_result' USING ERRCODE='23514';
+     END IF;
+     IF (SELECT count(*) FROM platform_operations
+         WHERE status='SUCCEEDED' AND entity_type='AD' AND operation_type='CREATE_AD'
+           AND platform_ad_uuid=NEW.platform_ad_uuid AND platform_account_uuid=NEW.platform_account_uuid
+           AND external_id IS NOT DISTINCT FROM NEW.external_id)<>1 THEN
+       RAISE EXCEPTION 'ct_platform_ad_dispatch_result' USING ERRCODE='23514';
+     END IF;
+     SELECT * INTO op FROM platform_operations
+      WHERE status='SUCCEEDED' AND entity_type='AD' AND operation_type='CREATE_AD'
+        AND platform_ad_uuid=NEW.platform_ad_uuid AND platform_account_uuid=NEW.platform_account_uuid
+        AND external_id IS NOT DISTINCT FROM NEW.external_id;
+     IF op.outcome_evidence->>'externalIdFingerprint' IS DISTINCT FROM encode(sha256(convert_to(NEW.external_id,'UTF8')),'hex') THEN
+       RAISE EXCEPTION 'ct_platform_ad_dispatch_result' USING ERRCODE='23514';
+     END IF;
+   ELSIF OLD.desired_state IS DISTINCT FROM NEW.desired_state THEN
+     IF NEW.version IS DISTINCT FROM OLD.version+1 OR OLD.external_id IS DISTINCT FROM NEW.external_id OR NEW.external_id IS NULL THEN
+       RAISE EXCEPTION 'ct_platform_ad_dispatch_result' USING ERRCODE='23514';
+     END IF;
+     IF (SELECT count(*) FROM platform_operations
+         WHERE status='SUCCEEDED' AND entity_type='AD' AND operation_type IN ('PAUSE','RESUME')
+           AND platform_ad_uuid=NEW.platform_ad_uuid AND platform_account_uuid=NEW.platform_account_uuid
+           AND (request_payload->>'expectedEntityVersion')::bigint=OLD.version
+           AND request_payload->>'targetDesiredState'=NEW.desired_state
+           AND external_id IS NULL)<>1 THEN
+       RAISE EXCEPTION 'ct_platform_ad_dispatch_result' USING ERRCODE='23514';
+     END IF;
+     SELECT * INTO op FROM platform_operations
+      WHERE status='SUCCEEDED' AND entity_type='AD' AND operation_type IN ('PAUSE','RESUME')
+        AND platform_ad_uuid=NEW.platform_ad_uuid AND platform_account_uuid=NEW.platform_account_uuid
+        AND (request_payload->>'expectedEntityVersion')::bigint=OLD.version
+        AND request_payload->>'targetDesiredState'=NEW.desired_state
+        AND external_id IS NULL;
+     IF NOT is_stage4c_owned_operation(op.operation_uuid) THEN RETURN NULL; END IF;
+   ELSE RETURN NULL; END IF;
+   IF op.operation_uuid IS NULL THEN RAISE EXCEPTION 'ct_platform_ad_dispatch_result' USING ERRCODE='23514'; END IF;
    IF NOT (op.operation_type='CREATE_AD' OR is_stage4c_owned_operation(op.operation_uuid)) THEN RETURN NULL; END IF;
    IF op.reconciliation_count>0 THEN claim_kind:='RECONCILE'; ELSE claim_kind:='SUBMIT'; END IF;
  END IF;
@@ -236,6 +293,8 @@ BEGIN
  new_shape:=is_stage4c_new_create_ad(op.request_payload);
  IF op.operation_type='CREATE_AD' THEN
    IF ad.desired_state<>'PAUSED' OR ad.external_id IS NULL OR op.external_id IS DISTINCT FROM ad.external_id
+      OR ad.version IS DISTINCT FROM 1
+      OR op.outcome_evidence->>'externalIdFingerprint' IS DISTINCT FROM encode(sha256(convert_to(ad.external_id,'UTF8')),'hex')
       OR camp.desired_state<>'PAUSED' OR aset.desired_state<>'PAUSED' OR camp.external_id IS NULL OR aset.external_id IS NULL
       OR (new_shape AND aset.version IS DISTINCT FROM (op.request_payload->>'expectedParentVersion')::bigint) THEN
      RAISE EXCEPTION 'ct_platform_ad_dispatch_result' USING ERRCODE='23514';
