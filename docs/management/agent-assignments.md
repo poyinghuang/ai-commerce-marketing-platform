@@ -20,7 +20,8 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 | Gate | Stage 4C Ad creative publication **runtime** |
 | Branch | `codex/stage-04c-ad-creative-publication-runtime` |
 | PR | [#64](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/64) (Draft) |
-| Head | `887c2c56fba26ba7b7e69842a7a430f4fa07834c` |
+| Head | `a5005d60a4486a07bc68a2de206ad38e8058b9dd` (runtime `887c2c5`) |
+| Manager Decision | Cycle 1 `REQUEST_CHANGES` — report `docs/management/reviews/stage-04c-runtime-manager-review.md` |
 | Base | `c321dc0124375e13fd09785b0c827326e996207f` |
 | Stage 4D | **Locked** until 4C `APPROVE`, merge, and post-merge `main` CI |
 
@@ -28,11 +29,11 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 
 | Agent | Duty | Status |
 | --- | --- | --- |
-| Project Manager | Independent Manager Gate on PR #64. Inspect diff, migration, contracts, CI, and tests. Write `docs/management/reviews/stage-04c-runtime-manager-review.md`. Do not merge. | **Assigned — review in progress** |
-| Review | Defect-first code, security, and architecture consistency vs `docs/stages/stage-04c-ad-creative-publication.md` | **Assigned — parallel** |
-| QA | Execute the Stage 4C verification baseline. Record Passed / Failed / Not verified only from actual runs | **Assigned — parallel** |
-| Backend | Runtime already delivered at `887c2c5`; respond only to Manager `REQUEST_CHANGES` | Standby |
-| Frontend | Same as Backend for BFF/UI | Standby |
+| Project Manager | Cycle 1 complete: `REQUEST_CHANGES`. Re-review only after a new Head with green exact-head CI | Standby for cycle 2 |
+| Review | Defect-first review delivered in parallel with cycle 1 | Standby |
+| QA | Verification continues; unrun checks stay Not verified | Assigned |
+| Backend | Fix 4C-RT-001 through 4C-RT-005 (and 006/007 on the same Head). Do not merge. Do not start 4D | **In progress** |
+| Frontend | Pause/resume, stale 412, retry/reconcile, and Playwright cases in 4C-RT-005 | **In progress** |
 | Documentation | Update Stage Gate headers after the Manager Decision, not before | Standby |
 | Product Owner / Architecture / Research / AI Workflow | Idle for 4C runtime | Idle |
 
