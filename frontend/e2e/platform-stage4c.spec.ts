@@ -172,7 +172,7 @@ test("mocked Ad pause, resume, stale 412, due retry, unknown reconcile, divergen
   await expect(page.getByText("SUCCEEDED", { exact: true })).toBeVisible();
   expect(reconciles).toBe(1);
   await page.getByLabel("Platform Ad UUID").fill(ad);
-  await page.getByRole("button", { name: "Load Ad" }).click();
+  await page.getByRole("button", { name: "Load Ad", exact: true }).click();
   await expect(page.getByLabel("Ad status")).toBeVisible();
   await expect(page.getByText("create and resume then stay blocked")).toBeVisible();
   await page.getByRole("button", { name: /^Preview resume Ad$/ }).click();
