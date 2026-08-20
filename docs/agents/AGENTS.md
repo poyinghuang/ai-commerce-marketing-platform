@@ -29,3 +29,11 @@
 
 ## Documentation Agent
 維護 PRD、API、資料模型與 Stage 狀態。
+
+## Current assignments
+
+後續 Stage 的實際指派、解鎖條件與「預設不需人工」規則見 [Agent assignments](../management/agent-assignments.md)。
+
+- Project Manager 是唯一 Stage Gate Owner，可做 `APPROVE` / `REQUEST_CHANGES` / `ESCALATE_TO_HUMAN`。
+- 其他 Agent 不得自行合併或解鎖下一 Stage。
+- 人工介入只在 `docs/management/escalation-policy.md` 觸發時發生；FAKE `LOCAL`/`TEST` 切片預設不需人工。
