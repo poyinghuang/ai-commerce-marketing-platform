@@ -177,7 +177,7 @@ test("mocked Ad pause, resume, stale 412, due retry, unknown reconcile, divergen
   await expect(page.getByText("create and resume then stay blocked")).toBeVisible();
   await page.getByRole("button", { name: /^Preview resume Ad$/ }).click();
   await page.getByRole("button", { name: "Confirm FAKE operation" }).click();
-  await expect(page.getByRole("alert")).toContainText("no longer eligible");
+  await expect(page.getByRole("alert").filter({ hasText: "no longer eligible" })).toBeVisible();
   expect(resumes).toBe(1);
   expect(pauses).toBe(0);
 });
