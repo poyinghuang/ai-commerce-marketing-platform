@@ -20,8 +20,8 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 | Gate | Stage 4C Ad creative publication **runtime** |
 | Branch | `codex/stage-04c-ad-creative-publication-runtime` |
 | PR | [#64](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/64) (Draft) |
-| Head | `a5005d60a4486a07bc68a2de206ad38e8058b9dd` (runtime `887c2c5`) |
-| Manager Decision | Cycle 1 `REQUEST_CHANGES` — report `docs/management/reviews/stage-04c-runtime-manager-review.md` |
+| Head | `7139b94077a0a55b84e80d4062e7ace97a2a9576` (integrity `fd7e19c`) |
+| Manager Decision | Cycle 2 `REQUEST_CHANGES` — remaining `QA-PW-03`, `4C-RT-002`–`005`, `R-4C-01` |
 | Base | `c321dc0124375e13fd09785b0c827326e996207f` |
 | Stage 4D | **Locked** until 4C `APPROVE`, merge, and post-merge `main` CI |
 
@@ -29,11 +29,11 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 
 | Agent | Duty | Status |
 | --- | --- | --- |
-| Project Manager | Cycle 1 complete: `REQUEST_CHANGES`. Re-review only after a new Head with green exact-head CI | Standby for cycle 2 |
-| Review | Defect-first review delivered in parallel with cycle 1 | Standby |
-| QA | Verification continues; unrun checks stay Not verified | Assigned |
-| Backend | Fix 4C-RT-001 through 4C-RT-005 (and 006/007 on the same Head). Do not merge. Do not start 4D | **In progress** |
-| Frontend | Pause/resume, stale 412, retry/reconcile, and Playwright cases in 4C-RT-005 | **In progress** |
+| Project Manager | Cycle 2 complete: `REQUEST_CHANGES` on `7139b94`. Re-review after a new Head with green exact-head CI | Standby for cycle 3 |
+| Review | Cycle 1 findings R-4C-02–10 closed on `fd7e19c`; R-4C-01 still open | Standby |
+| QA | Exact-head E2E failed QA-PW-03 (`getByRole('alert')` vs Next.js announcer) | Assigned |
+| Backend | Remaining BLOCKING: 4C-RT-002–005 / R-4C-01 (legacy finalize, races, Audit content, provider-outcome + pause UI) | **In progress** |
+| Frontend | QA-PW-03 alert locator; 4C-RT-005 pause / malformed If-Match / weak ETag in Playwright | **In progress** |
 | Documentation | Update Stage Gate headers after the Manager Decision, not before | Standby |
 | Product Owner / Architecture / Research / AI Workflow | Idle for 4C runtime | Idle |
 
