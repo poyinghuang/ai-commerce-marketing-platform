@@ -16,6 +16,33 @@ class PlatformOperationInputCanonicalizerTest {
         var second = canonicalizer.canonicalize("{\"schemaVersion\":1,\"operationType\":\"PAUSE\",\"entityType\":\"AD\",\"entityUuid\":\"00000000-0000-0000-0000-000000000001\",\"expectedEntityVersion\":1,\"targetDesiredState\":\"PAUSED\"}");
         assertThat(first.json()).isEqualTo("{\"entityType\":\"AD\",\"entityUuid\":\"00000000-0000-0000-0000-000000000001\",\"expectedEntityVersion\":1,\"operationType\":\"PAUSE\",\"schemaVersion\":1,\"targetDesiredState\":\"PAUSED\"}");
         assertThat(first.sha256()).isEqualTo(second.sha256()).hasSize(64);
+        assertThat(canonicalizer.canonicalizePersisted(first.json()).sha256()).isEqualTo(first.sha256());
+    }
+
+    @Test
+    void newCreateAdRequiresApprovedMappingAndCanonicalParentVersion() {
+        String ad = "00000000-0000-4000-8000-0000000000ad";
+        String valid = "{\"schemaVersion\":1,\"operationType\":\"CREATE_AD\",\"entityType\":\"AD\",\"entityUuid\":\"" + ad
+                + "\",\"platformAdUuid\":\"" + ad
+                + "\",\"platformAdSetUuid\":\"00000000-0000-4000-8000-0000000000a1\",\"expectedParentVersion\":1"
+                + ",\"productUuid\":\"00000000-0000-4000-8000-0000000000a2\",\"assetUuid\":\"00000000-0000-4000-8000-0000000000a3\""
+                + ",\"generationOutputUuid\":\"00000000-0000-4000-8000-0000000000a4\",\"reviewDecisionUuid\":\"00000000-0000-4000-8000-0000000000a5\""
+                + ",\"approvedChecksumSha256\":\"" + "a".repeat(64) + "\",\"creativeMappingKey\":\"APPROVED_IMAGE_ASSET_V1\",\"desiredState\":\"PAUSED\"}";
+        var canonical = canonicalizer.canonicalizeNewCreateAd(valid);
+        assertThat(canonicalizer.canonicalizePersisted(valid).sha256()).isEqualTo(canonical.sha256());
+        assertThatThrownBy(() -> canonicalizer.canonicalizeNewCreateAd(valid.replace("APPROVED_IMAGE_ASSET_V1", "DEFAULT_IMAGE_V1")))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> canonicalizer.canonicalizeNewCreateAd(valid.replace("\"expectedParentVersion\":1", "\"expectedParentVersion\":1e0")))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> canonicalizer.canonicalizeNewCreateAd(valid.replace("\"expectedParentVersion\":1", "\"expectedParentVersion\":01")))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> canonicalizer.canonicalizeNewCreateAd(valid.replace("\"expectedParentVersion\":1", "\"expectedParentVersion\":1.0")))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> canonicalizer.canonicalizeNewCreateAd(valid.replace(",\"expectedParentVersion\":1", "")))
+                .isInstanceOf(IllegalArgumentException.class);
+        String legacy = valid.replace(",\"expectedParentVersion\":1", "");
+        assertThat(canonicalizer.canonicalizePersisted(legacy).json()).contains("CREATE_AD");
+        assertThat(canonicalizer.canonicalizePersisted(legacy).json()).doesNotContain("expectedParentVersion");
     }
 
     @Test

@@ -14,6 +14,27 @@ describe("PlatformMetaManager",()=>{
   fireEvent.change(screen.getByLabelText("Platform Ad Set UUID"),{target:{value:adSet}});fireEvent.click(screen.getByText("Load Ad Set"));await screen.findByLabelText("Ad Set status");fireEvent.click(screen.getByText("Preview resume Ad Set"));await screen.findByRole("dialog",{name:"Confirm platform mutation"});fireEvent.click(screen.getByText("Confirm FAKE operation"));await waitFor(()=>expect(screen.queryByRole("dialog",{name:"Confirm platform mutation"})).not.toBeInTheDocument());
   fireEvent.change(screen.getByLabelText("Daily budget (TWD)"),{target:{value:"30"}});fireEvent.click(screen.getByText("Preview budget change"));await screen.findByRole("dialog",{name:"Confirm platform mutation"});fireEvent.click(screen.getByText("Confirm FAKE operation"));await waitFor(()=>expect(screen.queryByRole("dialog",{name:"Confirm platform mutation"})).not.toBeInTheDocument());expect(mutations).toBe(4);expect(previews).toBe(4);expect(screen.queryByText("Confirm FAKE operation")).not.toBeInTheDocument();
  });
+ it("previews and explicitly confirms a paused Ad only when Stage 4C is enabled",async()=>{
+  const request="11111111-1111-4111-8111-111111111111",adSet="22222222-2222-4222-8222-222222222222",ad="33333333-3333-4333-8333-333333333333";
+  vi.stubGlobal("crypto",{randomUUID:()=>request});
+  render(<PlatformMetaManager/>);
+  expect(screen.queryByText("Preview paused Ad")).not.toBeInTheDocument();
+  cleanup();
+  const preview={clientRequestUuid:request,platformAdSetUuid:adSet,expectedParentVersion:1,productUuid:request,assetUuid:request,generationOutputUuid:request,reviewDecisionUuid:request,approvedChecksumFingerprint:"a".repeat(64),creativeMappingKey:"APPROVED_IMAGE_ASSET_V1",parentCampaignDesiredState:"PAUSED",parentAdSetDesiredState:"PAUSED",newAdDesiredState:"PAUSED",evidenceEligible:true,warnings:["DETERMINISTIC_FAKE_ONLY","NO_REAL_PROVIDER_OR_SPEND","EVIDENCE_DIVERGENCE_BLOCKS_CREATE_OR_RESUME"],confirmable:true};
+  const fetch=vi.fn().mockResolvedValueOnce(response(preview)).mockResolvedValueOnce(response({operationUuid:ad,operationType:"CREATE_AD",entityType:"AD",entityUuid:ad,status:"SUCCEEDED",attemptCount:1,reconciliationCount:0,maxAttempts:3,createdAt:"2000-01-01T00:00:00Z",updatedAt:"2000-01-01T00:00:00Z",version:2},202,{etag:'W/"2"'})).mockResolvedValueOnce(response({platformAdUuid:ad,desiredState:"PAUSED",version:1,creativeMappingKey:"APPROVED_IMAGE_ASSET_V1",approvedChecksumFingerprint:"b".repeat(64)},200,{etag:'W/"1"'}));
+  vi.stubGlobal("fetch",fetch);
+  render(<PlatformMetaManager stage4c/>);
+  fireEvent.change(screen.getByLabelText("Platform Ad Set UUID"),{target:{value:adSet}});
+  fireEvent.change(screen.getByLabelText("Product UUID"),{target:{value:request}});
+  fireEvent.change(screen.getByLabelText("Asset UUID"),{target:{value:request}});
+  fireEvent.change(screen.getByLabelText("Generation output UUID"),{target:{value:request}});
+  fireEvent.change(screen.getByLabelText("Review decision UUID"),{target:{value:request}});
+  fireEvent.click(screen.getByText("Preview paused Ad"));
+  await screen.findByRole("dialog",{name:"Confirm Ad publication"});
+  fireEvent.click(screen.getByText("Confirm FAKE operation"));
+  await screen.findByLabelText("Ad status");
+  expect(screen.getByText("APPROVED_IMAGE_ASSET_V1")).toBeInTheDocument();
+ });
 });
 
 function response(body:unknown,status=200,headers:Record<string,string>={}){return new Response(JSON.stringify(body),{status,headers:{"content-type":"application/json",...headers}});}

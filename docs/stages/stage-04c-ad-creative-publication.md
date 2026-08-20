@@ -2,12 +2,12 @@
 
 ## Gate status
 
-- Status: Specification merged; post-merge main CI passed; runtime implementation unlocked and not started
+- Status: Specification merged; post-merge main CI passed; runtime implementation in progress
 - Branch: `codex/stage-04c-ad-creative-publication-runtime`
 - Base: `c321dc0124375e13fd09785b0c827326e996207f`
 - Stage 4B prerequisite: Passed; PR #62 merged at `dcfb5e7dcb284bba824c6c81d91ad6ad8b3cd785`; post-merge main CI Run `32055963526` passed
 - Product specification: Repository-owner settings approved on 2026-08-18; specification PR #63 squash-merged at `c321dc0124375e13fd09785b0c827326e996207f`
-- Runtime implementation: Unlocked; not started
+- Runtime implementation: In progress on `codex/stage-04c-ad-creative-publication-runtime`
 - Manager Decision: `APPROVE` for reviewed content Head `c19f4d4d9e8366865c3d011fb54e672b19c3cbb6`
 - Merge: Squash merge `c321dc0124375e13fd09785b0c827326e996207f`; post-merge main CI Run `32204183690` passed
 - Stage 4D: Locked
@@ -443,7 +443,7 @@ The existing `/platforms/meta` page gains an Ad section only when the server-sid
 
 ## Stage gate
 
-Stage 4C specification gates are complete. Runtime implementation is unlocked on `codex/stage-04c-ad-creative-publication-runtime` from merge SHA `c321dc0124375e13fd09785b0c827326e996207f` after post-merge main CI Run `32204183690`.
+Stage 4C specification gates are complete. Runtime implementation is in progress on `codex/stage-04c-ad-creative-publication-runtime` from merge SHA `c321dc0124375e13fd09785b0c827326e996207f` after post-merge main CI Run `32204183690`.
 
 - [x] Repository owner explicitly approved the nine product decisions on 2026-08-18.
 - [x] Independent Manager Review records exactly `APPROVE` for reviewed content Head `c19f4d4d9e8366865c3d011fb54e672b19c3cbb6`.

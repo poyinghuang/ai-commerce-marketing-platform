@@ -37,6 +37,8 @@ class MigrationCompatibilityTest {
     private static final String V10_SHA256 = "8d67fd339eb4cc0189e71394feb903a02bf51897fc0287bb2da1d8f78365f7d8";
     private static final String V11_SHA256 = "761371c64dc2283c7ba3f644802d0b523a50ab5fe342e89da8c8c6b9befc0a1c";
     private static final String V12_SHA256 = "828be0d98a681501e0572ad038698002275f72fd66c0095b44def10da7ddfcf3";
+    private static final String V13_SHA256 = "5078ef1c025b512bd4f99008c240122689d423e8b8188c09becc37c953f1497c";
+    private static final String V14_SHA256 = "69a090562be9b6977f840f587e042d36637a38954293bac3ccc88d2b8f213159";
 
     @Container
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17.6-alpine3.22");
@@ -45,11 +47,11 @@ class MigrationCompatibilityTest {
     void emptyDatabaseRunsV1ThroughV12AndRepeatMigrationHasNoPendingWork() {
         Flyway flyway = flyway("empty_case", null);
 
-        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(14);
+        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(15);
         assertThat(List.of(flyway.info().applied()).stream()
                 .filter(info -> info.getVersion() != null)
                 .map(info -> info.getVersion().getVersion()))
-                .containsExactly("1", "2", "3", "4", "5", "6", "6.1", "7", "8", "9", "10", "11", "12", "13");
+                .containsExactly("1", "2", "3", "4", "5", "6", "6.1", "7", "8", "9", "10", "11", "12", "13", "14");
         assertThat(flyway.info().pending()).isEmpty();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
     }
@@ -382,7 +384,7 @@ class MigrationCompatibilityTest {
         });
         jdbc.update("INSERT INTO audit_logs(audit_uuid,operation_uuid,request_id,actor_type,actor_id,source,action,entity_type,entity_uuid,product_uuid) VALUES (?,?,'v12-audit','SYSTEM','migration-test','SYSTEM','UPDATE','PRODUCT',?,?)",legacyAudit,UUID.randomUUID(),product,product);
         Flyway latest=flyway(schema,null);
-        assertThat(latest.migrate().migrationsExecuted).isEqualTo(2);
+        assertThat(latest.migrate().migrationsExecuted).isEqualTo(3);
         assertThat(jdbc.queryForObject("SELECT review_status FROM ai_generation_outputs WHERE generation_output_uuid=?",String.class,output)).isEqualTo("APPROVED");
         assertThat(jdbc.queryForObject("SELECT decision FROM ai_review_decisions WHERE review_decision_uuid=?",String.class,decision)).isEqualTo("APPROVED");
         assertThat(jdbc.queryForMap("SELECT campaign_name,objective,budget_daily,currency,version FROM campaign_plans WHERE campaign_uuid=?",campaignPlan)).containsEntry("campaign_name","Preserved Campaign").containsEntry("objective","sales").containsEntry("currency","TWD").containsEntry("version",7L);
@@ -408,6 +410,8 @@ class MigrationCompatibilityTest {
         assertThat(sha256("db/migration/V10__add_ai_image_outputs.sql")).isEqualTo(V10_SHA256);
         assertThat(sha256("db/migration/V11__create_ai_review_decisions.sql")).isEqualTo(V11_SHA256);
         assertThat(sha256("db/migration/V12__create_platform_operation_foundation.sql")).isEqualTo(V12_SHA256);
+        assertThat(sha256("db/migration/V13__add_platform_budget_authorization_ledger.sql")).isEqualTo(V13_SHA256);
+        assertThat(sha256("db/migration/V14__add_stage4c_ad_publication_integrity.sql")).isEqualTo(V14_SHA256);
     }
 
     @Test
@@ -444,6 +448,86 @@ class MigrationCompatibilityTest {
         assertThat(jdbc.queryForObject("SELECT count(*) FROM information_schema.columns WHERE table_schema=? AND table_name='audit_logs' AND column_name='stage4b_operation_ordinal'",Integer.class,schema)).isZero();
         assertThat(jdbc.queryForObject("SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=? AND p.proname LIKE 'platform_%budget%'",Integer.class,schema)).isZero();
         assertThat(flyway(schema,MigrationVersion.fromVersion("12")).info().current().getVersion().getVersion()).isEqualTo("12");
+    }
+
+    @Test
+    void failedV14MigrationRollsBackEveryPartialV14Object() {
+        String schema="atomic_v14_case";
+        assertThat(flyway(schema,MigrationVersion.fromVersion("13")).migrate().migrationsExecuted).isEqualTo(14);
+        JdbcTemplate jdbc=jdbcTemplate();
+        jdbc.execute("CREATE FUNCTION "+schema+".is_stage4c_owned_operation(p uuid) RETURNS boolean LANGUAGE sql AS $$ SELECT false $$");
+
+        assertThatThrownBy(()->flyway(schema,null).migrate()).isInstanceOf(FlywayException.class);
+
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=? AND p.proname IN ('is_stage4c_new_create_ad','is_approved_stage4c_account')",Integer.class,schema)).isZero();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=? AND t.tgname LIKE 'ct_platform_ad_%'",Integer.class,schema)).isZero();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=? AND p.proname='is_stage4c_owned_operation'",Integer.class,schema)).isEqualTo(1);
+        assertThat(flyway(schema,MigrationVersion.fromVersion("13")).info().current().getVersion().getVersion()).isEqualTo("13");
+    }
+
+    @Test
+    void populatedLegacyCreateAdBytesSurviveUpgradeToV14() {
+        String schema="v14_upgrade_case";
+        assertThat(flyway(schema,MigrationVersion.fromVersion("13")).migrate().migrationsExecuted).isEqualTo(14);
+        JdbcTemplate jdbc=jdbcTemplate(schema);
+        UUID product=UUID.randomUUID(), plan=UUID.randomUUID(), source=UUID.randomUUID(), asset=UUID.randomUUID();
+        UUID template=UUID.randomUUID(), templateVersion=UUID.randomUUID(), batch=UUID.randomUUID(), job=UUID.randomUUID();
+        UUID output=UUID.randomUUID(), review=UUID.randomUUID(), account=UUID.randomUUID();
+        UUID campaign=UUID.randomUUID(), adSet=UUID.randomUUID(), ad=UUID.randomUUID(), operation=UUID.randomUUID();
+        jdbc.update("INSERT INTO products(product_uuid,product_id,product_name,lifecycle_status) VALUES (?,?,'V14 legacy','ACTIVE')",
+                product,"PROD-"+String.format("%08d", Math.abs(product.hashCode())%100_000_000));
+        jdbc.update("INSERT INTO campaign_plans(campaign_uuid,campaign_name,objective,budget_daily,currency) VALUES (?,'V14 Campaign','sales',12.3456,'TWD')",plan);
+        jdbc.update("INSERT INTO campaign_products(campaign_product_uuid,campaign_uuid,product_uuid) VALUES (?,?,?)",UUID.randomUUID(),plan,product);
+        jdbc.update("INSERT INTO assets(asset_uuid,product_uuid,campaign_uuid,asset_type,purpose,checksum_sha256) VALUES (?,?,?,'IMAGE','SOURCE',?)",source,product,plan,"d".repeat(64));
+        jdbc.update("INSERT INTO assets(asset_uuid,product_uuid,campaign_uuid,asset_type,purpose,checksum_sha256) VALUES (?,?,?,'IMAGE','GENERATED',?)",asset,product,plan,"e".repeat(64));
+        jdbc.update("INSERT INTO ai_prompt_templates(prompt_template_uuid,template_key,generation_type,display_name) VALUES (?,'v14.legacy','IMAGE','V14')",template);
+        jdbc.update("INSERT INTO ai_prompt_template_versions(prompt_template_version_uuid,prompt_template_uuid,version_number,template_text,input_schema,content_sha256,created_by) VALUES (?,?,1,'image','{}'::jsonb,?,'tester')",templateVersion,template,"a".repeat(64));
+        jdbc.update("INSERT INTO ai_generation_batches(generation_batch_uuid,product_uuid,status,currency,estimated_cost,reserved_cost,requested_job_count,succeeded_job_count,created_by) VALUES (?,?,'COMPLETED','TWD',0,0,1,1,'tester')",batch,product);
+        jdbc.update("INSERT INTO ai_generation_jobs(generation_job_uuid,generation_batch_uuid,product_uuid,prompt_template_version_uuid,generation_type,provider_key,model_key,status,rendered_prompt,input_snapshot,estimated_cost,reserved_cost,actual_cost,currency,submitted_at,started_at,completed_at) VALUES (?,?,?,?,'IMAGE','stub','stub','SUCCEEDED','image','{}'::jsonb,0,0,0,'TWD',current_timestamp,current_timestamp,current_timestamp)",job,batch,product,templateVersion);
+        jdbc.update("""
+                INSERT INTO ai_generation_outputs(generation_output_uuid,generation_job_uuid,generation_batch_uuid,product_uuid,generation_type,model_label,input_units,output_units,actual_cost,currency,safety_findings,provider_metadata,source_asset_uuid,generated_asset_uuid,generation_mode,workflow_key,workflow_version,image_width,image_height,media_type,size_bytes,source_checksum_sha256,output_checksum_sha256,protected_pixels_sha256,preservation_algorithm,preservation_status,preservation_details)
+                VALUES (?,?,?,?,'IMAGE','stub',0,0,0,'TWD','[]'::jsonb,'{}'::jsonb,?,?,'BACKGROUND_COMPOSITE','sql-v1','1',1,1,'image/png',1,?,?,?,'RGBA_MASK_EXACT_V1','PASSED','{"changedPixelCount":0,"protectedPixelCount":1}'::jsonb)
+                """, output, job, batch, product, source, asset, "d".repeat(64), "e".repeat(64), "f".repeat(64));
+        jdbc.execute((org.springframework.jdbc.core.ConnectionCallback<Void>) connection -> {
+            boolean auto=connection.getAutoCommit(); connection.setAutoCommit(false);
+            try (var insert=connection.prepareStatement("INSERT INTO ai_review_decisions(review_decision_uuid,generation_output_uuid,decision,reviewer_type,reviewer_id,request_id,reviewed_output_version,decided_at) VALUES (?,?,'APPROVED','LOCAL_ADMIN','tester','v14-upgrade',0,current_timestamp)");
+                 var approve=connection.prepareStatement("UPDATE ai_generation_outputs SET review_status='APPROVED',version=1 WHERE generation_output_uuid=?")) {
+                insert.setObject(1,review); insert.setObject(2,output); insert.executeUpdate();
+                approve.setObject(1,output); approve.executeUpdate(); connection.commit();
+            } catch(Exception failure) { connection.rollback(); throw failure; } finally { connection.setAutoCommit(auto); }
+            return null;
+        });
+        String fingerprint=account.toString().replace("-","")+"c".repeat(32);
+        jdbc.update("INSERT INTO platform_accounts(platform_account_uuid,provider_key,environment,account_reference,external_account_fingerprint,currency,timezone) VALUES (?,'FAKE','TEST',?,?, 'TWD','Asia/Taipei')",account,"legacy-"+account,fingerprint);
+        jdbc.update("INSERT INTO platform_campaigns(platform_campaign_uuid,campaign_uuid,platform_account_uuid,objective,desired_state,account_timezone) VALUES (?,?,?,'OUTCOME_SALES','PAUSED','Asia/Taipei')",campaign,plan,account);
+        jdbc.update("INSERT INTO platform_ad_sets(platform_ad_set_uuid,platform_campaign_uuid,platform_account_uuid,budget_type,budget_amount,currency,account_timezone,optimization_goal,targeting_profile_key,placement_profile_key,desired_state) VALUES (?,?,?,'DAILY',20,'TWD','Asia/Taipei','OFFSITE_CONVERSIONS','TW_BROAD_FEEDS_V1','TW_BROAD_FEEDS_V1','PAUSED')",adSet,campaign,account);
+        jdbc.update("INSERT INTO platform_ads(platform_ad_uuid,platform_ad_set_uuid,platform_account_uuid,product_uuid,asset_uuid,generation_output_uuid,review_decision_uuid,approved_checksum_sha256,creative_mapping_key) VALUES (?,?,?,?,?,?,?,?, 'IMAGE_PRIMARY_V1')",ad,adSet,account,product,asset,output,review,"e".repeat(64));
+        String payload="{\"schemaVersion\":1,\"operationType\":\"CREATE_AD\",\"entityType\":\"AD\",\"entityUuid\":\""+ad
+                +"\",\"platformAdUuid\":\""+ad+"\",\"platformAdSetUuid\":\""+adSet+"\",\"productUuid\":\""+product
+                +"\",\"assetUuid\":\""+asset+"\",\"generationOutputUuid\":\""+output+"\",\"reviewDecisionUuid\":\""+review
+                +"\",\"approvedChecksumSha256\":\""+"e".repeat(64)+"\",\"creativeMappingKey\":\"IMAGE_PRIMARY_V1\",\"desiredState\":\"PAUSED\"}";
+        String sha="b".repeat(64);
+        jdbc.update("""
+                INSERT INTO platform_operations(operation_uuid,platform_account_uuid,operation_type,entity_type,platform_ad_uuid,client_request_uuid,idempotency_key,request_payload,request_sha256,requested_actor_type,requested_actor_id,request_id)
+                VALUES (?,?, 'CREATE_AD','AD',?,?, ?, ?::jsonb, ?,'LOCAL_ADMIN','local-admin','v14-legacy')
+                """, operation, account, ad, UUID.randomUUID(), "c".repeat(64), payload, sha);
+        String before=jdbc.queryForObject("SELECT request_payload::text FROM platform_operations WHERE operation_uuid=?",String.class,operation);
+        assertThat(flyway(schema,null).migrate().migrationsExecuted).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT request_payload::text FROM platform_operations WHERE operation_uuid=?",String.class,operation)).isEqualTo(before);
+        assertThat(jdbc.queryForObject("SELECT request_sha256 FROM platform_operations WHERE operation_uuid=?",String.class,operation)).isEqualTo(sha);
+        assertThat(jdbc.queryForObject("SELECT jsonb_exists(request_payload,'expectedParentVersion') FROM platform_operations WHERE operation_uuid=?",Boolean.class,operation)).isFalse();
+        assertThat(jdbc.queryForObject("SELECT request_payload->>'creativeMappingKey' FROM platform_operations WHERE operation_uuid=?",String.class,operation)).isEqualTo("IMAGE_PRIMARY_V1");
+        assertThat(jdbc.queryForObject("SELECT is_stage4c_owned_operation(?)",Boolean.class,operation)).isFalse();
+        assertThatThrownBy(()->jdbc.update("""
+                INSERT INTO platform_operations(operation_uuid,platform_account_uuid,operation_type,entity_type,platform_ad_uuid,client_request_uuid,idempotency_key,request_payload,request_sha256,requested_actor_type,requested_actor_id,request_id)
+                VALUES (?,?, 'CREATE_AD','AD',?,?, ?, ?::jsonb, ?,'LOCAL_ADMIN','local-admin','v14-new-legacy')
+                """, UUID.randomUUID(), account, ad, UUID.randomUUID(), "d".repeat(64), payload, "e".repeat(64)))
+                .satisfies(failure -> {
+                    Throwable current=failure;
+                    while(current.getCause()!=null) current=current.getCause();
+                    assertThat(current).isInstanceOf(java.sql.SQLException.class);
+                    assertThat(((java.sql.SQLException)current).getSQLState()).isEqualTo("23514");
+                });
     }
 
     @Test
