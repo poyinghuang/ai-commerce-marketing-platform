@@ -13,6 +13,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,6 +23,7 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import com.aicommerce.platform.delivery.infrastructure.provider.DeterministicFakePlatformAdapter;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.junit.jupiter.Container;
@@ -39,9 +41,11 @@ class Stage4CControllerIntegrationTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired PlatformTransactionManager transactionManager;
     @Autowired ObjectMapper mapper;
+    @Autowired DeterministicFakePlatformAdapter fake;
     UUID plan;
 
     @BeforeEach void fixture() {
+        fake.useScenario(DeterministicFakePlatformAdapter.Scenario.SUCCESS);
         jdbc.execute("TRUNCATE platform_budget_reservations, platform_operation_batches, platform_account_budget_days, platform_operation_attempts, platform_operations, platform_ads, platform_ad_sets, platform_campaigns, campaign_plans, audit_log_changes, audit_logs RESTART IDENTITY CASCADE");
         plan = UUID.randomUUID();
         jdbc.update("""
@@ -177,6 +181,127 @@ class Stage4CControllerIntegrationTest {
                 .andExpect(jsonPath("$.code").value("PLATFORM_REQUEST_INVALID"))
                 .andExpect(jsonPath("$.fieldErrors[0].field").value("If-Match"))
                 .andExpect(jsonPath("$.fieldErrors[0].message").value("Invalid If-Match"));
+        mvc.perform(post("/api/platforms/meta/ads/" + UUID.randomUUID() + "/pause").header("If-Match", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clientRequestUuid\":\"" + UUID.randomUUID() + "\",\"targetDesiredState\":\"PAUSED\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PLATFORM_REQUEST_INVALID"))
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("If-Match"))
+                .andExpect(jsonPath("$.fieldErrors[0].message").value("Invalid If-Match"));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = DeterministicFakePlatformAdapter.Scenario.class, names = {
+            "RETRYABLE_RATE_LIMIT", "RETRYABLE_TEMPORARILY_UNAVAILABLE", "TERMINAL_VALIDATION",
+            "TERMINAL_PERMISSION", "MALFORMED_RESULT", "AMBIGUOUS_TIMEOUT"})
+    void createAdProviderOutcomesPersistThroughMockMvc(DeterministicFakePlatformAdapter.Scenario scenario) throws Exception {
+        String campaign = createCampaign();
+        String adSet = createAdSet(campaign);
+        Evidence evidence = evidence(plan, UUID.fromString(adSet));
+        String etag = mvc.perform(get("/api/platforms/meta/ad-sets/" + adSet)).andReturn().getResponse().getHeader("ETag");
+        fake.useScenario(scenario);
+        int calls = fake.invocationCount();
+        var result = mvc.perform(post("/api/platforms/meta/ad-sets/" + adSet + "/ads")
+                        .header("If-Match", etag).contentType(MediaType.APPLICATION_JSON)
+                        .content(createBody(UUID.randomUUID(), evidence)))
+                .andReturn().getResponse();
+        String expectedStatus = switch (scenario) {
+            case RETRYABLE_RATE_LIMIT, RETRYABLE_TEMPORARILY_UNAVAILABLE -> "FAILED_RETRYABLE";
+            case TERMINAL_VALIDATION, TERMINAL_PERMISSION -> "FAILED_TERMINAL";
+            default -> "UNKNOWN_OUTCOME";
+        };
+        String expectedCode = switch (scenario) {
+            case RETRYABLE_RATE_LIMIT -> "PLATFORM_RATE_LIMITED";
+            case RETRYABLE_TEMPORARILY_UNAVAILABLE -> "PLATFORM_TEMPORARILY_UNAVAILABLE";
+            case TERMINAL_VALIDATION -> "PLATFORM_VALIDATION_FAILED";
+            case TERMINAL_PERMISSION -> "PLATFORM_PERMISSION_DENIED";
+            default -> "PLATFORM_RESPONSE_AMBIGUOUS";
+        };
+        int expectedHttp = switch (scenario) {
+            case RETRYABLE_RATE_LIMIT, RETRYABLE_TEMPORARILY_UNAVAILABLE -> 429;
+            default -> 202;
+        };
+        assertThat(result.getStatus()).isEqualTo(expectedHttp);
+        var tree = mapper.readTree(result.getContentAsString());
+        assertThat(tree.get("status").asText()).isEqualTo(expectedStatus);
+        assertThat(tree.get("operationType").asText()).isEqualTo("CREATE_AD");
+        assertThat(tree.get("normalizedErrorCode").asText()).isEqualTo(expectedCode);
+        assertThat(tree.propertyNames()).doesNotContain("operation", "replay");
+        UUID operation = UUID.fromString(tree.get("operationUuid").asText());
+        assertThat(jdbc.queryForObject("SELECT status FROM platform_operations WHERE operation_uuid=?", String.class, operation)).isEqualTo(expectedStatus);
+        assertThat(jdbc.queryForObject("SELECT normalized_error_code FROM platform_operations WHERE operation_uuid=?", String.class, operation)).isEqualTo(expectedCode);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM platform_operation_attempts WHERE operation_uuid=?", Integer.class, operation)).isEqualTo(1);
+        assertThat(fake.invocationCount()).isEqualTo(calls + 1);
+        if ("UNKNOWN_OUTCOME".equals(expectedStatus)) {
+            fake.useScenario(DeterministicFakePlatformAdapter.Scenario.RECONCILE_FOUND);
+            String opEtag = result.getHeader("ETag");
+            mvc.perform(post("/api/platform-operations/" + operation + "/reconcile").header("If-Match", opEtag))
+                    .andExpect(status().isAccepted())
+                    .andExpect(jsonPath("$.status").value("SUCCEEDED"));
+            assertThat(jdbc.queryForObject("SELECT status FROM platform_operations WHERE operation_uuid=?", String.class, operation)).isEqualTo("SUCCEEDED");
+            assertThat(jdbc.queryForObject("SELECT external_id FROM platform_ads WHERE platform_ad_uuid=?", String.class, UUID.fromString(tree.get("entityUuid").asText()))).isNotBlank();
+        }
+        fake.useScenario(DeterministicFakePlatformAdapter.Scenario.SUCCESS);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = DeterministicFakePlatformAdapter.Scenario.class, names = {
+            "RETRYABLE_RATE_LIMIT", "TERMINAL_VALIDATION", "AMBIGUOUS_TIMEOUT"})
+    void pauseAndResumeProviderOutcomesPersistThroughMockMvc(DeterministicFakePlatformAdapter.Scenario scenario) throws Exception {
+        String campaign = createCampaign();
+        String adSet = createAdSet(campaign);
+        Evidence evidence = evidence(plan, UUID.fromString(adSet));
+        String etag = mvc.perform(get("/api/platforms/meta/ad-sets/" + adSet)).andReturn().getResponse().getHeader("ETag");
+        String created = mvc.perform(post("/api/platforms/meta/ad-sets/" + adSet + "/ads")
+                        .header("If-Match", etag).contentType(MediaType.APPLICATION_JSON)
+                        .content(createBody(UUID.randomUUID(), evidence)))
+                .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString();
+        String ad = mapper.readTree(created).get("entityUuid").asText();
+        String campaignEtag = mvc.perform(get("/api/platforms/meta/campaigns/" + campaign)).andReturn().getResponse().getHeader("ETag");
+        mvc.perform(post("/api/platforms/meta/campaigns/" + campaign + "/resume").header("If-Match", campaignEtag)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"clientRequestUuid\":\"" + UUID.randomUUID() + "\",\"targetDesiredState\":\"ACTIVE\"}"))
+                .andExpect(status().isAccepted());
+        String adSetEtag = mvc.perform(get("/api/platforms/meta/ad-sets/" + adSet)).andReturn().getResponse().getHeader("ETag");
+        mvc.perform(post("/api/platforms/meta/ad-sets/" + adSet + "/resume").header("If-Match", adSetEtag)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"clientRequestUuid\":\"" + UUID.randomUUID() + "\",\"targetDesiredState\":\"ACTIVE\"}"))
+                .andExpect(status().isAccepted());
+        String adEtag = mvc.perform(get("/api/platforms/meta/ads/" + ad)).andReturn().getResponse().getHeader("ETag");
+        fake.useScenario(scenario);
+        var resume = mvc.perform(post("/api/platforms/meta/ads/" + ad + "/resume").header("If-Match", adEtag)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clientRequestUuid\":\"" + UUID.randomUUID() + "\",\"targetDesiredState\":\"ACTIVE\"}"))
+                .andReturn().getResponse();
+        String expectedStatus = switch (scenario) {
+            case RETRYABLE_RATE_LIMIT -> "FAILED_RETRYABLE";
+            case TERMINAL_VALIDATION -> "FAILED_TERMINAL";
+            default -> "UNKNOWN_OUTCOME";
+        };
+        int expectedHttp = scenario == DeterministicFakePlatformAdapter.Scenario.RETRYABLE_RATE_LIMIT ? 429 : 202;
+        assertThat(resume.getStatus()).isEqualTo(expectedHttp);
+        assertThat(mapper.readTree(resume.getContentAsString()).get("status").asText()).isEqualTo(expectedStatus);
+        assertThat(jdbc.queryForObject("SELECT status FROM platform_operations WHERE operation_uuid=?", String.class,
+                UUID.fromString(mapper.readTree(resume.getContentAsString()).get("operationUuid").asText()))).isEqualTo(expectedStatus);
+        fake.useScenario(DeterministicFakePlatformAdapter.Scenario.SUCCESS);
+        adEtag = mvc.perform(get("/api/platforms/meta/ads/" + ad)).andReturn().getResponse().getHeader("ETag");
+        mvc.perform(post("/api/platforms/meta/ads/" + ad + "/resume").header("If-Match", adEtag)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clientRequestUuid\":\"" + UUID.randomUUID() + "\",\"targetDesiredState\":\"ACTIVE\"}"))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.status").value("SUCCEEDED"));
+        String activeEtag = mvc.perform(get("/api/platforms/meta/ads/" + ad)).andExpect(jsonPath("$.desiredState").value("ACTIVE"))
+                .andReturn().getResponse().getHeader("ETag");
+        fake.useScenario(scenario);
+        var pause = mvc.perform(post("/api/platforms/meta/ads/" + ad + "/pause").header("If-Match", activeEtag)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clientRequestUuid\":\"" + UUID.randomUUID() + "\",\"targetDesiredState\":\"PAUSED\"}"))
+                .andReturn().getResponse();
+        assertThat(pause.getStatus()).isEqualTo(expectedHttp);
+        assertThat(mapper.readTree(pause.getContentAsString()).get("status").asText()).isEqualTo(expectedStatus);
+        assertThat(jdbc.queryForObject("SELECT status FROM platform_operations WHERE operation_uuid=?", String.class,
+                UUID.fromString(mapper.readTree(pause.getContentAsString()).get("operationUuid").asText()))).isEqualTo(expectedStatus);
+        fake.useScenario(DeterministicFakePlatformAdapter.Scenario.SUCCESS);
     }
 
     @Test void queryParametersAreRejectedOnAdRoutesWithQueryField() throws Exception {

@@ -6,7 +6,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.sql.SQLException;
+import java.time.Instant;
 import java.util.LinkedHashMap;
+
+import com.aicommerce.platform.delivery.application.PlatformOperationService;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -16,7 +20,10 @@ import javax.sql.DataSource;
 import com.aicommerce.platform.delivery.infrastructure.provider.DeterministicFakePlatformAdapter;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.flyway.autoconfigure.FlywayMigrationStrategy;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -38,6 +45,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Import(Stage4CLegacyOperationIntegrationTest.LegacyFixtureMigration.class)
 class Stage4CLegacyOperationIntegrationTest {
     private static final UUID ACCOUNT = UUID.fromString("00000000-0000-4000-8000-00000000005b");
@@ -54,6 +62,18 @@ class Stage4CLegacyOperationIntegrationTest {
     private static final UUID AI_OUTPUT = UUID.fromString("00000000-0000-4000-8000-0000000004cb");
     private static final UUID REVIEW = UUID.fromString("00000000-0000-4000-8000-0000000004cc");
     private static final UUID AD = UUID.fromString("00000000-0000-4000-8000-0000000004cd");
+    private static final UUID AD_SUBMIT_FINALIZE = UUID.fromString("00000000-0000-4000-8000-0000000004ce");
+    private static final UUID AD_SUBMIT_ROLLBACK = UUID.fromString("00000000-0000-4000-8000-0000000004cf");
+    private static final UUID AD_SUBMIT_RECOVERY = UUID.fromString("00000000-0000-4000-8000-0000000004e0");
+    private static final UUID AD_RECONCILE_FINALIZE = UUID.fromString("00000000-0000-4000-8000-0000000004e1");
+    private static final UUID AD_RECONCILE_RECOVERY = UUID.fromString("00000000-0000-4000-8000-0000000004e2");
+    private static final UUID METRIC = UUID.fromString("00000000-0000-4000-8000-0000000004e3");
+    private static final UUID AUDIT = UUID.fromString("00000000-0000-4000-8000-0000000004e4");
+    private static final UUID SUBMIT_FINALIZE = UUID.fromString("00000000-0000-4000-8000-0000000004d7");
+    private static final UUID SUBMIT_ROLLBACK = UUID.fromString("00000000-0000-4000-8000-0000000004d8");
+    private static final UUID SUBMIT_RECOVERY = UUID.fromString("00000000-0000-4000-8000-0000000004d9");
+    private static final UUID RECONCILE_FINALIZE = UUID.fromString("00000000-0000-4000-8000-0000000004da");
+    private static final UUID RECONCILE_RECOVERY = UUID.fromString("00000000-0000-4000-8000-0000000004db");
     private static final List<UUID> STATE_OPERATIONS = List.of(
             UUID.fromString("00000000-0000-4000-8000-0000000004d0"),
             UUID.fromString("00000000-0000-4000-8000-0000000004d1"),
@@ -68,15 +88,18 @@ class Stage4CLegacyOperationIntegrationTest {
             "platform_accounts", "campaign_plans", "products", "campaign_products", "assets",
             "ai_prompt_templates", "ai_prompt_template_versions", "ai_generation_batches", "ai_generation_jobs",
             "ai_generation_outputs", "ai_review_decisions", "platform_campaigns", "platform_ad_sets", "platform_ads",
-            "platform_operations", "platform_operation_attempts");
+            "platform_operations", "platform_operation_attempts", "platform_metric_snapshots", "audit_logs",
+            "audit_log_changes", "platform_operation_batches", "platform_budget_reservations", "platform_account_budget_days");
     private static final Map<String, String> V13_TABLES = new LinkedHashMap<>();
 
     @Container @ServiceConnection static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17.6-alpine3.22");
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
     @Autowired DeterministicFakePlatformAdapter fake;
+    @Autowired PlatformOperationService operations;
+    @Autowired org.springframework.transaction.PlatformTransactionManager transactionManager;
 
-    @Test void populatedV13CreateAdRowsAreBytePreservedReadableAndRetryReconcileAreInert() throws Exception {
+    @Test @Order(1) void populatedV13CreateAdRowsAreBytePreservedReadableAndRetryReconcileAreInert() throws Exception {
         GRAPH_TABLES.forEach(table -> assertThat(rows(table)).as(table).isEqualTo(V13_TABLES.get(table)));
         assertThat(STATE_OPERATIONS.stream().map(operation -> jdbc.queryForObject("select status from platform_operations where operation_uuid=?", String.class, operation)).toList())
                 .containsExactlyElementsOf(EXPECTED_STATES);
@@ -104,6 +127,75 @@ class Stage4CLegacyOperationIntegrationTest {
         assertThat(fake.invocationCount()).isEqualTo(calls);
     }
 
+    @Test @Order(2) void alreadyClaimedLegacySubmittingFinalizesWithoutParentVersionAndRollsBackNamedDispatch() {
+        tx(() -> {
+            jdbc.execute("SET LOCAL session_replication_role = replica");
+            jdbc.update("UPDATE platform_ad_sets SET version=version+1,updated_at=statement_timestamp() WHERE platform_ad_set_uuid=?", AD_SET);
+        });
+        String fingerprint = jdbc.queryForObject("select encode(sha256(convert_to(?,'UTF8')),'hex')", String.class, "legacy-submit-finalize");
+        String evidence = "{\"schemaVersion\":1,\"providerKey\":\"FAKE\",\"attemptKind\":\"SUBMIT\",\"resultKind\":\"SUCCEEDED\",\"externalIdFingerprint\":\"" + fingerprint + "\",\"observedState\":\"PAUSED\"}";
+        tx(() -> {
+            jdbc.update("update platform_operation_attempts set status='SUCCEEDED',evidence=?::jsonb,completed_at=statement_timestamp(),version=1 where operation_uuid=? and attempt_kind='SUBMIT' and status='STARTED'", evidence, SUBMIT_FINALIZE);
+            jdbc.update("update platform_operations set status='SUCCEEDED',external_id=?,outcome_evidence=?::jsonb,claimed_at=null,completed_at=statement_timestamp(),updated_at=statement_timestamp(),version=version+1 where operation_uuid=?", "legacy-submit-finalize", evidence, SUBMIT_FINALIZE);
+            jdbc.update("update platform_ads set external_id=?,observed_state='PAUSED',version=1,updated_at=statement_timestamp() where platform_ad_uuid=?", "legacy-submit-finalize", AD_SUBMIT_FINALIZE);
+        });
+        assertThat(jdbc.queryForObject("select status from platform_operations where operation_uuid=?", String.class, SUBMIT_FINALIZE)).isEqualTo("SUCCEEDED");
+        assertThat(jdbc.queryForObject("select external_id from platform_ads where platform_ad_uuid=?", String.class, AD_SUBMIT_FINALIZE)).isEqualTo("legacy-submit-finalize");
+
+        Map<String, String> before = snapshot();
+        String forged = "{\"schemaVersion\":1,\"providerKey\":\"FAKE\",\"attemptKind\":\"SUBMIT\",\"resultKind\":\"SUCCEEDED\",\"externalIdFingerprint\":\"" + "a".repeat(64) + "\",\"observedState\":\"PAUSED\"}";
+        assertNamed("23514", "ct_platform_ad_dispatch_result", () -> tx(() -> {
+            jdbc.update("update platform_operation_attempts set status='SUCCEEDED',evidence=?::jsonb,completed_at=statement_timestamp(),version=1 where operation_uuid=? and attempt_kind='SUBMIT' and status='STARTED'", forged, SUBMIT_ROLLBACK);
+            jdbc.update("update platform_operations set status='SUCCEEDED',external_id='forged-legacy',outcome_evidence=?::jsonb,claimed_at=null,completed_at=statement_timestamp(),updated_at=statement_timestamp(),version=version+1 where operation_uuid=?", forged, SUBMIT_ROLLBACK);
+            jdbc.update("update platform_ads set external_id='other-legacy',observed_state='PAUSED',version=1,updated_at=statement_timestamp() where platform_ad_uuid=?", AD_SUBMIT_ROLLBACK);
+        }));
+        assertThat(snapshot()).isEqualTo(before);
+        assertThat(jdbc.queryForObject("select status from platform_operations where operation_uuid=?", String.class, SUBMIT_ROLLBACK)).isEqualTo("SUBMITTING");
+        assertThat(jdbc.queryForObject("select external_id from platform_ads where platform_ad_uuid=?", String.class, AD_SUBMIT_ROLLBACK)).isNull();
+    }
+
+    @Test @Order(3) void alreadyClaimedLegacyReconcilingFinalizesFoundAndStaleRecoveryLeavesNoProviderCall() {
+        String fingerprint = jdbc.queryForObject("select encode(sha256(convert_to(?,'UTF8')),'hex')", String.class, "legacy-reconcile-finalize");
+        String evidence = "{\"schemaVersion\":1,\"providerKey\":\"FAKE\",\"attemptKind\":\"RECONCILE\",\"resultKind\":\"FOUND\",\"externalIdFingerprint\":\"" + fingerprint + "\",\"observedState\":\"PAUSED\"}";
+        tx(() -> {
+            jdbc.update("update platform_operation_attempts set status='SUCCEEDED',evidence=?::jsonb,completed_at=statement_timestamp(),version=1 where operation_uuid=? and attempt_kind='RECONCILE' and status='STARTED'", evidence, RECONCILE_FINALIZE);
+            jdbc.update("update platform_operations set status='SUCCEEDED',external_id=?,outcome_evidence=?::jsonb,claimed_at=null,completed_at=statement_timestamp(),updated_at=statement_timestamp(),version=version+1 where operation_uuid=?", "legacy-reconcile-finalize", evidence, RECONCILE_FINALIZE);
+            jdbc.update("update platform_ads set external_id=?,observed_state='PAUSED',version=1,updated_at=statement_timestamp() where platform_ad_uuid=?", "legacy-reconcile-finalize", AD_RECONCILE_FINALIZE);
+        });
+        assertThat(jdbc.queryForObject("select status from platform_operations where operation_uuid=?", String.class, RECONCILE_FINALIZE)).isEqualTo("SUCCEEDED");
+
+        int calls = fake.invocationCount();
+        long submitVersion = jdbc.queryForObject("select version from platform_operations where operation_uuid=?", Long.class, SUBMIT_RECOVERY);
+        Instant claimed = jdbc.queryForObject("select claimed_at from platform_operations where operation_uuid=?", java.sql.Timestamp.class, SUBMIT_RECOVERY).toInstant();
+        var recoveredSubmit = operations.recoverStaleClaim(SUBMIT_RECOVERY, submitVersion, claimed.plusSeconds(300));
+        assertThat(recoveredSubmit.status().name()).isEqualTo("UNKNOWN_OUTCOME");
+        assertThat(jdbc.queryForObject("select status from platform_operation_attempts where operation_uuid=? and attempt_kind='SUBMIT'", String.class, SUBMIT_RECOVERY)).isEqualTo("UNKNOWN_OUTCOME");
+        long reconcileVersion = jdbc.queryForObject("select version from platform_operations where operation_uuid=?", Long.class, RECONCILE_RECOVERY);
+        Instant reconcileClaimed = jdbc.queryForObject("select claimed_at from platform_operations where operation_uuid=?", java.sql.Timestamp.class, RECONCILE_RECOVERY).toInstant();
+        var recoveredReconcile = operations.recoverStaleClaim(RECONCILE_RECOVERY, reconcileVersion, reconcileClaimed.plusSeconds(300));
+        assertThat(recoveredReconcile.status().name()).isEqualTo("UNKNOWN_OUTCOME");
+        assertThat(fake.invocationCount()).isEqualTo(calls);
+        assertThat(jdbc.queryForObject("select external_id from platform_ads where platform_ad_uuid=?", String.class, AD_SUBMIT_RECOVERY)).isNull();
+        assertThat(jdbc.queryForObject("select external_id from platform_ads where platform_ad_uuid=?", String.class, AD_RECONCILE_RECOVERY)).isNull();
+    }
+
+    private void tx(Runnable work) {
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            work.run();
+            jdbc.execute("SET CONSTRAINTS ALL IMMEDIATE");
+        });
+    }
+
+    private static void assertNamed(String state, String name, org.assertj.core.api.ThrowableAssert.ThrowingCallable call) {
+        org.assertj.core.api.Assertions.assertThatThrownBy(call).satisfies(failure -> {
+            Throwable current = failure;
+            while (current.getCause() != null) current = current.getCause();
+            assertThat(current).isInstanceOf(SQLException.class);
+            assertThat(((SQLException) current).getSQLState()).isEqualTo(state);
+            assertThat(current.getMessage()).contains(name);
+        });
+    }
+
     private Map<String, String> snapshot() {
         Map<String, String> graph = new LinkedHashMap<>();
         GRAPH_TABLES.forEach(table -> graph.put(table, rows(table)));
@@ -114,6 +206,8 @@ class Stage4CLegacyOperationIntegrationTest {
         String where = switch (table) {
             case "ai_prompt_templates" -> " where prompt_template_uuid='" + TEMPLATE + "'";
             case "ai_prompt_template_versions" -> " where prompt_template_version_uuid='" + TEMPLATE_VERSION + "'";
+            case "audit_logs" -> " where audit_uuid='" + AUDIT + "'";
+            case "audit_log_changes" -> " where audit_uuid='" + AUDIT + "'";
             default -> "";
         };
         return jdbc.queryForObject("select coalesce(jsonb_agg(to_jsonb(t) order by " + order(table) + "),'[]')::text from " + table + " t" + where, String.class);
@@ -137,6 +231,12 @@ class Stage4CLegacyOperationIntegrationTest {
             case "platform_ads" -> "platform_ad_uuid";
             case "platform_operations" -> "operation_uuid";
             case "platform_operation_attempts" -> "operation_attempt_uuid";
+            case "platform_metric_snapshots" -> "metric_snapshot_uuid";
+            case "audit_logs" -> "audit_uuid";
+            case "audit_log_changes" -> "audit_uuid,change_order";
+            case "platform_operation_batches" -> "operation_batch_uuid";
+            case "platform_budget_reservations" -> "budget_reservation_uuid";
+            case "platform_account_budget_days" -> "account_budget_day_uuid";
             default -> throw new IllegalArgumentException(table);
         };
     }
@@ -153,6 +253,12 @@ class Stage4CLegacyOperationIntegrationTest {
                 jdbc.update("insert into campaign_plans(campaign_uuid,campaign_name,start_date,end_date,objective,platform,budget_daily,budget_total,currency) values (?,'Legacy 4C',current_date+10,current_date+20,'OUTCOME_SALES','META',100,300,'TWD')", PLAN);
                 jdbc.update("insert into platform_campaigns(platform_campaign_uuid,campaign_uuid,platform_account_uuid,objective,schedule_start,schedule_end,account_timezone) values (?,?,?,'OUTCOME_SALES',current_timestamp+interval '10 days',current_timestamp+interval '20 days','Asia/Taipei')", CAMPAIGN, PLAN, ACCOUNT);
                 jdbc.update("insert into platform_ad_sets(platform_ad_set_uuid,platform_campaign_uuid,platform_account_uuid,budget_type,budget_amount,currency,schedule_start,schedule_end,account_timezone,optimization_goal,targeting_profile_key,placement_profile_key) values (?,?,?,'DAILY',25,'TWD',current_timestamp+interval '10 days',current_timestamp+interval '20 days','Asia/Taipei','OFFSITE_CONVERSIONS','TW_BROAD_FEEDS_V1','TW_BROAD_FEEDS_V1')", AD_SET, CAMPAIGN, ACCOUNT);
+                TransactionTemplate identityTx = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
+                identityTx.executeWithoutResult(s -> {
+                    jdbc.execute("SET LOCAL session_replication_role = replica");
+                    jdbc.update("update platform_campaigns set external_id='legacy-campaign-ext',observed_state='PAUSED',version=version+1,updated_at=statement_timestamp() where platform_campaign_uuid=?", CAMPAIGN);
+                    jdbc.update("update platform_ad_sets set external_id='legacy-adset-ext',observed_state='PAUSED',version=version+1,updated_at=statement_timestamp() where platform_ad_set_uuid=?", AD_SET);
+                });
                 jdbc.update("insert into products(product_uuid,product_id,product_name,lifecycle_status) values (?,'PROD-00000414','Legacy 4C product','ACTIVE')", PRODUCT);
                 jdbc.update("insert into campaign_products(campaign_product_uuid,campaign_uuid,product_uuid) values (?,?,?)", UUID.randomUUID(), PLAN, PRODUCT);
                 jdbc.update("insert into assets(asset_uuid,product_uuid,campaign_uuid,asset_type,purpose,checksum_sha256) values (?,?,?,'IMAGE','SOURCE',?)", SOURCE, PRODUCT, PLAN, "d".repeat(64));
@@ -168,8 +274,19 @@ class Stage4CLegacyOperationIntegrationTest {
                     jdbc.update("update ai_generation_outputs set review_status='APPROVED',version=1 where generation_output_uuid=?", AI_OUTPUT);
                 });
                 jdbc.update("insert into platform_ads(platform_ad_uuid,platform_ad_set_uuid,platform_account_uuid,product_uuid,asset_uuid,generation_output_uuid,review_decision_uuid,approved_checksum_sha256,creative_mapping_key) values (?,?,?,?,?,?,?,?, 'IMAGE_PRIMARY_V1')", AD, AD_SET, ACCOUNT, PRODUCT, ASSET, AI_OUTPUT, REVIEW, "e".repeat(64));
+                for (UUID extraAd : List.of(AD_SUBMIT_FINALIZE, AD_SUBMIT_ROLLBACK, AD_SUBMIT_RECOVERY, AD_RECONCILE_FINALIZE, AD_RECONCILE_RECOVERY)) {
+                    jdbc.update("insert into platform_ads(platform_ad_uuid,platform_ad_set_uuid,platform_account_uuid,product_uuid,asset_uuid,generation_output_uuid,review_decision_uuid,approved_checksum_sha256,creative_mapping_key) values (?,?,?,?,?,?,?,?, 'IMAGE_PRIMARY_V1')", extraAd, AD_SET, ACCOUNT, PRODUCT, ASSET, AI_OUTPUT, REVIEW, "e".repeat(64));
+                }
+                jdbc.update("insert into platform_metric_snapshots(metric_snapshot_uuid,platform_account_uuid,entity_type,platform_ad_uuid,window_start,window_end,timezone,currency,impressions,clicks,spend,revision_number,fetched_at,freshness_status,source_fingerprint) values (?,?,'AD',?,current_timestamp-interval '1 day',current_timestamp,'Asia/Taipei','TWD',10,1,1.25,1,current_timestamp,'FRESH',?)", METRIC, ACCOUNT, AD, "a".repeat(64));
+                jdbc.update("insert into audit_logs(audit_uuid,operation_uuid,request_id,actor_type,actor_id,source,action,entity_type,entity_uuid,product_uuid) values (?,?,'legacy-4c-audit','LOCAL_ADMIN','local-admin','API','CREATE','PLATFORM_AD',?,?)", AUDIT, STATE_OPERATIONS.get(0), AD, PRODUCT);
+                jdbc.update("insert into audit_log_changes(audit_change_uuid,audit_uuid,field_name,old_value,new_value,value_type,change_order) values (?,?, 'desiredState',null,'PAUSED','ENUM',0)", UUID.fromString("00000000-0000-4000-8000-0000000004e5"), AUDIT);
                 TransactionTemplate tx = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
-                for (UUID operation : STATE_OPERATIONS) insertOperation(jdbc, operation);
+                for (UUID operation : STATE_OPERATIONS) insertOperation(jdbc, operation, AD);
+                insertOperation(jdbc, SUBMIT_FINALIZE, AD_SUBMIT_FINALIZE);
+                insertOperation(jdbc, SUBMIT_ROLLBACK, AD_SUBMIT_ROLLBACK);
+                insertOperation(jdbc, SUBMIT_RECOVERY, AD_SUBMIT_RECOVERY);
+                insertOperation(jdbc, RECONCILE_FINALIZE, AD_RECONCILE_FINALIZE);
+                insertOperation(jdbc, RECONCILE_RECOVERY, AD_RECONCILE_RECOVERY);
                 claimSubmit(jdbc, tx, STATE_OPERATIONS.get(1));
                 claimSubmit(jdbc, tx, STATE_OPERATIONS.get(2));
                 finalizeSubmit(jdbc, tx, STATE_OPERATIONS.get(2), "FAILED_RETRYABLE", "PLATFORM_RATE_LIMITED", "{\"schemaVersion\":1,\"providerKey\":\"FAKE\",\"attemptKind\":\"SUBMIT\",\"resultKind\":\"FAILED_RETRYABLE\",\"retryAfterSeconds\":60}");
@@ -189,10 +306,21 @@ class Stage4CLegacyOperationIntegrationTest {
                 claimSubmit(jdbc, tx, STATE_OPERATIONS.get(6));
                 finalizeSubmit(jdbc, tx, STATE_OPERATIONS.get(6), "UNKNOWN_OUTCOME", "PLATFORM_RESPONSE_AMBIGUOUS", "{\"schemaVersion\":1,\"providerKey\":\"FAKE\",\"attemptKind\":\"SUBMIT\",\"resultKind\":\"UNKNOWN_OUTCOME\"}");
                 claimReconcile(jdbc, tx, STATE_OPERATIONS.get(6));
+                claimSubmit(jdbc, tx, SUBMIT_FINALIZE);
+                claimSubmit(jdbc, tx, SUBMIT_ROLLBACK);
+                claimSubmit(jdbc, tx, SUBMIT_RECOVERY);
+                claimSubmit(jdbc, tx, RECONCILE_FINALIZE);
+                finalizeSubmit(jdbc, tx, RECONCILE_FINALIZE, "UNKNOWN_OUTCOME", "PLATFORM_RESPONSE_AMBIGUOUS", "{\"schemaVersion\":1,\"providerKey\":\"FAKE\",\"attemptKind\":\"SUBMIT\",\"resultKind\":\"UNKNOWN_OUTCOME\"}");
+                claimReconcile(jdbc, tx, RECONCILE_FINALIZE);
+                claimSubmit(jdbc, tx, RECONCILE_RECOVERY);
+                finalizeSubmit(jdbc, tx, RECONCILE_RECOVERY, "UNKNOWN_OUTCOME", "PLATFORM_RESPONSE_AMBIGUOUS", "{\"schemaVersion\":1,\"providerKey\":\"FAKE\",\"attemptKind\":\"SUBMIT\",\"resultKind\":\"UNKNOWN_OUTCOME\"}");
+                claimReconcile(jdbc, tx, RECONCILE_RECOVERY);
                 for (String table : GRAPH_TABLES) {
                     String where = switch (table) {
                         case "ai_prompt_templates" -> " where prompt_template_uuid='" + TEMPLATE + "'";
                         case "ai_prompt_template_versions" -> " where prompt_template_version_uuid='" + TEMPLATE_VERSION + "'";
+                        case "audit_logs" -> " where audit_uuid='" + AUDIT + "'";
+                        case "audit_log_changes" -> " where audit_uuid='" + AUDIT + "'";
                         default -> "";
                     };
                     V13_TABLES.put(table, jdbc.queryForObject("select coalesce(jsonb_agg(to_jsonb(t) order by " + order(table) + "),'[]')::text from " + table + " t" + where, String.class));
@@ -201,14 +329,14 @@ class Stage4CLegacyOperationIntegrationTest {
             };
         }
 
-        private static void insertOperation(JdbcTemplate jdbc, UUID operation) {
+        private static void insertOperation(JdbcTemplate jdbc, UUID operation, UUID ad) {
             UUID request = UUID.nameUUIDFromBytes(operation.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            String payload = "{\"schemaVersion\":1,\"operationType\":\"CREATE_AD\",\"entityType\":\"AD\",\"entityUuid\":\"" + AD
-                    + "\",\"platformAdUuid\":\"" + AD + "\",\"platformAdSetUuid\":\"" + AD_SET + "\",\"productUuid\":\"" + PRODUCT
+            String payload = "{\"schemaVersion\":1,\"operationType\":\"CREATE_AD\",\"entityType\":\"AD\",\"entityUuid\":\"" + ad
+                    + "\",\"platformAdUuid\":\"" + ad + "\",\"platformAdSetUuid\":\"" + AD_SET + "\",\"productUuid\":\"" + PRODUCT
                     + "\",\"assetUuid\":\"" + ASSET + "\",\"generationOutputUuid\":\"" + AI_OUTPUT + "\",\"reviewDecisionUuid\":\"" + REVIEW
                     + "\",\"approvedChecksumSha256\":\"" + "e".repeat(64) + "\",\"creativeMappingKey\":\"IMAGE_PRIMARY_V1\",\"desiredState\":\"PAUSED\"}";
             jdbc.update("insert into platform_operations(operation_uuid,platform_account_uuid,operation_type,entity_type,platform_ad_uuid,client_request_uuid,idempotency_key,request_payload,request_sha256,requested_actor_type,requested_actor_id,request_id) values (?,?, 'CREATE_AD','AD',?,?,?,?::jsonb,?,'LOCAL_ADMIN','local-admin',?)",
-                    operation, ACCOUNT, AD, request, hex(operation), payload, hex(request), "legacy-" + operation.toString().substring(30));
+                    operation, ACCOUNT, ad, request, hex(operation), payload, hex(request), "legacy-" + operation.toString().substring(30));
         }
 
         private static void claimSubmit(JdbcTemplate jdbc, TransactionTemplate tx, UUID operation) {

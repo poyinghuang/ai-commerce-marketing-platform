@@ -98,6 +98,9 @@ test("mocked Ad pause, resume, stale 412, due retry, unknown reconcile, divergen
   const request = "44444444-4444-4444-8444-444444444444";
   const operation = "55555555-5555-4555-8555-555555555555";
   let pauses = 0, resumes = 0, retries = 0, reconciles = 0, creates = 0;
+  let adDesired = "PAUSED";
+  let adVersion = 1;
+  let lastPauseIfMatch = "";
   await page.route("**/api/platforms/meta/**", async (route) => {
     const url = new URL(route.request().url());
     const method = route.request().method();
@@ -115,7 +118,7 @@ test("mocked Ad pause, resume, stale 412, due retry, unknown reconcile, divergen
       return;
     }
     if (url.pathname.endsWith("/state/preview")) {
-      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ clientRequestUuid: request, entityType: "AD", entityUuid: ad, expectedEntityVersion: 1, previousDesiredState: "PAUSED", targetDesiredState: "ACTIVE", parentCampaignDesiredState: "ACTIVE", parentAdSetDesiredState: "ACTIVE", evidenceEligible: true, warnings: ["DETERMINISTIC_FAKE_ONLY", "NO_REAL_PROVIDER_OR_SPEND", "EVIDENCE_DIVERGENCE_BLOCKS_CREATE_OR_RESUME"], confirmable: true }) });
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ clientRequestUuid: request, entityType: "AD", entityUuid: ad, expectedEntityVersion: adVersion, previousDesiredState: adDesired, targetDesiredState: adDesired === "ACTIVE" ? "PAUSED" : "ACTIVE", parentCampaignDesiredState: "ACTIVE", parentAdSetDesiredState: "ACTIVE", evidenceEligible: true, warnings: ["DETERMINISTIC_FAKE_ONLY", "NO_REAL_PROVIDER_OR_SPEND", "EVIDENCE_DIVERGENCE_BLOCKS_CREATE_OR_RESUME"], confirmable: true }) });
       return;
     }
     if (url.pathname.endsWith("/resume") && method === "POST") {
@@ -125,8 +128,8 @@ test("mocked Ad pause, resume, stale 412, due retry, unknown reconcile, divergen
     }
     if (url.pathname.endsWith("/pause") && method === "POST") {
       pauses += 1;
-      const ifMatch = route.request().headers()["if-match"] ?? "";
-      if (ifMatch && !/^W\/"[0-9]+"$/.test(ifMatch)) {
+      lastPauseIfMatch = route.request().headers()["if-match"] ?? "";
+      if (lastPauseIfMatch && !/^W\/"[0-9]+"$/.test(lastPauseIfMatch)) {
         await route.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ code: "PLATFORM_REQUEST_INVALID", message: "Platform request is invalid", fieldErrors: [{ field: "If-Match", message: "Invalid If-Match" }] }) });
         return;
       }
@@ -134,7 +137,7 @@ test("mocked Ad pause, resume, stale 412, due retry, unknown reconcile, divergen
       return;
     }
     if (url.pathname.includes("/ads/") && method === "GET") {
-      await route.fulfill({ status: 200, contentType: "application/json", headers: { etag: 'W/"1"' }, body: JSON.stringify({ platformAdUuid: ad, platformAdSetUuid: adSet, productUuid: request, assetUuid: request, generationOutputUuid: request, reviewDecisionUuid: request, approvedChecksumFingerprint: "b".repeat(64), creativeMappingKey: "APPROVED_IMAGE_ASSET_V1", desiredState: "PAUSED", createdAt: "2000-01-01T00:00:00Z", updatedAt: "2000-01-01T00:00:00Z", version: 1 }) });
+      await route.fulfill({ status: 200, contentType: "application/json", headers: { etag: `W/"${adVersion}"` }, body: JSON.stringify({ platformAdUuid: ad, platformAdSetUuid: adSet, productUuid: request, assetUuid: request, generationOutputUuid: request, reviewDecisionUuid: request, approvedChecksumFingerprint: "b".repeat(64), creativeMappingKey: "APPROVED_IMAGE_ASSET_V1", desiredState: adDesired, createdAt: "2000-01-01T00:00:00Z", updatedAt: "2000-01-01T00:00:00Z", version: adVersion }) });
       return;
     }
     await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
@@ -180,4 +183,16 @@ test("mocked Ad pause, resume, stale 412, due retry, unknown reconcile, divergen
   await expect(page.getByRole("alert").filter({ hasText: "no longer eligible" })).toBeVisible();
   expect(resumes).toBe(1);
   expect(pauses).toBe(0);
+  adDesired = "ACTIVE";
+  adVersion = 2;
+  await page.getByRole("button", { name: "Load Ad", exact: true }).click();
+  await expect(page.getByRole("button", { name: /^Preview pause Ad$/ })).toBeVisible();
+  await page.getByRole("button", { name: /^Preview pause Ad$/ }).click();
+  expect(pauses).toBe(0);
+  await page.getByRole("button", { name: "Confirm FAKE operation" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "reload and preview again" })).toBeVisible();
+  expect(pauses).toBe(1);
+  expect(lastPauseIfMatch).toBe('W/"2"');
+  expect(creates).toBe(1);
+  expect(resumes).toBe(1);
 });
