@@ -19,7 +19,7 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 | --- | --- |
 | Gate | Stage 4D delivery and metrics **specification** |
 | Branch | `codex/stage-04d-delivery-metrics-specification` |
-| PR | Draft to be opened from this branch |
+| PR | [#65](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/65) (Draft) |
 | Base | `acb833d9622925fa185bf905aeac5bddf93f0d6e` (PR #64 squash merge) |
 | Stage 4C | Merged at `acb833d`; post-merge main CI Run `32504910043` passed |
 | Stage 4D runtime | **Locked** until this specification `APPROVE` + merge + post-merge `main` CI |

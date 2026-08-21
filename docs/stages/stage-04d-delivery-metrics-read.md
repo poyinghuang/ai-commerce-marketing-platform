@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status: Specification draft; runtime locked
+- Status: Specification draft on Draft PR #65; runtime locked
 - Branch: `codex/stage-04d-delivery-metrics-specification`
 - Base: `acb833d9622925fa185bf905aeac5bddf93f0d6e` (PR #64 squash merge)
 - Stage 4C prerequisite: Passed; PR #64 squash-merged at `acb833d9622925fa185bf905aeac5bddf93f0d6e`; post-merge main CI Run `32504910043` passed
