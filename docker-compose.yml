@@ -24,6 +24,7 @@ services:
       SPRING_PROFILES_ACTIVE: local
       PLATFORM_WEB_ENABLED: "true"
       PLATFORM_STAGE4B_ENABLED: "true"
+      PLATFORM_STAGE4C_ENABLED: "true"
       DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ai_commerce}
       DATABASE_USERNAME: ${POSTGRES_USER:-ai_commerce}
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-ai_commerce_local}
@@ -52,6 +53,7 @@ services:
     environment:
       BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL:-http://backend:8080}
       PLATFORM_STAGE4B_ENABLED: "true"
+      PLATFORM_STAGE4C_ENABLED: "true"
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
     ports:
       - "${FRONTEND_PORT:-3000}:3000"

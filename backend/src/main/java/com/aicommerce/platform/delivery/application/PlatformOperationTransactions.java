@@ -56,11 +56,14 @@ public class PlatformOperationTransactions {
     private final PlatformAccountPolicyProvider accountPolicies;
     private final PlatformBudgetPolicyProvider budgetPolicies;
     private final Environment environment;
+    private final Stage4CSupport stage4c;
+    private final Stage4CCriticalSectionHook stage4cHook;
 
     public PlatformOperationTransactions(PlatformOperationJpaRepository operations, JdbcTemplate jdbc,
             PlatformAuditWriter platformAudit, Clock clock, ObjectMapper mapper,
             EntityManager entityManager, PlatformAccountPolicyProvider accountPolicies,
-            PlatformBudgetPolicyProvider budgetPolicies, Environment environment) {
+            PlatformBudgetPolicyProvider budgetPolicies, Environment environment, Stage4CSupport stage4c,
+            Stage4CCriticalSectionHook stage4cHook) {
         this.operations = operations;
         this.jdbc = jdbc;
         this.platformAudit = platformAudit;
@@ -70,6 +73,8 @@ public class PlatformOperationTransactions {
         this.accountPolicies=accountPolicies;
         this.budgetPolicies=budgetPolicies;
         this.environment=environment;
+        this.stage4c=stage4c;
+        this.stage4cHook=stage4cHook;
     }
 
     @Transactional
@@ -162,7 +167,7 @@ public class PlatformOperationTransactions {
 
     private PlatformCommand claimExpected(UUID operationUuid, long expectedVersion, Instant claimTime,
             AuditOperationContext context, PlatformOperationStatus expectedEntryStatus) {
-        PlatformOperation operation = require(operationUuid);
+        PlatformOperation operation = lockOperation(operationUuid);
         if (operation.getVersion() != expectedVersion) throw stale(operationUuid);
         if(expectedEntryStatus==PlatformOperationStatus.FAILED_RETRYABLE&&operation.getAttemptCount()>=operation.getMaxAttempts())throw new PlatformOperationException(
                 PlatformStableErrorCode.PLATFORM_MAX_ATTEMPTS_EXCEEDED,Optional.of(operationUuid));
@@ -170,6 +175,7 @@ public class PlatformOperationTransactions {
                 PlatformStableErrorCode.PLATFORM_INVALID_OPERATION_STATE,Optional.of(operationUuid));
         if(operation.getStatus()==PlatformOperationStatus.FAILED_RETRYABLE&&(operation.getNextAttemptAt()==null||claimTime.isBefore(operation.getNextAttemptAt())))throw new PlatformOperationException(
                 PlatformStableErrorCode.PLATFORM_RETRY_NOT_DUE,Optional.of(operationUuid));
+        stage4c.validateClaim(operation);
         Optional<String> durableExternalId=validateMutationTarget(operation);
         validateAccount(operation.getPlatformAccountUuid(),operationUuid);
         PlatformOperationStatus before = operation.getStatus();
@@ -204,7 +210,7 @@ public class PlatformOperationTransactions {
     @Transactional
     public PlatformReconciliationQuery claimReconciliation(UUID operationUuid, long expectedVersion, Instant claimTime,
             AuditOperationContext context) {
-        PlatformOperation operation = require(operationUuid);
+        PlatformOperation operation = lockOperation(operationUuid);
         if (operation.getVersion() != expectedVersion) throw stale(operationUuid);
         if (operation.getStatus() != PlatformOperationStatus.UNKNOWN_OUTCOME) {
             throw new PlatformOperationException(PlatformStableErrorCode.PLATFORM_INVALID_OPERATION_STATE,
@@ -246,7 +252,8 @@ public class PlatformOperationTransactions {
     @Transactional
     public PlatformOperation recordWriteOutcome(UUID operationUuid, PlatformWriteOutcome outcome,
             AuditOperationContext context) {
-        PlatformOperation operation=require(operationUuid);
+        PlatformOperation operation=lockOperation(operationUuid);
+        stage4cHook.beforeFinalize();
         if(operation.getStatus()!=PlatformOperationStatus.SUBMITTING) throw new PlatformOperationException(
                 PlatformStableErrorCode.PLATFORM_INVALID_OPERATION_STATE,Optional.of(operationUuid));
         Instant now=Instant.now(clock); String status; String code=null; Integer retry=null;
@@ -293,7 +300,8 @@ public class PlatformOperationTransactions {
     @Transactional
     public PlatformOperation recordReconciliationOutcome(UUID operationUuid, PlatformReconciliationOutcome outcome,
             Instant completionTime, AuditOperationContext context) {
-        PlatformOperation operation = require(operationUuid);
+        PlatformOperation operation = lockOperation(operationUuid);
+        stage4cHook.beforeFinalize();
         if (operation.getStatus() != PlatformOperationStatus.RECONCILING) {
             throw new PlatformOperationException(PlatformStableErrorCode.PLATFORM_INVALID_OPERATION_STATE,
                     Optional.of(operationUuid));
@@ -353,7 +361,7 @@ public class PlatformOperationTransactions {
     @Transactional
     public PlatformOperation recoverStaleClaim(UUID operationUuid, long expectedVersion, Instant recoveryTime,
             AuditOperationContext context) {
-        PlatformOperation operation = require(operationUuid);
+        PlatformOperation operation = lockOperation(operationUuid);
         if (operation.getVersion() != expectedVersion) throw stale(operationUuid);
         if ((operation.getStatus() != PlatformOperationStatus.SUBMITTING
                 && operation.getStatus() != PlatformOperationStatus.RECONCILING)
@@ -389,6 +397,47 @@ public class PlatformOperationTransactions {
                 com.aicommerce.platform.delivery.domain.PlatformAttemptStatus.STARTED,
                 com.aicommerce.platform.delivery.domain.PlatformAttemptStatus.UNKNOWN_OUTCOME,
                 PlatformStableErrorCode.valueOf(code),null,false),context);
+        append(context, AuditAction.UPDATE, updated, outcomeChanges(operation.getStatus(), updated));
+        return updated;
+    }
+
+    @Transactional
+    public PlatformOperation recoverImmediateAmbiguity(UUID operationUuid, Optional<String> retainedTrace,
+            AuditOperationContext context) {
+        PlatformOperation operation = lockOperation(operationUuid);
+        if (operation.getStatus() != PlatformOperationStatus.SUBMITTING
+                && operation.getStatus() != PlatformOperationStatus.RECONCILING) {
+            throw new PlatformOperationException(PlatformStableErrorCode.PLATFORM_INVALID_OPERATION_STATE,
+                    Optional.of(operationUuid));
+        }
+        Instant now = Instant.now(clock);
+        PlatformAttemptKind kind = operation.getStatus() == PlatformOperationStatus.SUBMITTING
+                ? PlatformAttemptKind.SUBMIT : PlatformAttemptKind.RECONCILE;
+        int number = kind == PlatformAttemptKind.SUBMIT ? operation.getAttemptCount() : operation.getReconciliationCount();
+        String code = "PLATFORM_RESPONSE_AMBIGUOUS";
+        String evidence = json(recoveryEvidence(kind, PlatformEvidenceResultKind.UNKNOWN_OUTCOME));
+        String trace = retainedTrace.filter(value -> !value.isBlank()).orElse(null);
+        UUID attemptUuid = jdbc.queryForObject(
+                "SELECT operation_attempt_uuid FROM platform_operation_attempts WHERE operation_uuid=? AND attempt_kind=? AND attempt_number=?",
+                UUID.class, operationUuid, kind.name(), number);
+        int attemptUpdated = jdbc.update("""
+                UPDATE platform_operation_attempts SET status='UNKNOWN_OUTCOME',normalized_error_code=?,
+                  safe_provider_trace_id=?,evidence=?::jsonb,completed_at=?,version=1
+                WHERE operation_uuid=? AND attempt_kind=? AND attempt_number=? AND status='STARTED' AND version=0
+                """, code, trace, evidence, ts(now), operationUuid, kind.name(), number);
+        if (attemptUpdated != 1) throw stale(operationUuid);
+        int opUpdated = jdbc.update("""
+                UPDATE platform_operations SET status='UNKNOWN_OUTCOME',external_id=NULL,normalized_error_code=?,
+                  safe_provider_trace_id=?,outcome_evidence=?::jsonb,next_attempt_at=NULL,completed_at=NULL,
+                  updated_at=?,version=version+1 WHERE operation_uuid=? AND version=? AND status=?
+                """, code, trace, evidence, ts(now), operationUuid, operation.getVersion(), operation.getStatus().name());
+        if (opUpdated != 1) throw stale(operationUuid);
+        entityManager.clear();
+        PlatformOperation updated = require(operationUuid);
+        platformAudit.write(PlatformAuditEvent.attempt(updated, attemptUuid, kind, number,
+                com.aicommerce.platform.delivery.domain.PlatformAttemptStatus.STARTED,
+                com.aicommerce.platform.delivery.domain.PlatformAttemptStatus.UNKNOWN_OUTCOME,
+                PlatformStableErrorCode.PLATFORM_RESPONSE_AMBIGUOUS, trace, false), context);
         append(context, AuditAction.UPDATE, updated, outcomeChanges(operation.getStatus(), updated));
         return updated;
     }
@@ -469,6 +518,18 @@ public class PlatformOperationTransactions {
         } catch (RuntimeException exception) {
             throw new PlatformOperationException(PlatformStableErrorCode.PLATFORM_CONTRACT_INVALID,Optional.of(operation.getOperationUuid()));
         }
+    }
+
+    private PlatformOperation lockOperation(UUID operationUuid) {
+        entityManager.flush();
+        if (jdbc.query("SELECT 1 FROM platform_operations WHERE operation_uuid=? FOR UPDATE",
+                (rs, n) -> 1, operationUuid).size() != 1) {
+            throw new PlatformOperationException(PlatformStableErrorCode.PLATFORM_OPERATION_NOT_FOUND,
+                    Optional.of(operationUuid));
+        }
+        stage4cHook.afterOperationLock();
+        entityManager.clear();
+        return require(operationUuid);
     }
 
     private PlatformOperation require(UUID operationUuid) {

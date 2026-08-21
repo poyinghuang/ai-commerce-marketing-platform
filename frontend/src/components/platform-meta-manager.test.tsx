@@ -14,6 +14,88 @@ describe("PlatformMetaManager",()=>{
   fireEvent.change(screen.getByLabelText("Platform Ad Set UUID"),{target:{value:adSet}});fireEvent.click(screen.getByText("Load Ad Set"));await screen.findByLabelText("Ad Set status");fireEvent.click(screen.getByText("Preview resume Ad Set"));await screen.findByRole("dialog",{name:"Confirm platform mutation"});fireEvent.click(screen.getByText("Confirm FAKE operation"));await waitFor(()=>expect(screen.queryByRole("dialog",{name:"Confirm platform mutation"})).not.toBeInTheDocument());
   fireEvent.change(screen.getByLabelText("Daily budget (TWD)"),{target:{value:"30"}});fireEvent.click(screen.getByText("Preview budget change"));await screen.findByRole("dialog",{name:"Confirm platform mutation"});fireEvent.click(screen.getByText("Confirm FAKE operation"));await waitFor(()=>expect(screen.queryByRole("dialog",{name:"Confirm platform mutation"})).not.toBeInTheDocument());expect(mutations).toBe(4);expect(previews).toBe(4);expect(screen.queryByText("Confirm FAKE operation")).not.toBeInTheDocument();
  });
+ it("previews and explicitly confirms a paused Ad only when Stage 4C is enabled",async()=>{
+  const request="11111111-1111-4111-8111-111111111111",adSet="22222222-2222-4222-8222-222222222222",ad="33333333-3333-4333-8333-333333333333";
+  vi.stubGlobal("crypto",{randomUUID:()=>request});
+  render(<PlatformMetaManager/>);
+  expect(screen.queryByText("Preview paused Ad")).not.toBeInTheDocument();
+  cleanup();
+  const preview={clientRequestUuid:request,platformAdSetUuid:adSet,expectedParentVersion:1,productUuid:request,assetUuid:request,generationOutputUuid:request,reviewDecisionUuid:request,approvedChecksumFingerprint:"a".repeat(64),creativeMappingKey:"APPROVED_IMAGE_ASSET_V1",parentCampaignDesiredState:"PAUSED",parentAdSetDesiredState:"PAUSED",newAdDesiredState:"PAUSED",evidenceEligible:true,warnings:["DETERMINISTIC_FAKE_ONLY","NO_REAL_PROVIDER_OR_SPEND","EVIDENCE_DIVERGENCE_BLOCKS_CREATE_OR_RESUME"],confirmable:true};
+  const fetch=vi.fn().mockResolvedValueOnce(response(preview)).mockResolvedValueOnce(response({operationUuid:ad,operationType:"CREATE_AD",entityType:"AD",entityUuid:ad,status:"SUCCEEDED",attemptCount:1,reconciliationCount:0,maxAttempts:3,createdAt:"2000-01-01T00:00:00Z",updatedAt:"2000-01-01T00:00:00Z",version:2},202,{etag:'W/"2"'})).mockResolvedValueOnce(response({platformAdUuid:ad,desiredState:"PAUSED",version:1,creativeMappingKey:"APPROVED_IMAGE_ASSET_V1",approvedChecksumFingerprint:"b".repeat(64)},200,{etag:'W/"1"'}));
+  vi.stubGlobal("fetch",fetch);
+  render(<PlatformMetaManager stage4c/>);
+  fireEvent.change(screen.getByLabelText("Platform Ad Set UUID"),{target:{value:adSet}});
+  fireEvent.change(screen.getByLabelText("Product UUID"),{target:{value:request}});
+  fireEvent.change(screen.getByLabelText("Asset UUID"),{target:{value:request}});
+  fireEvent.change(screen.getByLabelText("Generation output UUID"),{target:{value:request}});
+  fireEvent.change(screen.getByLabelText("Review decision UUID"),{target:{value:request}});
+  fireEvent.click(screen.getByText("Preview paused Ad"));
+  await screen.findByRole("dialog",{name:"Confirm Ad publication"});
+  fireEvent.click(screen.getByText("Confirm FAKE operation"));
+  await screen.findByLabelText("Ad status");
+  expect(screen.getByText("APPROVED_IMAGE_ASSET_V1")).toBeInTheDocument();
+ });
+ it("requires explicit Ad pause, resume, stale reload, due retry, unknown reconcile, and never auto-acts",async()=>{
+  const request="11111111-1111-4111-8111-111111111111",adSet="22222222-2222-4222-8222-222222222222",ad="33333333-3333-4333-8333-333333333333",operation="55555555-5555-4555-8555-555555555555";
+  vi.stubGlobal("crypto",{randomUUID:()=>request});
+  let pauses=0,resumes=0,retries=0,reconciles=0,creates=0,adDesired="PAUSED",adVersion=1,lastPauseIfMatch="";
+  const fetch=vi.fn().mockImplementation(async(input:RequestInfo|URL,init?:RequestInit)=>{
+    const url=String(input),method=init?.method??"GET";
+    if(url.includes("/ads/preview"))return response({clientRequestUuid:request,platformAdSetUuid:adSet,expectedParentVersion:1,productUuid:request,assetUuid:request,generationOutputUuid:request,reviewDecisionUuid:request,approvedChecksumFingerprint:"a".repeat(64),creativeMappingKey:"APPROVED_IMAGE_ASSET_V1",parentCampaignDesiredState:"PAUSED",parentAdSetDesiredState:"PAUSED",newAdDesiredState:"PAUSED",evidenceEligible:true,warnings:["DETERMINISTIC_FAKE_ONLY","NO_REAL_PROVIDER_OR_SPEND","EVIDENCE_DIVERGENCE_BLOCKS_CREATE_OR_RESUME"],confirmable:true});
+    if(url.endsWith("/ads")&&method==="POST"){creates++;return response({operationUuid:operation,operationType:"CREATE_AD",entityType:"AD",entityUuid:ad,status:"FAILED_RETRYABLE",attemptCount:1,reconciliationCount:0,maxAttempts:3,nextAttemptAt:"2000-01-01T00:00:00Z",createdAt:"2000-01-01T00:00:00Z",updatedAt:"2000-01-01T00:00:00Z",version:2},202,{etag:'W/"2"'});}
+    if(url.endsWith("/retry")&&method==="POST"){retries++;return response({operationUuid:operation,operationType:"CREATE_AD",entityType:"AD",entityUuid:ad,status:"UNKNOWN_OUTCOME",attemptCount:2,reconciliationCount:0,maxAttempts:3,createdAt:"2000-01-01T00:00:00Z",updatedAt:"2000-01-01T00:00:00Z",version:3},202,{etag:'W/"3"'});}
+    if(url.endsWith("/reconcile")&&method==="POST"){reconciles++;return response({operationUuid:operation,operationType:"CREATE_AD",entityType:"AD",entityUuid:ad,status:"SUCCEEDED",attemptCount:2,reconciliationCount:1,maxAttempts:3,createdAt:"2000-01-01T00:00:00Z",updatedAt:"2000-01-01T00:00:00Z",version:4},202,{etag:'W/"4"'});}
+    if(url.includes("/state/preview"))return response({clientRequestUuid:request,entityType:"AD",entityUuid:ad,expectedEntityVersion:adVersion,previousDesiredState:adDesired,targetDesiredState:adDesired==="ACTIVE"?"PAUSED":"ACTIVE",parentCampaignDesiredState:"ACTIVE",parentAdSetDesiredState:"ACTIVE",evidenceEligible:true,warnings:["DETERMINISTIC_FAKE_ONLY","NO_REAL_PROVIDER_OR_SPEND","EVIDENCE_DIVERGENCE_BLOCKS_CREATE_OR_RESUME"],confirmable:true});
+    if(url.endsWith("/resume")&&method==="POST"){resumes++;return response({code:"PLATFORM_AD_EVIDENCE_INVALID",message:"The approved Ad evidence is no longer eligible"},409);}
+    if(url.endsWith("/pause")&&method==="POST"){pauses++;lastPauseIfMatch=String((init?.headers as Record<string,string>|undefined)?.["If-Match"]??"");return response({code:"PLATFORM_ENTITY_STALE",message:"The platform entity changed; reload and preview again"},412);}
+    if(url.includes(`/ads/${ad}`)&&method==="GET")return response({platformAdUuid:ad,platformAdSetUuid:adSet,desiredState:adDesired,version:adVersion,creativeMappingKey:"APPROVED_IMAGE_ASSET_V1",approvedChecksumFingerprint:"b".repeat(64)},200,{etag:`W/"${adVersion}"`});
+    throw new Error(`unexpected ${method} ${url}`);
+  });
+  vi.stubGlobal("fetch",fetch);
+  render(<PlatformMetaManager stage4c/>);
+  fireEvent.change(screen.getByLabelText("Platform Ad Set UUID"),{target:{value:adSet}});
+  fireEvent.change(screen.getByLabelText("Product UUID"),{target:{value:request}});
+  fireEvent.change(screen.getByLabelText("Asset UUID"),{target:{value:request}});
+  fireEvent.change(screen.getByLabelText("Generation output UUID"),{target:{value:request}});
+  fireEvent.change(screen.getByLabelText("Review decision UUID"),{target:{value:request}});
+  expect(creates).toBe(0);
+  fireEvent.click(screen.getByText("Preview paused Ad"));
+  await screen.findByRole("dialog",{name:"Confirm Ad publication"});
+  expect(creates).toBe(0);
+  fireEvent.click(screen.getByText("Confirm FAKE operation"));
+  await screen.findByText("Retry due operation");
+  expect(creates).toBe(1);
+  fireEvent.click(screen.getByText("Retry due operation"));
+  expect(retries).toBe(0);
+  fireEvent.click(screen.getByText("Confirm retry"));
+  await screen.findByText("Reconcile unknown outcome");
+  expect(retries).toBe(1);
+  fireEvent.click(screen.getByText("Reconcile unknown outcome"));
+  expect(reconciles).toBe(0);
+  fireEvent.click(screen.getByText("Confirm reconcile"));
+  await waitFor(()=>expect(screen.getByText("SUCCEEDED")).toBeInTheDocument());
+  expect(reconciles).toBe(1);
+  fireEvent.change(screen.getByLabelText("Platform Ad UUID"),{target:{value:ad}});
+  fireEvent.click(screen.getByText("Load Ad"));
+  await screen.findByLabelText("Ad status");
+  expect(screen.getByText("create and resume then stay blocked", { exact: false })).toBeInTheDocument();
+  fireEvent.click(screen.getByText("Preview resume Ad"));
+  await screen.findByRole("dialog",{name:"Confirm Ad state"});
+  fireEvent.click(screen.getByText("Confirm FAKE operation"));
+  await waitFor(()=>expect(screen.getByRole("alert")).toHaveTextContent("no longer eligible"));
+  expect(resumes).toBe(1);
+  expect(pauses).toBe(0);
+  adDesired="ACTIVE";adVersion=2;
+  fireEvent.click(screen.getByText("Load Ad"));
+  await screen.findByText("Preview pause Ad");
+  fireEvent.click(screen.getByText("Preview pause Ad"));
+  await screen.findByRole("dialog",{name:"Confirm Ad state"});
+  expect(pauses).toBe(0);
+  fireEvent.click(screen.getByText("Confirm FAKE operation"));
+  await waitFor(()=>expect(screen.getByRole("alert")).toHaveTextContent("reload and preview again"));
+  expect(pauses).toBe(1);
+  expect(lastPauseIfMatch).toBe('W/"2"');
+ });
 });
 
 function response(body:unknown,status=200,headers:Record<string,string>={}){return new Response(JSON.stringify(body),{status,headers:{"content-type":"application/json",...headers}});}
