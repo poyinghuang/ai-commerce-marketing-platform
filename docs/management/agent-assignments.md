@@ -20,22 +20,22 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 | Gate | Stage 4C Ad creative publication **runtime** |
 | Branch | `codex/stage-04c-ad-creative-publication-runtime` |
 | PR | [#64](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/64) (Draft) |
-| Head | `7139b94077a0a55b84e80d4062e7ace97a2a9576` (integrity `fd7e19c`) |
-| Manager Decision | Cycle 2 `REQUEST_CHANGES` — remaining `QA-PW-03`, `4C-RT-002`–`005`, `R-4C-01` |
+| Head | `23cfd94232ce87fcaf22c13314f8e75e85912531` |
+| Manager Decision | Cycle 3 `APPROVE` on `23cfd94`. Push CI `32399091550`, PR CI `32399095233` |
 | Base | `c321dc0124375e13fd09785b0c827326e996207f` |
-| Stage 4D | **Locked** until 4C `APPROVE`, merge, and post-merge `main` CI |
+| Stage 4D | **Locked** until 4C merge and post-merge `main` CI |
 
 ## Assigned now (Stage 4C runtime)
 
 | Agent | Duty | Status |
 | --- | --- | --- |
-| Project Manager | Cycle 2 complete: `REQUEST_CHANGES` on `7139b94`. Re-review after a new Head with green exact-head CI | Standby for cycle 3 |
-| Review | Cycle 1 findings R-4C-02–10 closed on `fd7e19c`; R-4C-01 still open | Standby |
-| QA | Exact-head E2E failed QA-PW-03 (`getByRole('alert')` vs Next.js announcer) | Assigned |
-| Backend | Remaining BLOCKING: 4C-RT-002–005 / R-4C-01 (legacy finalize, races, Audit content, provider-outcome + pause UI) | **In progress** |
-| Frontend | QA-PW-03 alert locator; 4C-RT-005 pause / malformed If-Match / weak ETag in Playwright | **In progress** |
-| Documentation | Update Stage Gate headers after the Manager Decision, not before | Standby |
-| Product Owner / Architecture / Research / AI Workflow | Idle for 4C runtime | Idle |
+| Project Manager | Cycle 3 complete: `APPROVE` on `23cfd94`. Do not merge in this cycle. Keep Draft. Do not start 4D | Standby for governed merge |
+| Review | R-4C-01 closed with 4C-RT-002–005 on `23cfd94` | Standby |
+| QA | Exact-head Playwright 18/0 on `23cfd94`; QA-PW-03 closed | Standby |
+| Backend | Cycle-2 BLOCKING 4C-RT-002–005 closed on `23cfd94` | Standby |
+| Frontend | QA-PW-03 locator and pause/stale-412/weak-ETag cases closed | Standby |
+| Documentation | Stage Gate headers updated after cycle-3 `APPROVE` | Standby |
+| Product Owner / Architecture / Research / AI Workflow | Idle for 4C runtime. Do not open 4D | Idle |
 
 Human review required for this 4C FAKE runtime: **No**, unless the Manager finds an escalation trigger.
 
@@ -68,8 +68,7 @@ Escalate immediately; do not merge around them:
 
 ## Sequence after this assignment
 
-1. Review + QA produce evidence.
-2. Project Manager records the Gate Decision on the exact Head.
-3. If `REQUEST_CHANGES`: Backend/Frontend fix on this branch; re-review the new Head.
-4. If `APPROVE`: Manager may merge after required CI; then verify `main`.
-5. Only then may Architecture open Stage 4D specification. Stage 05–07 stay locked.
+1. Cycle 3 records `APPROVE` on Head `23cfd94` with exact-head Push `32399091550` and PR `32399095233`.
+2. Keep PR #64 Draft. Do not merge in this cycle. Do not start Stage 4D.
+3. After a governed merge, verify post-merge `main` CI.
+4. Only then may Architecture open Stage 4D specification. Stage 05–07 stay locked.

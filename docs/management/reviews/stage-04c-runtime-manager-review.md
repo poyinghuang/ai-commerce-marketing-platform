@@ -370,3 +370,153 @@ Not applicable. Decision is `REQUEST_CHANGES`, not `APPROVE`.
 - Merge allowed：No
 - Next Stage allowed：No. Stage 4D remains locked
 
+---
+
+# Cycle 3
+
+> Formal Manager Gate cycle 3. Cycles 1–2 above are retained. Unrun items are `Not verified`; failures are not recorded as Passed. Developer and QA claims were treated as unverified until checked against `git diff 7139b94..23cfd94` and exact-head CI. Green CI does not by itself `APPROVE`.
+
+## Review identity
+
+- Stage／Milestone：Stage 4C Ad creative publication runtime
+- Review date：2026-08-21
+- Reviewer：Project Manager / Lead Reviewer / Stage Gate Owner
+- Repository：`poyinghuang/ai-commerce-marketing-platform` (`C:\Users\eric\Documents\Git\ai-commerce-marketing-platform`)
+- Branch：`codex/stage-04c-ad-creative-publication-runtime`
+- Base Commit：`c321dc0124375e13fd09785b0c827326e996207f` (`origin/main`)
+- Cycle-2 Head：`7139b94077a0a55b84e80d4062e7ace97a2a9576`
+- QA-PW-03 locator ancestry：`3c5573f3927657e3239f048c99858dd3bae54611` (`git merge-base --is-ancestor` of current Head: true; Push `32396528105` and PR `32396532360` already succeeded on that SHA)
+- Stale-pause-banner ancestry：`9d74abb24aaeb9ad0063277359a6200abc5edd2a` (`git merge-base --is-ancestor` of current Head: true)
+- Head Commit (PR #64 at cycle-3 close)：`23cfd94232ce87fcaf22c13314f8e75e85912531`
+- Pull Request：https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/64 (Draft; kept Draft)
+- Review cycle：3
+
+`23cfd94` is `test(stage4c): close remaining 4C-RT-002 through 4C-RT-005 acceptance matrix`. Functional production change on this interval is only `9d74abb` (`platform-meta-manager.tsx` restores the public 412 message after Ad GET reload). V14 SQL, BFF allowlist, and claim mapping remain byte-identical to cycle 2.
+
+Local worktree at review close tracks origin at `23cfd94`. Unrelated dirty file `frontend/next-env.d.ts` is **not** on the PR Head and was not treated as reviewed content.
+
+## Status before review
+
+- Implementation：`3c5573f` Playwright alert filter, `9d74abb` stale Ad pause banner, `23cfd94` remaining 4C-RT-002–005 tests
+- Local Verification：Developer claimed focused Maven 67/0 then QA reported Stage4C*/Milestone4C/MigrationCompatibility 187/0; vitest 6/0; Playwright `platform-stage4c.spec.ts` 2/2 after binding Next to `127.0.0.1`. Full local `mvn -B test` was **not** run. Manager did not re-run those local commands; exact-head CI on `23cfd94` is the executed full-suite evidence
+- Remote CI：At assignment, `secret-scan` had passed and `quality-and-compose` was in progress (`32399091550`, `32399095233`). Both completed SUCCESS. Manager waited and re-checked `gh`; this cycle is not closed on in-progress jobs
+- Human Review Required：No
+- Merge：Not executed. PR remains Draft
+- Stage 4D：Locked
+
+## Scope reviewed
+
+- Approved scope：same deterministic-FAKE LOCAL/TEST Ad publication vertical slice as cycles 1–2
+- Explicit out of scope：credentials, real Meta/network, spend, production, Auth/RBAC/Tenant, 4D metrics, copy/CTA/URL/audience, automatic activation, V1–V13 edits
+- Files reviewed：`git diff --stat 7139b94..23cfd94` (8 files) independently, plus `git diff 7139b94..3c5573f` (Playwright alert locator), `git diff 3c5573f..9d74abb` (stale banner), and `git diff 3c5573f..23cfd94` (tests + pause UI/E2E). Inspected `Stage4CLegacyOperationIntegrationTest`, `Stage4CBarrierAndAuditIntegrationTest`, `Stage4CControllerIntegrationTest`, `platform-stage4c.spec.ts`, `platform-meta-manager.tsx` / `.test.tsx`
+- Forbidden or unexpected files：none. `git diff --exit-code origin/main --` V1–V13 SQL is empty. No 4D metrics API. No credential or production files. `9d74abb` is an in-scope UI correction for spec stale-412 reload, not a product-setting change
+- Completion report compared：PR #64 body still describes Head `fd7e19c`, local 578 tests, and unchecked Playwright. That text is stale versus `23cfd94` and understates current CI. This Gate record is the authoritative completion evidence. Residual PR-body drift is a NOTE, not a blocker
+
+## Architecture and contracts
+
+- Architecture documents reviewed：`docs/stages/stage-04c-ad-creative-publication.md`, cycles 1–2 of this report, `docs/management/manager-policy.md`, `docs/management/escalation-policy.md`
+- Migration reviewed：no V14 SQL change in `7139b94..23cfd94`. V1–V13 remain immutable
+- Domain／Transaction／Audit boundary：no production Java change on this interval. New tests lock claim/finalize/recovery graphs, typed Audit ordinals, and legacy SUBMITTING/RECONCILING SQL finalize plus `recoverStaleClaim`
+- API contract changes：none. MockMvc now persists create submit outcomes and a pause/resume subset through the existing routes
+- Frontend／BFF contract changes：`confirmAdState` 412 path still clears pending confirmation and reloads the Ad; it then restores `publicMessage` so the stale banner remains visible. BFF allowlist unchanged
+- Backward compatibility：unchanged from cycle 2
+- Rollback／forward recovery：unchanged V14 collision / test-only V15 files
+
+## Impact
+
+- Security impact：LOCAL/TEST FAKE gates retained. No Auth/RBAC/Tenant, secret, or production change. `9d74abb` stores the already-public error message on the thrown failure object; it does not add raw checksum, external ID, or provider evidence
+- Data impact：none in this interval
+- Production impact：none authorized
+- External service／cost impact：none
+
+## Verification executed
+
+| Verification | Command／Run | Result | Evidence／Notes |
+| --- | --- | --- | --- |
+| Git status | `git status -sb`; `git rev-parse HEAD` | Passed for PR identity | Branch tracks origin at `23cfd94`. Dirty `frontend/next-env.d.ts` is local-only |
+| Diff check | `git diff --check 7139b94..23cfd94` | Passed (functional) | Only hit is a trailing blank line at EOF of this review file from cycle 2. No whitespace errors in Java/TS/SQL |
+| Commit history | `git log --oneline --decorate -12`; `git log --oneline 7139b94..23cfd94` | Passed | `3ab7e37` cycle-2 docs → `3c5573f` alert locator → `9d74abb` stale banner → `23cfd94` remaining matrix |
+| V1–V13 immutability | `git diff --exit-code origin/main --` V1–V13 SQL | Passed | Exit 0 |
+| Backend tests | Push `32399091550` job `96522735109` and PR `32399095233` job `96522747117` step `Test Backend with PostgreSQL Testcontainers` on `23cfd94` | Passed | Exact-head full suite succeeded. Manager did not re-run local `mvn -B test`. QA focused 187/0 is additional spot-check only, not the full-suite evidence |
+| Migration tests | Same Surefire | Passed | Includes `Milestone4CSchemaIntegrationTest`, `MigrationCompatibilityTest`, `Stage4CLegacyOperationIntegrationTest` Orders 1–3 |
+| Hibernate validation | Same Surefire PersistenceFoundation + Milestone2C/2D/2E/3A/3B through `"14"` | Passed | |
+| Frontend lint | CI `Verify Frontend` (`npm run lint`) on `23cfd94` | Passed | Push and PR |
+| Frontend typecheck | `npm run typecheck` in same step | Passed | |
+| Frontend tests | `npm test` in same step | Passed | |
+| Production build | `npm run build` in same step | Passed | |
+| Docker Compose config | CI `Validate Docker Compose` | Passed | |
+| Docker Compose cold start | CI `Start and wait for the full stack` | Passed | |
+| Smoke tests | CI `Smoke test health chain and product vertical slice` | Passed | Ran **after** E2E success; not skipped |
+| Playwright E2E | CI `Run Browser E2E` on `23cfd94` | Passed | 18 passed, 0 failed, including both `platform-stage4c` cases. Artifact-upload **skipped** after E2E pass (allowed). Local QA 2/2 was not re-run by Manager |
+| Gitleaks | `secret-scan` Gitleaks 8.28.0 | Passed | Push job `96522735476`; PR job `96522747294` |
+| Dependency audit | CI `npm audit --omit=dev` inside Verify Frontend | Passed | |
+| actionlint | CI `Validate GitHub Actions workflow` | Passed | |
+
+## Remote CI
+
+- Workflow／Run ID (current Head `23cfd94`):
+  - Push：`32399091550` — `quality-and-compose` **SUCCESS** (job `96522735109`, 8m35s), `secret-scan` SUCCESS (job `96522735476`). https://github.com/poyinghuang/ai-commerce-marketing-platform/actions/runs/32399091550
+  - Pull Request：`32399095233` — `quality-and-compose` **SUCCESS** (job `96522747117`, 8m7s), `secret-scan` SUCCESS (job `96522747294`). https://github.com/poyinghuang/ai-commerce-marketing-platform/actions/runs/32399095233
+- Ancestry (not the cycle-3 close Head): `3c5573f` Push `32396528105` and PR `32396532360` already succeeded, including Playwright after QA-PW-03. This cycle is **not** closed on `3c5573f`
+- Head SHA matches：both current runs are `23cfd94232ce87fcaf22c13314f8e75e85912531`, matching local HEAD, `origin`, and PR `headRefOid`
+- `quality-and-compose`：Passed on Push and PR at `23cfd94`. Backend, Frontend verify, Compose config, stack start, Playwright, and Smoke all succeeded
+- `secret-scan`：Passed on both events at `23cfd94`
+- Required steps skipped：No required-quality skip. Playwright artifact upload skipped after E2E pass (allowed)
+- Warnings／annotations：Node.js 20 deprecation on Actions remains non-blocking
+
+## Cycle-2 finding disposition (inspected, not rubber-stamped)
+
+| ID | Cycle-3 status | Evidence |
+| --- | --- | --- |
+| QA-PW-03 | Closed | `3c5573f` uses `getByRole("alert").filter({ hasText: "no longer eligible" })`. `23cfd94` also filters the stale 412 banner. Exact-head Playwright 18/0 includes both 4C specs |
+| 4C-RT-002 | Closed | `GRAPH_TABLES` now includes `audit_logs`, `audit_log_changes`, `platform_metric_snapshots`, `platform_budget_reservations`, `platform_account_budget_days`. Order(2) SQL-finalizes already-claimed legacy `SUBMITTING` after an Ad Set version bump (legacy omits parent-version) and rolls back forged `ct_platform_ad_dispatch_result`. Order(3) SQL-finalizes legacy `RECONCILING` FOUND and `recoverStaleClaim` on SUBMITTING/RECONCILING with zero adapter calls. Residual NOTE: budget ledger tables are compared empty (no populated reservation/day rows) |
+| 4C-RT-003 | Closed | Parameterized claim races cover Product/Asset lifecycle, output checksum/preservation/status, and review decision; retry-claim repeats those six kinds; one reconciled commit race; unrelated `23514`/`23503`/`40001`/`40P01`; recovery-failure plus restart; concurrent recovery. Residual NOTE: direct finalization parameterization is 3/6 kinds; reconcile race is checksum-only; resume is not a barrier-hooked claim race; `40001`/`40P01` are hook-injected exceptions |
+| 4C-RT-004 | Closed | Isolated Tx A / claim / success-finalize / stale-recovery graphs with persisted change ordinals; throw-at-every-append for create (2), claim (2), finalize (3), recovery (2); enumerated zero-event preview/replay/stale/evidence/not-due paths. Residual NOTE: pause/resume success 3-event exact content and isolated reconcile-claim graph are not separate tests. R-4C-10 claim ordinal NOTE is unchanged |
+| 4C-RT-005 | Closed | MockMvc+persistence create outcomes: retryable rate-limit/unavailable, terminal validation/permission, malformed, ambiguous timeout, then FOUND reconcile after unknown. Pause/resume subset through MockMvc. Playwright now clicks pause, asserts weak `W/"2"`, stale 412 banner, resume evidence-invalid, due retry, unknown reconcile, and zero automatic action before confirm. Residual NOTE: Ad MockMvc does not parameterize `RECONCILE_NOT_FOUND` / `STILL_UNKNOWN` / `TERMINAL`; Playwright does not emit a malformed If-Match (UI uses the GET ETag; MockMvc already rejects malformed tokens including pause) |
+| R-4C-01 | Closed | Umbrella for 4C-RT-002–005. Those cycle-2 executable holes are closed on this Head |
+| 4C-RT-006 | Closed as blocker; residual NOTE | PR body still cites `fd7e19c` / 578 tests / unchecked Playwright. Conservative understatement, not a false Pass. Update the PR summary to this Head and CI run IDs |
+
+## Findings
+
+| ID | Severity | File／Evidence | Finding | Required fix／test |
+| --- | --- | --- | --- | --- |
+| — | — | — | None | — |
+
+若無 Finding，明確寫 `None`。不要刪除本節。 Findings that remain are Notes, not table blockers. None.
+
+Non-blocking notes:
+
+- Populated V13→V14 graph byte-compares budget ledger tables that the fixture never inserts; empty stays empty.
+- Direct finalization barriers omit `OUTPUT_PRESERVATION` / `OUTPUT_STATUS` / `REVIEW_DECISION`; reconcile barrier is asset-checksum only.
+- `claimRaceOnParentState` still increments Ad Set version, so it asserts `PLATFORM_STALE_VERSION` rather than a pure parent-state race (same NOTE as cycle 2).
+- Playwright/UI cannot reasonably mint a malformed If-Match; keep relying on MockMvc for those 400 vectors.
+- Ad MockMvc does not repeat inherited Stage 4A `RECONCILE_NOT_FOUND` / `STILL_UNKNOWN` / `TERMINAL` DTO rows.
+- PR #64 summary is stale versus `23cfd94`.
+- BFF allowlist still does not type-check missing required keys / wrong JSON types.
+
+## Known limitations
+
+- Stage 4C remains deterministic FAKE in LOCAL/TEST only. Credentials, real Provider, network, paid delivery, production, Auth/RBAC/Tenant, and Stage 4D stay forbidden.
+- PR #64 remains Draft. This cycle does not merge.
+- Full local `mvn -B test` was not executed by Manager; exact-head CI backend is the full-suite evidence.
+- Repository branch protection still has no automated Manager Gate; this manual Gate is authoritative.
+- Node.js 20 Action deprecation remains non-blocking.
+
+## Stage Gate decision
+
+- Decision：`APPROVE`
+- Decision rationale：Exact-head Push and Pull Request `quality-and-compose` and `secret-scan` succeeded on `23cfd94`, with no required-step skip other than Playwright artifact upload after an E2E pass. Independently, `git diff 7139b94..23cfd94` closes the remaining cycle-2 BLOCKING items QA-PW-03, 4C-RT-002, 4C-RT-003, 4C-RT-004, 4C-RT-005, and R-4C-01 with executable tests rather than claims. Residuals above are Notes, not unresolved required MAJOR. V14 stays additive inside the FAKE LOCAL/TEST boundary; `9d74abb` does not trigger escalation.
+- Required next action：Keep PR #64 Draft until a governed merge. Do not merge in this cycle. Do not start Stage 4D. After merge, verify post-merge `main` CI. Optionally refresh the PR summary to Head `23cfd94` and CI runs `32399091550` / `32399095233`.
+- Human approval required：`No`
+- Human approval reason／evidence：Escalation policy checked. No credential, Auth/RBAC/Tenant, production, spend, destructive migration, System of Record, breaking prior API, or critical security trigger. V14 is unchanged in this interval. Default human review remains No.
+
+## Approval record
+
+- Manager Review：Passed (cycle 3)
+- Manager Decision：APPROVE
+- Approved Commit：`23cfd94232ce87fcaf22c13314f8e75e85912531`
+- Approved CI Run：Push `32399091550` (job `96522735109`); Pull Request `32399095233` (job `96522747117`); secret-scan jobs `96522735476` / `96522747294`
+- Commands actually executed：`git status -sb`; `git rev-parse HEAD`; `git log --oneline --decorate -20`; `git diff --stat` / inspection of `7139b94..23cfd94`, `7139b94..3c5573f`, `3c5573f..9d74abb`, `3c5573f..23cfd94`; `git diff --check 7139b94..23cfd94`; `git diff --exit-code origin/main --` V1–V13 SQL; `git merge-base --is-ancestor` for `7139b94` and `9d74abb`; `gh pr view 64`; `gh run list` / `gh api` on runs `32399091550` and `32399095233` until completed SUCCESS
+- Merge allowed：Yes under governance after leaving Draft. **Not executed** in this cycle. Keep Draft
+- Next Stage allowed：No until merge and post-merge `main` CI. Stage 4D remains locked
+
