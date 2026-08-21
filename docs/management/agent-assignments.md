@@ -22,6 +22,7 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 | PR | [#65](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/65) (Draft) |
 | Base | `acb833d9622925fa185bf905aeac5bddf93f0d6e` (PR #64 squash merge) |
 | Stage 4C | Merged at `acb833d`; post-merge main CI Run `32504910043` passed |
+| Manager Decision | Cycle 1 `REQUEST_CHANGES` on `ad993cd`. Keep Draft. Cycle-2 after exact-new-head CI |
 | Stage 4D runtime | **Locked** until this specification `APPROVE` + merge + post-merge `main` CI |
 | Stage 4E / 05–07 | **Locked** |
 
@@ -29,9 +30,9 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 
 | Agent | Duty | Status |
 | --- | --- | --- |
-| Architecture | Author the FAKE read-only delivery/metrics specification | Draft complete; awaiting Manager Review |
+| Architecture | Close 4D-SPEC-001–006 contract lock-downs on this branch | Landed; awaiting cycle-2 CI |
+| Project Manager | Cycle 1 `REQUEST_CHANGES` on `ad993cd`. Cycle 2 after exact-new-head CI | Waiting |
 | Research | Confirm Stage 04 owner defaults (Taipei, 7/1 attribution, daily window, null-not-zero) are unchanged | Support |
-| Project Manager | Independent Manager Review of the 4D specification | Assigned |
 | Documentation | Keep 4C closeout and 4D gate headers aligned with actual merge/CI SHAs | In progress |
 | Backend / Frontend / QA / Review | Idle for 4D runtime until the specification merges | Idle |
 | Product Owner / AI Workflow | Idle. Do not open Dashboard or Decision Engine | Idle |
@@ -66,6 +67,6 @@ Escalate immediately; do not merge around them:
 
 ## Sequence after this assignment
 
-1. Independent Manager Review of the Stage 4D specification.
-2. Keep the 4D specification Draft until `APPROVE` and approval-record exact-head CI.
-3. Do not start 4D runtime, 4E, or 05–07 in this cycle.
+1. Cycle 1 records `REQUEST_CHANGES` on Head `ad993cd`.
+2. Keep PR #65 Draft. Do not merge. Do not start 4D runtime.
+3. After contract lock-downs, pass exact-new-head Push and Pull Request CI, then cycle-2 Manager Review.
