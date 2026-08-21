@@ -2,8 +2,8 @@
 
 ## Gate status
 
-- Status: Specification merged; runtime Manager Review Passed on Head `23cfd94232ce87fcaf22c13314f8e75e85912531`; Draft PR #64 not merged
-- Branch: `codex/stage-04c-ad-creative-publication-runtime`
+- Status: Runtime squash-merged; post-merge `main` CI passed; Stage 4D specification unlocked
+- Branch: `codex/stage-04c-ad-creative-publication-runtime` (merged)
 - Base: `c321dc0124375e13fd09785b0c827326e996207f`
 - Stage 4B prerequisite: Passed; PR #62 merged at `dcfb5e7dcb284bba824c6c81d91ad6ad8b3cd785`; post-merge main CI Run `32055963526` passed
 - Product specification: Repository-owner settings approved on 2026-08-18; specification PR #63 squash-merged at `c321dc0124375e13fd09785b0c827326e996207f`
@@ -11,10 +11,10 @@
 - Runtime implementation: Manager Review Passed (cycle 3) on `23cfd94232ce87fcaf22c13314f8e75e85912531`
 - Runtime Manager Decision: `APPROVE`
 - Approved runtime CI: Push `32399091550`; Pull Request `32399095233`
-- Merge: Not started (PR #64 remains Draft; cycle 3 does not merge)
-- Stage 4D: Locked until runtime merge and post-merge `main` CI
+- Merge: PR #64 squash-merged at `acb833d9622925fa185bf905aeac5bddf93f0d6e`
+- Stage 4D: Specification unlocked; runtime locked until 4D spec `APPROVE` and merge
 
-The approved specification contract is on `main`. Runtime implementation is Manager-approved on Draft PR #64 at `23cfd94232ce87fcaf22c13314f8e75e85912531` and is not merged. It remains inside the deterministic-FAKE LOCAL/TEST boundary and still authorizes no credential, network, real Provider, production, paid-delivery, activation, Auth/RBAC/Tenant, or Stage 4D change.
+The approved specification and runtime are on `main` at `acb833d9622925fa185bf905aeac5bddf93f0d6e`. The slice remains inside the deterministic-FAKE LOCAL/TEST boundary and still authorizes no credential, network, real Provider, production, paid-delivery, activation, Auth/RBAC/Tenant, or Stage 4D runtime change.
 
 ## Objective
 
@@ -445,7 +445,7 @@ The existing `/platforms/meta` page gains an Ad section only when the server-sid
 
 ## Stage gate
 
-Stage 4C specification gates are complete. Runtime Manager Review cycle 3 records `APPROVE` for Head `23cfd94232ce87fcaf22c13314f8e75e85912531`. Draft PR #64 is not merged in this cycle.
+Stage 4C specification and runtime gates are complete except post-merge `main` CI verification recorded on the Stage 4D specification.
 
 - [x] Repository owner explicitly approved the nine product decisions on 2026-08-18.
 - [x] Independent Manager Review records exactly `APPROVE` for reviewed content Head `c19f4d4d9e8366865c3d011fb54e672b19c3cbb6`.
@@ -453,6 +453,7 @@ Stage 4C specification gates are complete. Runtime Manager Review cycle 3 record
 - [x] Specification PR #63 squash-merged to `main` at `c321dc0124375e13fd09785b0c827326e996207f`; post-merge main CI Run `32204183690` passed.
 - [x] Runtime Manager Review cycle 3 records `APPROVE` for Head `23cfd94232ce87fcaf22c13314f8e75e85912531`.
 - [x] Exact-head Push CI `32399091550` and Pull Request CI `32399095233` passed `quality-and-compose` and `secret-scan`.
-- [ ] Runtime PR #64 merge and post-merge `main` CI.
+- [x] Runtime PR #64 squash-merged to `main` at `acb833d9622925fa185bf905aeac5bddf93f0d6e`.
+- [x] Post-merge `main` CI Run `32504910043`.
 
-Stage 4D remains locked until Stage 4C implementation merge and post-merge verification.
+Stage 4D specification may start after that post-merge verification. Stage 4D runtime stays locked until the 4D specification is approved and merged.
