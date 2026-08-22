@@ -2,14 +2,14 @@
 
 ## Gate status
 
-- Status: Specification cycle-1 `REQUEST_CHANGES` on `ad993cd`; contract lock-downs pending cycle-2; runtime locked
+- Status: Specification Manager Review Passed for content Head `8e0705f`; approval-record exact-head CI pending; runtime locked
 - Branch: `codex/stage-04d-delivery-metrics-specification`
 - Base: `acb833d9622925fa185bf905aeac5bddf93f0d6e` (PR #64 squash merge)
 - Stage 4C prerequisite: Passed; PR #64 squash-merged at `acb833d9622925fa185bf905aeac5bddf93f0d6e`; post-merge main CI Run `32504910043` passed
 - Product settings: Stage 04 owner defaults of 2026-08-15 remain authoritative (Asia/Taipei, `7d_click` / `1d_view`, daily snapshots, account currency, null means unknown)
-- Implementation: Blocked; not started; unlock only after this specification receives exact-head Manager `APPROVE`, merge, and post-merge `main` CI
-- Manager Decision: Cycle 1 `REQUEST_CHANGES` for reviewed content Head `ad993cda6e2e804323a2753a4ec3bb71dc077bb9`
-- Merge: Not started; PR #65 remains Draft
+- Implementation: Blocked; not started; unlock only after this specification merge and post-merge `main` CI
+- Manager Decision: Cycle 2 `APPROVE` for reviewed content Head `8e0705f44ca8d46ad92d521864c6d405f7a5cd26`
+- Merge: Not started; PR #65 remains Draft until the approval-record Head passes CI
 - Stage 4E / 05–07: Locked
 
 This document is the implementation contract for Stage 4D. It does not authorize credentials, real Meta Insights, a scheduler, paid delivery, production, Auth/RBAC/Tenant, Dashboard, or Decision Engine behavior.
@@ -450,7 +450,7 @@ The BFF adds only the six Backend paths above. It does not reuse `/api/platforms
 
 - [x] Stage 4C runtime PR #64 squash-merged at `acb833d9622925fa185bf905aeac5bddf93f0d6e`.
 - [x] Post-merge `main` CI Run `32504910043` passed `quality-and-compose` and `secret-scan`.
-- [ ] Independent Manager Review records exactly `APPROVE` for this specification Head.
+- [x] Independent Manager Review records exactly `APPROVE` for reviewed content Head `8e0705f44ca8d46ad92d521864c6d405f7a5cd26`.
 - [ ] The approval-record commit passed full exact-head Push and Pull Request CI.
 - [ ] Specification PR squash-merged; post-merge `main` CI passed.
 - [ ] Runtime implementation remains locked until those gates pass.

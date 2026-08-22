@@ -109,4 +109,68 @@ Architecture applied the required contract lock-downs on this branch after `ad99
 
 ## Approval record
 
-Not applicable. Decision is `REQUEST_CHANGES`. Merge allowed：No. Next Stage allowed：No.
+Not applicable for cycle 1. Decision is `REQUEST_CHANGES`. Merge allowed：No. Next Stage allowed：No.
+
+# Cycle 2
+
+## Review identity
+
+- Review date：2026-08-22
+- Reviewer：Independent Project Manager / Lead Reviewer / Stage Gate Owner
+- Head Commit：reviewed content `8e0705f44ca8d46ad92d521864c6d405f7a5cd26`
+- Interval reviewed：`ad993cd..8e0705f`
+
+## Status before cycle 2
+
+- Cycle 1：`REQUEST_CHANGES` on `ad993cd`
+- Specification lock-downs：Landed in `8e0705f` together with the cycle-1 report
+- Remote CI：Passed at exact `8e0705f`
+- Merge：Not started; PR #65 remains Draft
+
+## Cycle 2 verification
+
+| Verification | Command／Run | Result | Evidence／Notes |
+| --- | --- | --- | --- |
+| Interval diff | `git diff --stat ad993cd..8e0705f` | Passed | Three Markdown files only; no runtime/migration |
+| Diff check | `git diff --check ad993cd..8e0705f` | Passed | |
+| Finding 4D-SPEC-001 | Spec snapshot/persist + SUCCESS→CORRECTED→SUCCESS case | Closed | `23505` returns the matching fingerprint row; GET latest remains latest |
+| Finding 4D-SPEC-002 | `DeliveryReadCommand.currentDesiredState` | Closed | Adapter uses the command; SUCCESS-family fixtures never return `DELETED` |
+| Finding 4D-SPEC-003 | Compact fingerprint JSON keys/types | Closed | Golden hash is a runtime acceptance requirement |
+| Finding 4D-SPEC-004 | Canonical window SQL | Closed | V13 `platform_taipei_business_date(statement_timestamp())` |
+| Finding 4D-SPEC-005 | Empty POST contract | Closed | No `Content-Type`, empty body, no `If-Match` |
+| Finding 4D-SPEC-006 | Metrics persist vs entity | Closed | Never `UPDATE` Campaign/Ad Set/Ad |
+| Push CI | `32538799034` | Passed | Head `8e0705f`; `quality-and-compose` `96944535437`; `secret-scan` `96944535631` |
+| PR CI | `32538800215` | Passed | Same Head; `quality-and-compose` `96944537726`; `secret-scan` `96944537924` |
+
+Required steps skipped：only Playwright artifact upload after E2E pass. Node.js 20 deprecation annotation remains non-blocking.
+
+## Findings
+
+| ID | Severity | Status |
+| --- | --- | --- |
+| 4D-SPEC-001 | BLOCKING | Closed |
+| 4D-SPEC-002 | BLOCKING | Closed |
+| 4D-SPEC-003 | BLOCKING | Closed |
+| 4D-SPEC-004 | MAJOR | Closed |
+| 4D-SPEC-005 | MAJOR | Closed |
+| 4D-SPEC-006 | MAJOR | Closed |
+
+Remaining finding IDs：None.
+
+## Stage Gate decision
+
+- Decision：`APPROVE`
+- Decision rationale：Exact-head Push and Pull Request `quality-and-compose` and `secret-scan` succeeded on `8e0705f`. Independently, `git diff ad993cd..8e0705f` closes 4D-SPEC-001 through 4D-SPEC-006 with named SQL, command fields, compact fingerprint JSON, empty-POST rules, and non-latest duplicate replay. The PR remains documentation-only inside FAKE LOCAL/TEST. V15 stays additive indexes. Human Review Required remains No.
+- Required next action：This approval-record commit must pass complete exact-head Push and Pull Request CI. Then mark PR #65 Ready and squash-merge. Do not start 4D runtime until merge and post-merge `main` CI. Stage 4E stays locked.
+- Human approval required：`No`
+- Human approval reason／evidence：Escalation policy re-checked. No credential, Auth/RBAC/Tenant, production, spend, destructive migration, System of Record, breaking prior API, or critical security trigger.
+
+## Approval record
+
+- Manager Review：Passed (cycle 2)
+- Manager Decision：APPROVE
+- Approved Commit：`8e0705f44ca8d46ad92d521864c6d405f7a5cd26`
+- Approved CI Run：Push `32538799034` (job `96944535437`); Pull Request `32538800215` (job `96944537726`); secret-scan jobs `96944535631` / `96944537924`
+- Commands actually executed：`git fetch`; `git status -sb`; `git rev-parse HEAD`; `git log origin/main..HEAD`; `git diff --check origin/main...ad993cd` and `ad993cd..8e0705f`; `git diff --exit-code origin/main --` V1–V14 SQL; `gh pr view 65`; `gh run view` on `32506121991`, `32506124961`, `32504910043`, `32538799034`, `32538800215`; independent inspection of Stage 04/4A/4B/4C contracts against the 4D specification
+- Merge allowed：Yes under governance after this approval-record Head passes exact-head CI and the PR leaves Draft. **Not executed** in the cycle-2 review commit
+- Next Stage allowed：No until merge and post-merge `main` CI. Stage 4D runtime remains locked

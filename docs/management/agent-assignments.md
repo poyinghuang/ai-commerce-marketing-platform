@@ -22,7 +22,7 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 | PR | [#65](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/65) (Draft) |
 | Base | `acb833d9622925fa185bf905aeac5bddf93f0d6e` (PR #64 squash merge) |
 | Stage 4C | Merged at `acb833d`; post-merge main CI Run `32504910043` passed |
-| Manager Decision | Cycle 1 `REQUEST_CHANGES` on `ad993cd`. Keep Draft. Cycle-2 after exact-new-head CI |
+| Manager Decision | Cycle 2 `APPROVE` on content Head `8e0705f`. Approval-record CI pending before Ready/merge |
 | Stage 4D runtime | **Locked** until this specification `APPROVE` + merge + post-merge `main` CI |
 | Stage 4E / 05–07 | **Locked** |
 
@@ -30,8 +30,8 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 
 | Agent | Duty | Status |
 | --- | --- | --- |
-| Architecture | Close 4D-SPEC-001–006 contract lock-downs on this branch | Landed; awaiting cycle-2 CI |
-| Project Manager | Cycle 1 `REQUEST_CHANGES` on `ad993cd`. Cycle 2 after exact-new-head CI | Waiting |
+| Architecture | Close 4D-SPEC-001–006 contract lock-downs on this branch | Closed on `8e0705f` |
+| Project Manager | Cycle 2 `APPROVE` on `8e0705f`. Wait approval-record CI, then Ready/merge | In progress |
 | Research | Confirm Stage 04 owner defaults (Taipei, 7/1 attribution, daily window, null-not-zero) are unchanged | Support |
 | Documentation | Keep 4C closeout and 4D gate headers aligned with actual merge/CI SHAs | In progress |
 | Backend / Frontend / QA / Review | Idle for 4D runtime until the specification merges | Idle |
@@ -67,6 +67,6 @@ Escalate immediately; do not merge around them:
 
 ## Sequence after this assignment
 
-1. Cycle 1 records `REQUEST_CHANGES` on Head `ad993cd`.
-2. Keep PR #65 Draft. Do not merge. Do not start 4D runtime.
-3. After contract lock-downs, pass exact-new-head Push and Pull Request CI, then cycle-2 Manager Review.
+1. Cycle 2 records `APPROVE` for content Head `8e0705f` with Push `32538799034` and PR `32538800215`.
+2. The approval-record documentation commit must pass exact-head CI. Then Ready and squash-merge PR #65.
+3. Do not start 4D runtime until merge and post-merge `main` CI. Stage 4E stays locked.
