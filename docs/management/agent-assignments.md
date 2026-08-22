@@ -1,6 +1,6 @@
 # Agent assignments — remaining Stage 04–07
 
-Effective: 2026-08-20  
+Effective: 2026-08-21
 Authority: root `AGENTS.md`, `docs/agents/AGENTS.md`, `docs/management/manager-policy.md`, `docs/management/escalation-policy.md`
 
 The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evidence; they cannot `APPROVE`, merge, or unlock a later Stage. Human intervention is **off by default**. Use `ESCALATE_TO_HUMAN` only when an escalation-policy trigger is actually present.
@@ -10,34 +10,34 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 1. One Stage or Milestone at a time. No dependent work until merge and post-merge `main` CI pass.
 2. Manager Decision is only `APPROVE`, `REQUEST_CHANGES`, or `ESCALATE_TO_HUMAN`.
 3. Agents must not lower acceptance, skip required checks, or treat unrun tests as Passed.
-4. Flyway V1–V13 stay immutable. Stage 4C may add V14 only. Later slices add V15+.
+4. Flyway V1–V14 stay immutable. Stage 4D may add V15 indexes only. Later slices add V16+.
 5. Deterministic `FAKE` in `LOCAL`/`TEST` remains the default execution path. Real Meta, credentials, spend, production, Auth/RBAC/Tenant, and System of Record changes stay frozen until a recorded human decision.
 
 ## Current gate
 
 | Item | Value |
 | --- | --- |
-| Gate | Stage 4C Ad creative publication **runtime** |
-| Branch | `codex/stage-04c-ad-creative-publication-runtime` |
-| PR | [#64](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/64) (Draft) |
-| Head | `23cfd94232ce87fcaf22c13314f8e75e85912531` |
-| Manager Decision | Cycle 3 `APPROVE` on `23cfd94`. Push CI `32399091550`, PR CI `32399095233` |
-| Base | `c321dc0124375e13fd09785b0c827326e996207f` |
-| Stage 4D | **Locked** until 4C merge and post-merge `main` CI |
+| Gate | Stage 4D delivery and metrics **specification** |
+| Branch | `codex/stage-04d-delivery-metrics-specification` |
+| PR | [#65](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/65) (Draft) |
+| Base | `acb833d9622925fa185bf905aeac5bddf93f0d6e` (PR #64 squash merge) |
+| Stage 4C | Merged at `acb833d`; post-merge main CI Run `32504910043` passed |
+| Manager Decision | Cycle 2 `APPROVE` on content Head `8e0705f`. Approval-record CI pending before Ready/merge |
+| Stage 4D runtime | **Locked** until this specification `APPROVE` + merge + post-merge `main` CI |
+| Stage 4E / 05–07 | **Locked** |
 
-## Assigned now (Stage 4C runtime)
+## Assigned now (Stage 4D specification)
 
 | Agent | Duty | Status |
 | --- | --- | --- |
-| Project Manager | Cycle 3 complete: `APPROVE` on `23cfd94`. Do not merge in this cycle. Keep Draft. Do not start 4D | Standby for governed merge |
-| Review | R-4C-01 closed with 4C-RT-002–005 on `23cfd94` | Standby |
-| QA | Exact-head Playwright 18/0 on `23cfd94`; QA-PW-03 closed | Standby |
-| Backend | Cycle-2 BLOCKING 4C-RT-002–005 closed on `23cfd94` | Standby |
-| Frontend | QA-PW-03 locator and pause/stale-412/weak-ETag cases closed | Standby |
-| Documentation | Stage Gate headers updated after cycle-3 `APPROVE` | Standby |
-| Product Owner / Architecture / Research / AI Workflow | Idle for 4C runtime. Do not open 4D | Idle |
+| Architecture | Close 4D-SPEC-001–006 contract lock-downs on this branch | Closed on `8e0705f` |
+| Project Manager | Cycle 2 `APPROVE` on `8e0705f`. Wait approval-record CI, then Ready/merge | In progress |
+| Research | Confirm Stage 04 owner defaults (Taipei, 7/1 attribution, daily window, null-not-zero) are unchanged | Support |
+| Documentation | Keep 4C closeout and 4D gate headers aligned with actual merge/CI SHAs | In progress |
+| Backend / Frontend / QA / Review | Idle for 4D runtime until the specification merges | Idle |
+| Product Owner / AI Workflow | Idle. Do not open Dashboard or Decision Engine | Idle |
 
-Human review required for this 4C FAKE runtime: **No**, unless the Manager finds an escalation trigger.
+Human review required for this 4D FAKE specification: **No**, unless the Manager finds an escalation trigger (credentials, scheduler-as-production-pull, spend, Auth/RBAC/Tenant).
 
 ## Roster for later Stages
 
@@ -45,7 +45,6 @@ Do not start a later row until the previous row is merged and post-merge `main` 
 
 | Stage | Lead | Supporting agents | Human required | Unlock condition |
 | --- | --- | --- | --- | --- |
-| 4C runtime closeout | Project Manager | Backend, Frontend, QA, Docs | No, unless escalation | CI green + Manager `APPROVE` |
 | 4D spec | Architecture | Research, Project Manager | No for FAKE read-only metrics spec | 4C merged |
 | 4D runtime | Backend | Frontend, QA, Review, Project Manager | No for FAKE entity-level reads | 4D spec `APPROVE` + merge |
 | 4E deterministic acceptance | QA | Backend, Frontend, Project Manager | No | 4D merged |
@@ -68,7 +67,6 @@ Escalate immediately; do not merge around them:
 
 ## Sequence after this assignment
 
-1. Cycle 3 records `APPROVE` on Head `23cfd94` with exact-head Push `32399091550` and PR `32399095233`.
-2. Keep PR #64 Draft. Do not merge in this cycle. Do not start Stage 4D.
-3. After a governed merge, verify post-merge `main` CI.
-4. Only then may Architecture open Stage 4D specification. Stage 05–07 stay locked.
+1. Cycle 2 records `APPROVE` for content Head `8e0705f` with Push `32538799034` and PR `32538800215`.
+2. The approval-record documentation commit must pass exact-head CI. Then Ready and squash-merge PR #65.
+3. Do not start 4D runtime until merge and post-merge `main` CI. Stage 4E stays locked.
