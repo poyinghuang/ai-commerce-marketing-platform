@@ -23,3 +23,5 @@ platform:
     enabled: true
   stage4c:
     enabled: true
+  stage4d:
+    enabled: true

@@ -4,6 +4,8 @@ const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f
 const META_PATH = new RegExp(`^/api/platforms/meta/(?:campaigns(?:/preview|/${UUID}(?:/state-preview|/(?:pause|resume)|/ad-sets(?:/preview)?)?)?|ad-sets/${UUID}(?:/state-preview|/budget-preview|/budget|/(?:pause|resume)|/ads(?:/preview)?)?|ads/${UUID}(?:/state/preview|/(?:pause|resume))?)$`);
 const OP_PATH = new RegExp(`^/api/platform-operations/${UUID}(?:/(?:retry|reconcile))?$`);
 const AD_PATH = new RegExp(`^/api/platforms/meta/(?:ad-sets/${UUID}/ads(?:/preview)?|ads/${UUID}(?:/state/preview|/(?:pause|resume))?)$`);
+const ENTITY_PATH = new RegExp(`^/api/platform-entities/(?:CAMPAIGN|AD_SET|AD)/${UUID}/(?:delivery|delivery-sync(?:/preview)?|metrics|metrics-refresh(?:/preview)?)$`);
+const ASOF = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$/;
 const SAFE_REQUEST_ID = /^[A-Za-z0-9._:-]{1,128}$/;
 const REQUEST_LIMIT = 16 * 1024;
 const RESPONSE_LIMIT = 1024 * 1024;
@@ -18,8 +20,18 @@ export type PlatformOperationView = {
 export async function forwardStage4B(request: NextRequest, backendPath: string) {
   if (process.env.PLATFORM_STAGE4B_ENABLED !== "true") return error("PLATFORM_STAGE4B_DISABLED", "Platform management is unavailable", 404);
   if (AD_PATH.test(backendPath) && process.env.PLATFORM_STAGE4C_ENABLED !== "true") return error("PLATFORM_STAGE4C_DISABLED", "Platform management is unavailable", 404);
-  if ((!META_PATH.test(backendPath) && !OP_PATH.test(backendPath)) || request.nextUrl.search || request.nextUrl.hash) return error("PLATFORM_REQUEST_INVALID", "Platform request is invalid", 400);
-  const isEmpty = /\/(retry|reconcile)$/.test(backendPath);
+  if (ENTITY_PATH.test(backendPath) && process.env.PLATFORM_STAGE4D_ENABLED !== "true") return error("PLATFORM_STAGE4D_DISABLED", "Platform management is unavailable", 404);
+  const isEntity = ENTITY_PATH.test(backendPath);
+  const isMetricsGet = request.method === "GET" && isEntity && backendPath.endsWith("/metrics");
+  if ((!META_PATH.test(backendPath) && !OP_PATH.test(backendPath) && !isEntity) || request.nextUrl.hash) return error("PLATFORM_REQUEST_INVALID", "Platform request is invalid", 400);
+  if (!isMetricsGet && request.nextUrl.search) return error("PLATFORM_REQUEST_INVALID", "Platform request is invalid", 400);
+  if (isMetricsGet) {
+    const keys = [...request.nextUrl.searchParams.keys()];
+    if (keys.length > 1 || (keys.length === 1 && keys[0] !== "asOf") || (keys.length === 1 && !ASOF.test(request.nextUrl.searchParams.get("asOf") ?? ""))) {
+      return error("PLATFORM_REQUEST_INVALID", "Platform request is invalid", 400);
+    }
+  }
+  const isEmpty = /\/(retry|reconcile|delivery-sync(?:\/preview)?|metrics-refresh(?:\/preview)?)$/.test(backendPath);
   if (request.method === "POST") {
     const contentType=request.headers.get("content-type");
     if ((!isEmpty && contentType !== "application/json") || (isEmpty && contentType)) return error("PLATFORM_REQUEST_INVALID", "Platform request is invalid", 400);
@@ -32,7 +44,9 @@ export async function forwardStage4B(request: NextRequest, backendPath: string) 
   if(request.method==="POST"){try{body=await readBounded(request.body,REQUEST_LIMIT);}catch{return error("PAYLOAD_TOO_LARGE","Request body is too large",413);}if(isEmpty&&new TextDecoder().decode(body).trim())return error("PLATFORM_REQUEST_INVALID","Platform request is invalid",400);if(isEmpty||body.byteLength===0)body=undefined;}
   try{
     const timeout=AbortSignal.timeout(10_000);const signal=AbortSignal.any([request.signal,timeout]);
-    const response=await fetch(new URL(backendPath,origin),{method:request.method,headers,body,cache:"no-store",redirect:"manual",signal});
+    const upstream=new URL(backendPath,origin);
+    if(isMetricsGet){const asOf=request.nextUrl.searchParams.get("asOf");if(asOf)upstream.searchParams.set("asOf",asOf);}
+    const response=await fetch(upstream,{method:request.method,headers,body,cache:"no-store",redirect:"manual",signal});
     if(response.status>=300&&response.status<400)return error("BACKEND_BAD_GATEWAY","Backend is unavailable",502);
     const responseContentType=response.headers.get("content-type")?.split(";",1)[0].trim().toLowerCase();
     if(responseContentType!=="application/json")return error("BACKEND_BAD_GATEWAY","Backend is unavailable",502);
@@ -65,7 +79,9 @@ const SAFE_KEYS=new Set([
   "policy","reservation","kind","previousAmount","newAmount","reservedDelta","businessDate","batchReservedAfter",
   "accountDayReservedBefore","accountDayReservedAfter","accountDayRemainingAfter","businessZone","targetingProfileKey",
   "placementProfileKey","maxEntityAmount","maxBatchAmount","maxAccountDayAmount","code","message","requestId",
-  "timestamp","path","fieldErrors","field",
+  "timestamp","path","fieldErrors","field","syncEligible","refreshEligible","present","freshnessStatus",
+  "revisionNumber","fetchedAt","impressions","reach","clicks","conversions","spend","revenue","ctr","cpc","cpm",
+  "cpa","cvr","roas","windowStart","windowEnd","timezone","attributionClickDays","attributionViewDays",
 ]);
 
 function backendOrigin(){const value=process.env.BACKEND_INTERNAL_URL;if(!value)return null;try{const url=new URL(value);if(!["http:","https:"].includes(url.protocol)||url.username||url.password||url.search||url.hash)return null;url.pathname=url.pathname.replace(/\/*$/,"/");return url;}catch{return null;}}

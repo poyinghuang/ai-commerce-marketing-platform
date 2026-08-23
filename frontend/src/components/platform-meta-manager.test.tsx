@@ -96,6 +96,35 @@ describe("PlatformMetaManager",()=>{
   expect(pauses).toBe(1);
   expect(lastPauseIfMatch).toBe('W/"2"');
  });
+ it("loads delivery and metrics only after explicit GET and requires a second confirmation for refresh",async()=>{
+  const entity="11111111-1111-4111-8111-111111111111";
+  let posts=0;
+  const fetch=vi.fn().mockImplementation(async(input:RequestInfo|URL,init?:RequestInit)=>{
+    const url=String(input),method=init?.method??"GET";
+    if(method==="POST"){posts++;return response({syncEligible:true,refreshEligible:true,confirmable:true,warnings:["DETERMINISTIC_FAKE_ONLY","NO_REAL_PROVIDER_OR_SPEND","NULL_METRICS_MEAN_UNKNOWN"],entityType:"CAMPAIGN",entityUuid:entity,desiredState:"PAUSED",observedState:"PAUSED",present:true,freshnessStatus:"FRESH",windowStart:"2026-08-21T16:00:00Z",windowEnd:"2026-08-22T16:00:00Z",impressions:10000,spend:"25.000000",roas:"4.000000"});}
+    if(url.endsWith("/delivery"))return response({entityType:"CAMPAIGN",entityUuid:entity,desiredState:"PAUSED",observedState:"PAUSED",updatedAt:"2026-08-22T00:00:00Z",version:1});
+    if(url.includes("/metrics"))return response({entityType:"CAMPAIGN",entityUuid:entity,present:true,freshnessStatus:"FRESH",windowStart:"2026-08-21T16:00:00Z",windowEnd:"2026-08-22T16:00:00Z",impressions:10000,spend:"25.000000",roas:"4.000000",warnings:["DETERMINISTIC_FAKE_ONLY","NO_REAL_PROVIDER_OR_SPEND","NULL_METRICS_MEAN_UNKNOWN"]});
+    throw new Error(`unexpected ${method} ${url}`);
+  });
+  vi.stubGlobal("fetch",fetch);
+  render(<PlatformMetaManager/>);
+  expect(screen.queryByText("Load delivery and metrics")).not.toBeInTheDocument();
+  cleanup();
+  render(<PlatformMetaManager stage4d/>);
+  expect(posts).toBe(0);
+  expect(screen.getByText("Null metrics mean unknown",{exact:false})).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Platform entity UUID"),{target:{value:entity}});
+  fireEvent.click(screen.getByText("Load delivery and metrics"));
+  await screen.findByLabelText("Delivery status");
+  expect(posts).toBe(0);
+  fireEvent.click(screen.getByText("Preview metrics refresh"));
+  await screen.findByRole("dialog",{name:"Confirm metrics refresh"});
+  expect(posts).toBe(1);
+  fireEvent.click(screen.getByText("Confirm metrics refresh"));
+  await waitFor(()=>expect(posts).toBe(2));
+  const confirm=fetch.mock.calls.find(call=>String(call[0]).endsWith("/metrics-refresh")&&(call[1]?.method??"GET")==="POST");
+  expect(confirm?.[1]?.headers).toBeUndefined();
+ });
 });
 
 function response(body:unknown,status=200,headers:Record<string,string>={}){return new Response(JSON.stringify(body),{status,headers:{"content-type":"application/json",...headers}});}
