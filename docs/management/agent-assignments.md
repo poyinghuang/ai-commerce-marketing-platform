@@ -19,7 +19,7 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 | --- | --- |
 | Gate | Stage 4D delivery and metrics **runtime** |
 | Branch | `codex/stage-04d-delivery-metrics-runtime` |
-| PR | Draft pending after local verification |
+| PR | [#66](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/66) (Draft) |
 | Base | `aa90804` (PR #65 squash merge) |
 | Stage 4D spec | Merged at `aa90804`; post-merge main CI Run `32540462993` passed |
 | Stage 4C | Merged at `acb833d`; post-merge main CI Run `32504910043` passed |
@@ -68,6 +68,6 @@ Escalate immediately; do not merge around them:
 
 ## Sequence after this assignment
 
-1. Finish Stage 4D runtime on `codex/stage-04d-delivery-metrics-runtime`, pass local Backend/Frontend tests, and open a Draft PR.
+1. Draft PR [#66](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/66) is open on `codex/stage-04d-delivery-metrics-runtime`. Wait for exact-head Push and Pull Request CI.
 2. Exact-head Push and Pull Request `quality-and-compose` plus `secret-scan` must pass before Manager Review.
 3. Do not start Stage 4E until this runtime merges and post-merge `main` CI passes.

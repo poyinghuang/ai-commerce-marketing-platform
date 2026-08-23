@@ -6,7 +6,7 @@
 - Base: `aa90804` (PR #65 squash merge)
 - Scope: deterministic-FAKE LOCAL/TEST entity-level delivery GET, metrics GET/as-of, and explicit delivery-sync / metrics-refresh
 - Migration: `V15__add_platform_metric_as_of_indexes.sql`; V1–V14 unchanged
-- Status: Implementation complete locally; Draft PR and exact-head CI pending
+- Status: Draft PR [#66](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/66); exact-head CI pending
 - Manager Decision: Not started
 - Stage 4E / 05–07: Locked
 
@@ -38,6 +38,6 @@ Recorded before the Draft PR Head exists. Exact-head CI IDs will be added after 
 | `npm audit --omit=dev` | Passed — 0 vulnerabilities |
 | `docker compose config --quiet` | Passed |
 | Playwright / Compose cold health / Smoke / actionlint / Gitleaks | Not run locally; required on exact-head CI |
-| `git diff --check` | Pending on the commit worktree |
+| `git diff --check` | Passed on `c8d8fcb` |
 
 Stage 4E remains locked until Stage 4D runtime merge and post-merge `main` CI.
