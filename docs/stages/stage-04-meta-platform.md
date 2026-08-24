@@ -11,7 +11,7 @@
 - Migration: V12–V15 additive on `main`; V1–V15 must remain byte-for-byte unchanged during 4E
 - Latest closed slice: Stage 4D runtime PR #66 at `2c2ab07`; post-merge main CI Run `32744056926` passed
 - Human Review Required: Defaults approved on 2026-08-15; new approval remains mandatory before real credentials, spend, production access, or live delivery
-- Merge: 4A–4D merged; 4E runtime Draft PR in progress
+- Merge: 4A–4D merged; 4E runtime Draft PR [#68](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/68)
 - Stage 05: Locked until tag `stage-04-complete`
 
 ## Objective

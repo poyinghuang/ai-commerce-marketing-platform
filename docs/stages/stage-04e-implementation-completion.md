@@ -6,7 +6,7 @@
 - Base: `2c2ab07a77d02d8e2c1d2f4e70010430b0e74cfb` (PR #66 squash merge)
 - Scope: executable Stage 04 FAKE LOCAL/TEST acceptance for the eight parent themes; no new product API, flag, scheduler, or Flyway version
 - Specification: Draft PR [#67](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/67) (`docs/stages/stage-04e-deterministic-acceptance.md`); this runtime implements that contract
-- Status: Runtime Draft PR; exact-head CI pending
+- Status: Runtime Draft PR [#68](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/68); exact-head CI pending
 - Manager Decision: Not started
 - Tag `stage-04-complete`: Not created; optional Meta paused proof and Stage 05 stay locked
 

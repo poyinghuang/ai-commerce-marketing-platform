@@ -19,7 +19,7 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 | --- | --- |
 | Gate | Stage 4E deterministic acceptance **runtime** |
 | Branch | `codex/stage-04e-deterministic-acceptance-runtime` |
-| PR | Draft pending |
+| PR | [#68](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/68) (Draft) |
 | Base | `2c2ab07` (PR #66 squash merge) |
 | Stage 4E spec | Draft PR [#67](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/67); merge this runtime only after that specification is approved and merged |
 | Stage 4D runtime | Merged at `2c2ab07`; post-merge main CI Run `32744056926` passed |
@@ -68,6 +68,6 @@ Escalate immediately; do not merge around them:
 
 ## Sequence after this assignment
 
-1. Draft PR for this runtime is open on `codex/stage-04e-deterministic-acceptance-runtime`. Specification PR [#67](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/67) must merge first.
+1. Draft PR [#68](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/68) is open on `codex/stage-04e-deterministic-acceptance-runtime`. Specification PR [#67](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/67) must merge first.
 2. Exact-head Push and Pull Request `quality-and-compose` plus `secret-scan` must pass before Manager Review.
 3. Do not create tag `stage-04-complete` from this PR. Do not start optional Meta proof or Stage 05.
