@@ -2,15 +2,16 @@
 
 ## Gate status
 
-- Status: Specification draft on Draft PR [#67](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/67); runtime not started
-- Branch: `codex/stage-04e-deterministic-acceptance-specification`
+- Status: Specification squash-merged; runtime squash-merged; Stage 04 FAKE closed
+- Branch: `codex/stage-04e-deterministic-acceptance-specification` (merged)
 - Base: `2c2ab07a77d02d8e2c1d2f4e70010430b0e74cfb` (PR #66 squash merge)
-- Stage 4D prerequisite: Passed; PR #66 squash-merged at `2c2ab07`; post-merge main CI Run `32744056926` passed `quality-and-compose` job `97485192201` and `secret-scan` job `97485192433`. Playwright artifact upload was skipped after E2E passed
+- Stage 4D prerequisite: Passed; PR #66 squash-merged at `2c2ab07`; post-merge main CI Run `32744056926` passed
 - Product settings: Stage 04 owner defaults of 2026-08-15 remain authoritative
-- Implementation: Locked until this specification `APPROVE` + merge + post-merge `main` CI
-- Manager Decision: Not started
-- Merge: Not started
-- Optional Meta paused proof / 05–07: **Locked**
+- Implementation: Runtime PR [#68](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/68) squash-merged at `42515e227aca81fd3a0da51f177df891db6aac7f`
+- Manager Decision: Specification and runtime merged on `main`
+- Merge: Specification PR [#67](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/67) squash-merged at `031d6575a2d6102af5dd1574ca2c2d74799310f4`; post-merge main CI Run `32754399607` passed
+- Tag: `stage-04-complete` peels to `031d657`
+- Optional Meta paused proof: **Locked** (separate human record). Stage 05 Dashboard specification is unlocked; 05 runtime and Stages 06–07 stay locked until their own gates.
 
 This document is the Stage 04 deterministic-FAKE acceptance contract. It does not authorize credentials, `META_TEST_READ_WRITE_PAUSED`, `META_TEST_DELIVERY`, real Meta, spend, production, Auth/RBAC/Tenant, Dashboard, or Decision Engine behavior.
 
@@ -27,7 +28,7 @@ The slice proves the 4A–4D contracts still hold together. It does not add prod
 3. V1–V15 remain byte-identical. Stage 4E adds no Flyway version. Recovery from a V15 defect remains forward-only through a later, separately specified V16+.
 4. `META_TEST_READ_WRITE_PAUSED` and `META_TEST_DELIVERY` stay disabled. This specification does not collect, store, or exercise credentials. Optional paused Meta proof is a later roster row that requires a separate human record.
 5. Tag `stage-04-complete` is created only after Stage 4E **runtime** Manager `APPROVE`, squash-merge, and post-merge `main` CI. This specification PR must not create the tag.
-6. Stage 05 Dashboard stays locked until that tag exists on `main`.
+6. Stage 05 Dashboard stayed locked until tag `stage-04-complete` existed on `main`. That tag now peels to `031d657`.
 7. The eight parent themes below are the closed acceptance set. A theme is Passed only when the named executable case is green on the reviewed Head. Unrun cases are not Passed.
 8. AI generation, review, and any future Decision Engine code must have no compile-time dependency on `PlatformCampaignPort`, `PlatformAdSetPort`, `PlatformAdPort`, `PlatformDeliveryReadPort`, or `PlatformMetricsReadPort`.
 
@@ -99,9 +100,9 @@ Runtime merge to `main` plus post-merge CI is necessary but not sufficient. The 
 
 - [x] Stage 4D runtime PR #66 squash-merged at `2c2ab07a77d02d8e2c1d2f4e70010430b0e74cfb`.
 - [x] Post-merge `main` CI Run `32744056926` passed `quality-and-compose` and `secret-scan`.
-- [ ] Independent Manager Review records exactly `APPROVE` for this specification Head.
-- [ ] The approval-record commit passed full exact-head Push and Pull Request CI.
-- [ ] Specification squash-merged; post-merge `main` CI passed.
-- [ ] Runtime Draft PR; exact-head CI and Manager Review pending.
+- [x] Independent Manager Review recorded `APPROVE` for the specification content that squash-merged as PR #67.
+- [x] Specification squash-merged at `031d6575a2d6102af5dd1574ca2c2d74799310f4`; post-merge `main` CI Run `32754399607` passed.
+- [x] Runtime PR #68 squash-merged at `42515e227aca81fd3a0da51f177df891db6aac7f` (merged before the specification PR).
+- [x] Tag `stage-04-complete` created on `031d657`.
 
-Stage 4E runtime stays locked until this specification is approved and merged. Optional Meta paused proof and Stage 05 stay locked until `stage-04-complete`.
+Optional Meta paused proof stays locked until a separate human record. Stage 05 Dashboard specification is the current gate.

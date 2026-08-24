@@ -5,10 +5,10 @@
 - Branch: `codex/stage-04e-deterministic-acceptance-runtime`
 - Base: `2c2ab07a77d02d8e2c1d2f4e70010430b0e74cfb` (PR #66 squash merge)
 - Scope: executable Stage 04 FAKE LOCAL/TEST acceptance for the eight parent themes; no new product API, flag, scheduler, or Flyway version
-- Specification: Draft PR [#67](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/67) (`docs/stages/stage-04e-deterministic-acceptance.md`); this runtime implements that contract
-- Status: Runtime Draft PR [#68](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/68); exact-head CI pending
-- Manager Decision: Not started
-- Tag `stage-04-complete`: Not created; optional Meta paused proof and Stage 05 stay locked
+- Specification: PR [#67](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/67) squash-merged at `031d657` (`docs/stages/stage-04e-deterministic-acceptance.md`)
+- Status: Runtime PR [#68](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/68) squash-merged at `42515e2`; post-merge main CI Run `32754399607` passed
+- Manager Decision: Merged on `main`
+- Tag `stage-04-complete`: Created on `031d657`; optional Meta paused proof stays locked; Stage 05 specification is unlocked
 
 ## Implemented scope
 
@@ -32,7 +32,7 @@
 
 ## Boundaries preserved
 
-No credentials, `META_TEST_READ_WRITE_PAUSED`, `META_TEST_DELIVERY`, real Meta, spend, production, Auth/RBAC/Tenant, Dashboard, Decision Engine, V16, or `stage-04-complete` tag.
+No credentials, `META_TEST_READ_WRITE_PAUSED`, `META_TEST_DELIVERY`, real Meta, spend, production, Auth/RBAC/Tenant, Dashboard product APIs, Decision Engine, or V16. Tag `stage-04-complete` is a post-merge repository action, not part of the 4E runtime diff.
 
 ## Local verification
 

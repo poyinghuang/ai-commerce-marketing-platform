@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status: Runtime squash-merged; post-merge `main` CI passed; Stage 4E specification unlocked
+- Status: Runtime squash-merged; post-merge `main` CI passed; Stage 4E closed; Stage 05 specification unlocked
 - Branch: `codex/stage-04d-delivery-metrics-runtime` (merged)
 - Base: `aa90804` (PR #65 squash merge)
 - Stage 4C prerequisite: Passed; PR #64 squash-merged at `acb833d9622925fa185bf905aeac5bddf93f0d6e`; post-merge main CI Run `32504910043` passed
@@ -10,7 +10,7 @@
 - Specification Manager Decision: Cycle 2 `APPROVE` for specification content Head `8e0705f44ca8d46ad92d521864c6d405f7a5cd26`
 - Merge: Specification PR #65 squash-merged at `aa90804`; runtime PR #66 squash-merged at `2c2ab07a77d02d8e2c1d2f4e70010430b0e74cfb`
 - Post-merge runtime CI: Run `32744056926` passed `quality-and-compose` and `secret-scan`
-- Stage 4E: Specification unlocked; runtime locked until the 4E specification is approved and merged
+- Stage 4E: Specification PR #67 at `031d657`; runtime PR #68 at `42515e2`; tag `stage-04-complete`
 
 This document is the implementation contract for Stage 4D. It does not authorize credentials, real Meta Insights, a scheduler, paid delivery, production, Auth/RBAC/Tenant, Dashboard, or Decision Engine behavior.
 
@@ -455,4 +455,4 @@ The BFF adds only the six Backend paths above. It does not reuse `/api/platforms
 - [x] Specification PR #65 squash-merged at `aa90804`; post-merge `main` CI Run `32540462993` passed.
 - [x] Runtime PR #66 squash-merged at `2c2ab07a77d02d8e2c1d2f4e70010430b0e74cfb`; post-merge main CI Run `32744056926` passed.
 
-Stage 4E specification may start after that post-merge verification. Stage 4E runtime stays locked until the 4E specification is approved and merged.
+Stage 4E FAKE is closed. Stage 05 Dashboard specification is the current gate.
