@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { forwardStage4B } from "./platform-stage4b";
 
-afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();vi.restoreAllMocks();delete process.env.PLATFORM_STAGE4B_ENABLED;delete process.env.PLATFORM_STAGE4C_ENABLED;delete process.env.BACKEND_INTERNAL_URL;});
+afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();vi.restoreAllMocks();delete process.env.PLATFORM_STAGE4B_ENABLED;delete process.env.PLATFORM_STAGE4C_ENABLED;delete process.env.PLATFORM_STAGE4D_ENABLED;delete process.env.BACKEND_INTERNAL_URL;});
 describe("Stage 4B fail-closed proxy",()=>{
  it("returns a local 404 while disabled without contacting Backend",async()=>{const fetch=vi.fn();vi.stubGlobal("fetch",fetch);const result=await forwardStage4B(new NextRequest("http://local/api/platforms/meta/campaigns/preview",{method:"POST",headers:{"content-type":"application/json"},body:"{}"}),"/api/platforms/meta/campaigns/preview");expect(result.status).toBe(404);expect(fetch).not.toHaveBeenCalled();});
  it("forwards only the fixed path and safe headers",async()=>{process.env.PLATFORM_STAGE4B_ENABLED="true";process.env.BACKEND_INTERNAL_URL="http://backend:8080";const fetch=vi.fn().mockResolvedValue(jsonResponse('{"status":"SUCCEEDED"}',202,{ETag:'W/"2"',Location:"/api/platform-operations/a"}));vi.stubGlobal("fetch",fetch);const request=new NextRequest("http://local/api/platforms/meta/campaigns",{method:"POST",headers:{"content-type":"application/json","x-request-id":"safe-1",authorization:"secret"},body:'{"clientRequestUuid":"x"}'});const result=await forwardStage4B(request,"/api/platforms/meta/campaigns");expect(result.status).toBe(202);const init=fetch.mock.calls[0][1];expect(init.headers.get("Authorization")).toBeNull();expect(init.headers.get("X-Request-ID")).toBe("safe-1");expect(init.redirect).toBe("manual");});
@@ -21,6 +21,32 @@ describe("Stage 4B fail-closed proxy",()=>{
   const preview=await forwardStage4B(new NextRequest(`http://local/api/platforms/meta/ad-sets/${id}/ads/preview`,{method:"POST",headers:{"content-type":"application/json"},body:"{}"}),`/api/platforms/meta/ad-sets/${id}/ads/preview`);
   expect(preview.status).toBe(200);
   expect(await preview.json()).toEqual({platformAdUuid:id,desiredState:"PAUSED",creativeMappingKey:"APPROVED_IMAGE_ASSET_V1",evidenceEligible:true});
+ });
+ it("404s entity routes unless Stage 4D is enabled and forwards empty POST and asOf when it is",async()=>{
+  const id="11111111-1111-4111-8111-111111111111";
+  process.env.PLATFORM_STAGE4B_ENABLED="true";process.env.BACKEND_INTERNAL_URL="http://backend:8080";
+  const fetch=vi.fn();vi.stubGlobal("fetch",fetch);
+  const disabled=await forwardStage4B(new NextRequest(`http://local/api/platform-entities/CAMPAIGN/${id}/delivery`),`/api/platform-entities/CAMPAIGN/${id}/delivery`);
+  expect(disabled.status).toBe(404);expect(fetch).not.toHaveBeenCalled();
+  process.env.PLATFORM_STAGE4D_ENABLED="true";
+  const metrics='{"entityType":"CAMPAIGN","entityUuid":"'+id+'","present":true,"freshnessStatus":"FRESH","impressions":10000,"spend":"25.000000","warnings":["DETERMINISTIC_FAKE_ONLY","NO_REAL_PROVIDER_OR_SPEND","NULL_METRICS_MEAN_UNKNOWN"]}';
+  vi.stubGlobal("fetch",vi.fn().mockImplementation((url:URL|string)=>{
+    const href=String(url);
+    if(href.includes("asOf="))return jsonResponse(metrics);
+    return jsonResponse('{"syncEligible":true,"refreshEligible":true,"confirmable":true,"warnings":["DETERMINISTIC_FAKE_ONLY","NO_REAL_PROVIDER_OR_SPEND","NULL_METRICS_MEAN_UNKNOWN"]}');
+  }));
+  const delivery=await forwardStage4B(new NextRequest(`http://local/api/platform-entities/CAMPAIGN/${id}/delivery`),`/api/platform-entities/CAMPAIGN/${id}/delivery`);
+  expect(delivery.status).toBe(200);
+  const preview=await forwardStage4B(new NextRequest(`http://local/api/platform-entities/CAMPAIGN/${id}/metrics-refresh/preview`,{method:"POST"}),`/api/platform-entities/CAMPAIGN/${id}/metrics-refresh/preview`);
+  expect(preview.status).toBe(200);
+  expect((await preview.json()).refreshEligible).toBe(true);
+  const typed=await forwardStage4B(new NextRequest(`http://local/api/platform-entities/CAMPAIGN/${id}/metrics-refresh`,{method:"POST",headers:{"content-type":"application/json"}}),`/api/platform-entities/CAMPAIGN/${id}/metrics-refresh`);
+  expect(typed.status).toBe(400);
+  const asOf=await forwardStage4B(new NextRequest(`http://local/api/platform-entities/CAMPAIGN/${id}/metrics?asOf=2026-08-21T16:00:00Z`),`/api/platform-entities/CAMPAIGN/${id}/metrics`);
+  expect(asOf.status).toBe(200);
+  expect((await asOf.json()).spend).toBe("25.000000");
+  const query=await forwardStage4B(new NextRequest(`http://local/api/platform-entities/CAMPAIGN/${id}/delivery?cursor=1`),`/api/platform-entities/CAMPAIGN/${id}/delivery`);
+  expect(query.status).toBe(400);
  });
  it("rejects query strings and oversized bodies locally",async()=>{process.env.PLATFORM_STAGE4B_ENABLED="true";process.env.BACKEND_INTERNAL_URL="http://backend:8080";const query=await forwardStage4B(new NextRequest("http://local/api/platforms/meta/campaigns?account=forbidden"),"/api/platforms/meta/campaigns");expect(query.status).toBe(400);const large=await forwardStage4B(new NextRequest("http://local/api/platforms/meta/campaigns",{method:"POST",headers:{"content-type":"application/json"},body:"x".repeat(16385)}),"/api/platforms/meta/campaigns");expect(large.status).toBe(413);});
  it("fails closed for redirect, empty, invalid, forbidden, and oversized Backend responses",async()=>{process.env.PLATFORM_STAGE4B_ENABLED="true";process.env.BACKEND_INTERNAL_URL="http://backend:8080";const request=new NextRequest("http://local/api/platforms/meta/campaigns/00000000-0000-4000-8000-000000000001");for(const response of [new Response(null,{status:302}),jsonResponse(""),jsonResponse("not-json"),jsonResponse('{"externalId":"secret"}'),jsonResponse(JSON.stringify({value:"x".repeat(1024*1024)}))]){vi.stubGlobal("fetch",vi.fn().mockResolvedValue(response));const result=await forwardStage4B(request,"/api/platforms/meta/campaigns/00000000-0000-4000-8000-000000000001");expect(result.status).toBe(502);}});

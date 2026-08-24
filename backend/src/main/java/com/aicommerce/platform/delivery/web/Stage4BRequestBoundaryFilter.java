@@ -41,16 +41,19 @@ final class Stage4BRequestBoundaryFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path=request.getRequestURI();
-        return !(path.startsWith("/api/platforms/meta/") || path.startsWith("/api/platform-operations/"));
+        return !(path.startsWith("/api/platforms/meta/") || path.startsWith("/api/platform-operations/")
+                || path.startsWith("/api/platform-entities/"));
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,HttpServletResponse response,FilterChain chain)
             throws ServletException,IOException {
-        if(request.getQueryString()!=null){reject(response,request,"PLATFORM_REQUEST_INVALID",400,"Platform request is invalid","query");return;}
-        String path=request.getRequestURI();Matcher pathUuid=UUID_TOKEN.matcher(path);while(pathUuid.find())if(!pathUuid.group().equals(pathUuid.group().toLowerCase(Locale.ROOT))){reject(response,request,"PLATFORM_REQUEST_INVALID",400,"Platform request is invalid","path");return;}boolean mutationBody="POST".equals(request.getMethod())&&!path.endsWith("/retry")&&!path.endsWith("/reconcile");
+        String path=request.getRequestURI();boolean metricsGet="GET".equals(request.getMethod())&&path.endsWith("/metrics")&&path.startsWith("/api/platform-entities/");
+        if(request.getQueryString()!=null&&!metricsGet){reject(response,request,"PLATFORM_REQUEST_INVALID",400,"Platform request is invalid","query");return;}
+        if(metricsGet&&request.getQueryString()!=null&&!request.getQueryString().matches("asOf=[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z")){reject(response,request,"PLATFORM_REQUEST_INVALID",400,"Platform request is invalid","query");return;}
+        Matcher pathUuid=UUID_TOKEN.matcher(path);while(pathUuid.find())if(!pathUuid.group().equals(pathUuid.group().toLowerCase(Locale.ROOT))){reject(response,request,"PLATFORM_REQUEST_INVALID",400,"Platform request is invalid","path");return;}boolean emptyPost=path.endsWith("/retry")||path.endsWith("/reconcile")||path.endsWith("/delivery-sync")||path.endsWith("/delivery-sync/preview")||path.endsWith("/metrics-refresh")||path.endsWith("/metrics-refresh/preview");boolean mutationBody="POST".equals(request.getMethod())&&!emptyPost;
         String contentType=request.getContentType();
-        if((mutationBody&&!MediaType.APPLICATION_JSON_VALUE.equals(contentType))||(!mutationBody&&contentType!=null)){reject(response,request,"PLATFORM_REQUEST_INVALID",400,"Platform request is invalid","body");return;}
+        if((mutationBody&&!MediaType.APPLICATION_JSON_VALUE.equals(contentType))||(emptyPost&&contentType!=null)){reject(response,request,"PLATFORM_REQUEST_INVALID",400,"Platform request is invalid","body");return;}
         byte[] body=request.getInputStream().readNBytes(MAX_REQUEST_BYTES+1);
         if(body.length>MAX_REQUEST_BYTES){reject(response,request,"PAYLOAD_TOO_LARGE",413,"Request body is too large",null);return;}
         if(!mutationBody&&!new String(body,StandardCharsets.UTF_8).isBlank()){reject(response,request,"PLATFORM_REQUEST_INVALID",400,"Platform request is invalid","body");return;}
