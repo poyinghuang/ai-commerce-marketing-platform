@@ -1,6 +1,6 @@
-# Agent assignments — remaining Stage 04–07
+# Agent assignments — remaining Stage 05–07
 
-Effective: 2026-08-24
+Effective: 2026-08-25
 Authority: root `AGENTS.md`, `docs/agents/AGENTS.md`, `docs/management/manager-policy.md`, `docs/management/escalation-policy.md`
 
 The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evidence; they cannot `APPROVE`, merge, or unlock a later Stage. Human intervention is **off by default**. Use `ESCALATE_TO_HUMAN` only when an escalation-policy trigger is actually present.
@@ -10,35 +10,34 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 1. One Stage or Milestone at a time. No dependent work until merge and post-merge `main` CI pass.
 2. Manager Decision is only `APPROVE`, `REQUEST_CHANGES`, or `ESCALATE_TO_HUMAN`.
 3. Agents must not lower acceptance, skip required checks, or treat unrun tests as Passed.
-4. Flyway V1–V15 stay immutable. Stage 4E adds no migration. Later slices add V16+.
+4. Flyway V1–V15 stay immutable. Stage 05 adds no migration. Later slices add V16+.
 5. Deterministic `FAKE` in `LOCAL`/`TEST` remains the default execution path. Real Meta, credentials, spend, production, Auth/RBAC/Tenant, and System of Record changes stay frozen until a recorded human decision.
 
 ## Current gate
 
 | Item | Value |
 | --- | --- |
-| Gate | Stage 4E deterministic acceptance **runtime** |
-| Branch | `codex/stage-04e-deterministic-acceptance-runtime` |
-| PR | [#68](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/68) (Draft) |
-| Base | `2c2ab07` (PR #66 squash merge) |
-| Stage 4E spec | Draft PR [#67](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/67); merge this runtime only after that specification is approved and merged |
-| Stage 4D runtime | Merged at `2c2ab07`; post-merge main CI Run `32744056926` passed |
-| Manager Decision | Pending runtime review |
-| Optional Meta proof / 05–07 | **Locked** |
+| Gate | Stage 05 Dashboard **specification** |
+| Branch | `codex/stage-05-dashboard-specification` |
+| PR | Draft (this specification) |
+| Base | `031d657` (PR #67 squash merge; tag `stage-04-complete`) |
+| Stage 04 | Closed FAKE 4A–4E; post-merge main CI Run `32754399607` passed |
+| Manager Decision | Pending specification review |
+| Runtime / Stage 06 / optional Meta proof | **Locked** until this specification `APPROVE` + merge + post-merge `main` CI |
 
-## Assigned now (Stage 4E runtime)
+## Assigned now (Stage 05 specification)
 
 | Agent | Duty | Status |
 | --- | --- | --- |
-| QA | Named eight-theme suite, AI write-path proof, Compose-backed zero auto-POST | In progress |
-| Backend / Frontend | Support tests only; no product `src/main` change | Support |
-| Documentation | Runtime completion report and gate headers | In progress |
+| Architecture / Documentation | Dashboard contract over existing reads; lock AI 建議 = Stage 03 review | In progress |
+| Frontend | Idle for runtime until this specification merges | Idle |
+| Backend | Idle for runtime until this specification merges | Idle |
+| QA | Idle until runtime; named GET/KPI/zero-POST cases are in the spec | Idle |
 | Project Manager | Idle until Draft PR + exact-head CI | Idle |
 | Review | Idle until Manager Review is requested | Idle |
-| Backend / Frontend | Idle for 4E runtime until this specification merges | Idle |
-| Product Owner / AI Workflow | Idle. Do not open Dashboard or Decision Engine | Idle |
+| Product Owner / AI Workflow | Idle. Do not open Decision Engine | Idle |
 
-Human review required for this 4E FAKE runtime: **No**, unless the Manager finds an escalation trigger (credentials, Meta smoke, spend, Auth/RBAC/Tenant).
+Human review required for this FAKE Dashboard specification: **No**, unless the Manager finds an escalation trigger (credentials, Meta smoke, spend, Auth/RBAC/Tenant, Decision Engine auto-execute, V16).
 
 ## Roster for later Stages
 
@@ -46,12 +45,9 @@ Do not start a later row until the previous row is merged and post-merge `main` 
 
 | Stage | Lead | Supporting agents | Human required | Unlock condition |
 | --- | --- | --- | --- | --- |
-| 4D spec | Architecture | Research, Project Manager | No for FAKE read-only metrics spec | 4C merged |
-| 4D runtime | Backend | Frontend, QA, Review, Project Manager | No for FAKE entity-level reads | 4D spec `APPROVE` + merge |
-| 4E spec | QA | Architecture, Documentation, Project Manager | No for FAKE acceptance spec | 4D merged + post-merge CI |
-| 4E runtime | QA | Backend, Frontend, Project Manager | No | 4E spec `APPROVE` + merge |
+| 05 Dashboard spec | Architecture | Frontend, Documentation, Project Manager | No for ops UI over existing reads | Stage 04 complete (`stage-04-complete`) |
+| 05 Dashboard runtime | Frontend | Backend, QA, Review, Project Manager | No for ops UI over existing reads | 05 spec `APPROVE` + merge |
 | 4E optional Meta paused proof | Research + Project Manager | Backend, QA | **Yes** — credentials, test-account access | Separate human record; `META_TEST_DELIVERY` stays disabled |
-| 05 Dashboard | Frontend | Backend, QA, Project Manager | No for ops UI over existing reads | Stage 04 complete (`stage-04-complete`) |
 | 06 Decision Engine | AI Workflow | Architecture, Backend, Frontend, QA, Project Manager | No for suggestion-only; **Yes** if any auto-execute path appears | Stage 05 complete |
 | 07 Expansion | Architecture | Research, Backend, Project Manager | **Yes** before a second live ads platform or paid provider | Stage 06 complete |
 
@@ -69,6 +65,6 @@ Escalate immediately; do not merge around them:
 
 ## Sequence after this assignment
 
-1. Draft PR [#68](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/68) is open on `codex/stage-04e-deterministic-acceptance-runtime`. Specification PR [#67](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/67) must merge first.
+1. Draft the Stage 05 specification PR on `codex/stage-05-dashboard-specification`.
 2. Exact-head Push and Pull Request `quality-and-compose` plus `secret-scan` must pass before Manager Review.
-3. Do not create tag `stage-04-complete` from this PR. Do not start optional Meta proof or Stage 05.
+3. Do not start Dashboard runtime, optional Meta proof, or Stage 06 from this PR.

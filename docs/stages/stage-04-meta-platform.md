@@ -2,17 +2,17 @@
 
 ## Gate status
 
-- Status: 4A–4D FAKE LOCAL/TEST slices are on `main`; Stage 4E deterministic-acceptance runtime is the current implementation gate
-- Branch: `codex/stage-04e-deterministic-acceptance-runtime`
-- Base Commit: `2c2ab07a77d02d8e2c1d2f4e70010430b0e74cfb` (PR #66 squash merge)
+- Status: Stage 04 FAKE LOCAL/TEST closed on `main`; annotated tag `stage-04-complete`
+- Branch: merged (4E runtime `codex/stage-04e-deterministic-acceptance-runtime`; 4E spec `codex/stage-04e-deterministic-acceptance-specification`)
+- Base Commit: `031d6575a2d6102af5dd1574ca2c2d74799310f4` (PR #67 squash merge)
 - Stage 03 prerequisite: Passed — tag `stage-03-complete` at `4eaddaff95c0d3ce9739c2ca2628908a41b69c31`
-- Specification: Human-approved on 2026-08-15; independent Manager Review passed on 2026-08-16; 4E specification is Draft PR [#67](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/67)
-- Implementation: 4A–4D merged; 4E runtime in progress; merge only after the 4E specification is approved and merged
-- Migration: V12–V15 additive on `main`; V1–V15 must remain byte-for-byte unchanged during 4E
-- Latest closed slice: Stage 4D runtime PR #66 at `2c2ab07`; post-merge main CI Run `32744056926` passed
+- Specification: Human-approved on 2026-08-15; independent Manager Review passed on 2026-08-16; 4E specification squash-merged as PR [#67](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/67)
+- Implementation: 4A–4E merged
+- Migration: V12–V15 additive on `main`; V1–V15 must remain byte-for-byte unchanged
+- Latest closed slice: Stage 4E specification PR #67 at `031d657`; 4E runtime PR #68 at `42515e2`; post-merge main CI Run `32754399607` passed
 - Human Review Required: Defaults approved on 2026-08-15; new approval remains mandatory before real credentials, spend, production access, or live delivery
-- Merge: 4A–4D merged; 4E runtime Draft PR [#68](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/68)
-- Stage 05: Locked until tag `stage-04-complete`
+- Merge: 4A–4E merged; tag `stage-04-complete` peels to `031d657`
+- Stage 05: Unlocked — Dashboard specification is the current gate; runtime locked until that specification `APPROVE` + merge
 
 ## Objective
 
