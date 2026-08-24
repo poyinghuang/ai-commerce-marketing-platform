@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status: Specification draft; runtime not started
+- Status: Specification draft on Draft PR [#67](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/67); runtime not started
 - Branch: `codex/stage-04e-deterministic-acceptance-specification`
 - Base: `2c2ab07a77d02d8e2c1d2f4e70010430b0e74cfb` (PR #66 squash merge)
 - Stage 4D prerequisite: Passed; PR #66 squash-merged at `2c2ab07`; post-merge main CI Run `32744056926` passed `quality-and-compose` job `97485192201` and `secret-scan` job `97485192433`. Playwright artifact upload was skipped after E2E passed
