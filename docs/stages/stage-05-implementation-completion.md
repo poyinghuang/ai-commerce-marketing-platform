@@ -6,7 +6,7 @@
 - Base: `3bbbc692393a2663fa2d5cbc04feddb11ce27c47` (PR #69 squash merge)
 - Scope: FAKE LOCAL/TEST ops workbench over existing PostgreSQL reads and Stage 03D review routes; no new mutation API, scheduler, or Flyway version
 - Specification: PR [#69](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/69) squash-merged at `3bbbc69` (`docs/stages/stage-05-dashboard.md`); post-merge main CI Run `32759493087` passed
-- Status: Runtime Draft PR pending
+- Status: Runtime Draft PR [#70](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/70)
 - Manager Decision: Not started for runtime
 
 ## Implemented scope

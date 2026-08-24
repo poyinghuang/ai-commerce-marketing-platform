@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status: Specification squash-merged; runtime in progress on `codex/stage-05-dashboard-runtime`
+- Status: Specification squash-merged; runtime Draft PR [#70](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/70)
 - Specification: PR [#69](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/69) squash-merged at `3bbbc692393a2663fa2d5cbc04feddb11ce27c47`
 - Post-merge `main` CI: Run `32759493087` passed `quality-and-compose` and `secret-scan`
 - Runtime branch: `codex/stage-05-dashboard-runtime`
@@ -362,6 +362,6 @@ Parent stub mapped to executable proof:
 - [x] Independent Manager Review recorded `APPROVE` for the specification Head.
 - [x] The specification Head passed full exact-head Push and Pull Request CI.
 - [x] Specification squash-merged as PR [#69](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/69) at `3bbbc69`; post-merge `main` CI Run `32759493087` passed.
-- [ ] Runtime Draft PR; exact-head CI and Manager Review pending.
+- [ ] Runtime Draft PR [#70](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/70); exact-head CI and Manager Review pending.
 
 Stage 05 runtime is unlocked. Stage 06 and optional Meta paused proof stay locked until Stage 05 runtime is approved, merged, and post-merge `main` CI has passed (Meta proof still needs its own human record).
