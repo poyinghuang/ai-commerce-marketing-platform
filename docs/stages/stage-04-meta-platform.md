@@ -2,20 +2,17 @@
 
 ## Gate status
 
-- Status: Specification Manager Review approved for reviewed Head; approval-record exact-head CI pending; implementation not started
-- Branch: `codex/stage-04-meta-ads-specification`
-- Base Commit: `e01f32bcea099c234444a28a880ed5a1c0c9f04c`
+- Status: 4A–4D FAKE LOCAL/TEST slices are on `main`; Stage 4E deterministic-acceptance specification is the current gate
+- Branch: `codex/stage-04e-deterministic-acceptance-specification`
+- Base Commit: `2c2ab07a77d02d8e2c1d2f4e70010430b0e74cfb` (PR #66 squash merge)
 - Stage 03 prerequisite: Passed — tag `stage-03-complete` at `4eaddaff95c0d3ce9739c2ca2628908a41b69c31`
 - Specification: Human-approved on 2026-08-15; independent Manager Review passed on 2026-08-16
-- Implementation: Not started
-- Migration: Not started; V1–V11 must remain byte-for-byte unchanged
-- Local Verification: Passed — worktree Gitleaks and `git diff --check`
-- Remote CI: Passed for reviewed Head — Push Run `31899070398`; PR Run `31899071983`
-- Manager Review: Passed for reviewed Head `3faa114301dc097149d2e33849e8450595c48a66`; approval-record exact-head confirmation pending
-- Manager Decision: APPROVE
+- Implementation: 4A–4D merged; 4E runtime locked until the 4E specification is approved and merged
+- Migration: V12–V15 additive on `main`; V1–V15 must remain byte-for-byte unchanged during 4E
+- Latest closed slice: Stage 4D runtime PR #66 at `2c2ab07`; post-merge main CI Run `32744056926` passed
 - Human Review Required: Defaults approved on 2026-08-15; new approval remains mandatory before real credentials, spend, production access, or live delivery
-- Merge: Pending approval-record exact-head CI and final exact-head confirmation
-- Stage 05: Locked
+- Merge: 4A–4D merged; 4E specification in progress on this branch
+- Stage 05: Locked until tag `stage-04-complete`
 
 ## Objective
 

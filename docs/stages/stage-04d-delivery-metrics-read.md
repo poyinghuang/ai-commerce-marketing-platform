@@ -2,15 +2,15 @@
 
 ## Gate status
 
-- Status: Runtime implementation in progress on `codex/stage-04d-delivery-metrics-runtime`
-- Branch: `codex/stage-04d-delivery-metrics-runtime`
+- Status: Runtime squash-merged; post-merge `main` CI passed; Stage 4E specification unlocked
+- Branch: `codex/stage-04d-delivery-metrics-runtime` (merged)
 - Base: `aa90804` (PR #65 squash merge)
 - Stage 4C prerequisite: Passed; PR #64 squash-merged at `acb833d9622925fa185bf905aeac5bddf93f0d6e`; post-merge main CI Run `32504910043` passed
 - Product settings: Stage 04 owner defaults of 2026-08-15 remain authoritative (Asia/Taipei, `7d_click` / `1d_view`, daily snapshots, account currency, null means unknown)
-- Implementation: Unlocked after specification merge; Draft PR pending local verification
-- Manager Decision: Cycle 2 `APPROVE` for specification content Head `8e0705f44ca8d46ad92d521864c6d405f7a5cd26`
-- Merge: Specification PR #65 squash-merged at `aa90804`; post-merge main CI Run `32540462993` passed
-- Stage 4E / 05–07: Locked
+- Specification Manager Decision: Cycle 2 `APPROVE` for specification content Head `8e0705f44ca8d46ad92d521864c6d405f7a5cd26`
+- Merge: Specification PR #65 squash-merged at `aa90804`; runtime PR #66 squash-merged at `2c2ab07a77d02d8e2c1d2f4e70010430b0e74cfb`
+- Post-merge runtime CI: Run `32744056926` passed `quality-and-compose` and `secret-scan`
+- Stage 4E: Specification unlocked; runtime locked until the 4E specification is approved and merged
 
 This document is the implementation contract for Stage 4D. It does not authorize credentials, real Meta Insights, a scheduler, paid delivery, production, Auth/RBAC/Tenant, Dashboard, or Decision Engine behavior.
 
@@ -453,6 +453,6 @@ The BFF adds only the six Backend paths above. It does not reuse `/api/platforms
 - [x] Independent Manager Review records exactly `APPROVE` for reviewed content Head `8e0705f44ca8d46ad92d521864c6d405f7a5cd26`.
 - [x] The approval-record commit passed full exact-head Push and Pull Request CI.
 - [x] Specification PR #65 squash-merged at `aa90804`; post-merge `main` CI Run `32540462993` passed.
-- [ ] Runtime implementation Draft PR; exact-head CI and Manager Review pending.
+- [x] Runtime PR #66 squash-merged at `2c2ab07a77d02d8e2c1d2f4e70010430b0e74cfb`; post-merge main CI Run `32744056926` passed.
 
-Stage 4E remains locked until Stage 4D implementation merge and post-merge verification.
+Stage 4E specification may start after that post-merge verification. Stage 4E runtime stays locked until the 4E specification is approved and merged.

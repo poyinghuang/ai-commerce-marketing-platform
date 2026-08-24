@@ -37,4 +37,4 @@ Findings and evidence: `docs/management/reviews/stage-04c-runtime-manager-review
 - PR #64 squash-merged to `main` at `acb833d9622925fa185bf905aeac5bddf93f0d6e`.
 - Post-merge main CI Run `32504910043` passed. `quality-and-compose` job `96842785251` and `secret-scan` job `96842785541` succeeded. Playwright artifact upload was skipped after E2E passed.
 
-Stage 4C runtime is closed on `main`. Stage 4D specification may proceed; Stage 4D runtime, 4E, and 05–07 stay locked.
+Stage 4C runtime is closed on `main`. Stage 4D runtime later squash-merged at `2c2ab07` (PR #66). Stage 4E specification may proceed; Stage 4E runtime, optional Meta proof, and 05–07 stay locked.
