@@ -17,27 +17,28 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 
 | Item | Value |
 | --- | --- |
-| Gate | Stage 05 Dashboard **specification** |
-| Branch | `codex/stage-05-dashboard-specification` |
-| PR | [#69](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/69) (Draft) |
-| Base | `031d657` (PR #67 squash merge; tag `stage-04-complete`) |
-| Stage 04 | Closed FAKE 4A–4E; post-merge main CI Run `32754399607` passed |
-| Manager Decision | Pending specification review |
-| Runtime / Stage 06 / optional Meta proof | **Locked** until this specification `APPROVE` + merge + post-merge `main` CI |
+| Gate | Stage 05 Dashboard **runtime** |
+| Branch | `codex/stage-05-dashboard-runtime` |
+| PR | Draft PR pending |
+| Base | `3bbbc69` (PR #69 squash merge) |
+| Stage 05 spec | Closed — PR [#69](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/69) at `3bbbc69`; post-merge main CI Run `32759493087` passed |
+| Stage 04 | Closed FAKE 4A–4E; tag `stage-04-complete`; post-merge main CI Run `32754399607` passed |
+| Manager Decision | Pending runtime review |
+| Stage 06 / optional Meta proof | **Locked** until this runtime `APPROVE` + merge + post-merge `main` CI |
 
-## Assigned now (Stage 05 specification)
+## Assigned now (Stage 05 runtime)
 
 | Agent | Duty | Status |
 | --- | --- | --- |
-| Architecture / Documentation | Dashboard contract over existing reads; lock AI 建議 = Stage 03 review | In progress |
-| Frontend | Idle for runtime until this specification merges | Idle |
-| Backend | Idle for runtime until this specification merges | Idle |
-| QA | Idle until runtime; named GET/KPI/zero-POST cases are in the spec | Idle |
+| Frontend | `/dashboard` workbench, fail-closed BFF, home link, Playwright zero-POST + Stage 03D confirm | In progress |
+| Backend | Read-only `com.aicommerce.platform.dashboard` GETs, campaign-grain KPI, profile gates | In progress |
+| QA | GET/KPI/zero-adapter/zero-POST/approve-reject proof on the runtime PR | In progress |
+| Documentation | Gate, assignments, README, implementation completion | In progress |
 | Project Manager | Idle until Draft PR + exact-head CI | Idle |
 | Review | Idle until Manager Review is requested | Idle |
 | Product Owner / AI Workflow | Idle. Do not open Decision Engine | Idle |
 
-Human review required for this FAKE Dashboard specification: **No**, unless the Manager finds an escalation trigger (credentials, Meta smoke, spend, Auth/RBAC/Tenant, Decision Engine auto-execute, V16).
+Human review required for this FAKE Dashboard runtime: **No**, unless the Manager finds an escalation trigger (credentials, Meta smoke, spend, Auth/RBAC/Tenant, Decision Engine auto-execute, V16).
 
 ## Roster for later Stages
 
@@ -65,6 +66,6 @@ Escalate immediately; do not merge around them:
 
 ## Sequence after this assignment
 
-1. Draft PR [#69](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/69) is open on `codex/stage-05-dashboard-specification`.
+1. Open a Draft PR on `codex/stage-05-dashboard-runtime`.
 2. Exact-head Push and Pull Request `quality-and-compose` plus `secret-scan` must pass before Manager Review.
-3. Do not start Dashboard runtime, optional Meta proof, or Stage 06 from this PR.
+3. Do not start optional Meta proof or Stage 06 from this PR.
