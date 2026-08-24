@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status: Specification draft; runtime locked until this specification `APPROVE` + merge + post-merge `main` CI
+- Status: Specification draft on Draft PR [#69](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/69); runtime locked until this specification `APPROVE` + merge + post-merge `main` CI
 - Branch: `codex/stage-05-dashboard-specification`
 - Base: `031d6575a2d6102af5dd1574ca2c2d74799310f4` (PR #67 squash merge; annotated tag `stage-04-complete`)
 - Stage 04 prerequisite: Passed — 4A–4E FAKE LOCAL/TEST on `main`; tag `stage-04-complete` peels to `031d657`; post-merge `main` CI Run `32754399607` passed `quality-and-compose` and `secret-scan`

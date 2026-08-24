@@ -19,7 +19,7 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 | --- | --- |
 | Gate | Stage 05 Dashboard **specification** |
 | Branch | `codex/stage-05-dashboard-specification` |
-| PR | Draft (this specification) |
+| PR | [#69](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/69) (Draft) |
 | Base | `031d657` (PR #67 squash merge; tag `stage-04-complete`) |
 | Stage 04 | Closed FAKE 4A–4E; post-merge main CI Run `32754399607` passed |
 | Manager Decision | Pending specification review |
@@ -65,6 +65,6 @@ Escalate immediately; do not merge around them:
 
 ## Sequence after this assignment
 
-1. Draft the Stage 05 specification PR on `codex/stage-05-dashboard-specification`.
+1. Draft PR [#69](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/69) is open on `codex/stage-05-dashboard-specification`.
 2. Exact-head Push and Pull Request `quality-and-compose` plus `secret-scan` must pass before Manager Review.
 3. Do not start Dashboard runtime, optional Meta proof, or Stage 06 from this PR.
