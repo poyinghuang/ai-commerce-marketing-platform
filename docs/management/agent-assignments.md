@@ -17,28 +17,28 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 
 | Item | Value |
 | --- | --- |
-| Gate | Stage 4E deterministic acceptance **specification** |
-| Branch | `codex/stage-04e-deterministic-acceptance-specification` |
-| PR | [#67](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/67) (Draft) |
+| Gate | Stage 4E deterministic acceptance **runtime** |
+| Branch | `codex/stage-04e-deterministic-acceptance-runtime` |
+| PR | [#68](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/68) (Draft) |
 | Base | `2c2ab07` (PR #66 squash merge) |
+| Stage 4E spec | Draft PR [#67](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/67); merge this runtime only after that specification is approved and merged |
 | Stage 4D runtime | Merged at `2c2ab07`; post-merge main CI Run `32744056926` passed |
-| Stage 4D spec | Merged at `aa90804`; post-merge main CI Run `32540462993` passed |
-| Manager Decision | Pending specification review |
+| Manager Decision | Pending runtime review |
 | Optional Meta proof / 05–07 | **Locked** |
 
-## Assigned now (Stage 4E specification)
+## Assigned now (Stage 4E runtime)
 
 | Agent | Duty | Status |
 | --- | --- | --- |
-| QA | Lock the eight parent acceptance themes, named tests, and 4E runtime gaps | In progress |
-| Architecture | Confirm no new API/flag/migration and no credential path | Support |
-| Documentation | 4D closeout, parent Stage 04 header, this assignment | In progress |
+| QA | Named eight-theme suite, AI write-path proof, Compose-backed zero auto-POST | In progress |
+| Backend / Frontend | Support tests only; no product `src/main` change | Support |
+| Documentation | Runtime completion report and gate headers | In progress |
 | Project Manager | Idle until Draft PR + exact-head CI | Idle |
 | Review | Idle until Manager Review is requested | Idle |
 | Backend / Frontend | Idle for 4E runtime until this specification merges | Idle |
 | Product Owner / AI Workflow | Idle. Do not open Dashboard or Decision Engine | Idle |
 
-Human review required for this 4E FAKE specification: **No**, unless the Manager finds an escalation trigger (credentials, Meta smoke, spend, Auth/RBAC/Tenant).
+Human review required for this 4E FAKE runtime: **No**, unless the Manager finds an escalation trigger (credentials, Meta smoke, spend, Auth/RBAC/Tenant).
 
 ## Roster for later Stages
 
@@ -69,6 +69,6 @@ Escalate immediately; do not merge around them:
 
 ## Sequence after this assignment
 
-1. Draft PR [#67](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/67) is open on `codex/stage-04e-deterministic-acceptance-specification`. Wait for exact-head Push and Pull Request CI.
+1. Draft PR [#68](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/68) is open on `codex/stage-04e-deterministic-acceptance-runtime`. Specification PR [#67](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/67) must merge first.
 2. Exact-head Push and Pull Request `quality-and-compose` plus `secret-scan` must pass before Manager Review.
-3. Do not start Stage 4E runtime until this specification merges and post-merge `main` CI passes. Do not start optional Meta proof or Stage 05.
+3. Do not create tag `stage-04-complete` from this PR. Do not start optional Meta proof or Stage 05.
