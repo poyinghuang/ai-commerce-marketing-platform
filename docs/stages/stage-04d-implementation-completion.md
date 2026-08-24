@@ -2,13 +2,13 @@
 
 ## Delivery identity
 
-- Branch: `codex/stage-04d-delivery-metrics-runtime`
+- Branch: `codex/stage-04d-delivery-metrics-runtime` (merged)
 - Base: `aa90804` (PR #65 squash merge)
 - Scope: deterministic-FAKE LOCAL/TEST entity-level delivery GET, metrics GET/as-of, and explicit delivery-sync / metrics-refresh
 - Migration: `V15__add_platform_metric_as_of_indexes.sql`; V1–V14 unchanged
-- Status: Draft PR [#66](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/66); exact-head CI pending
-- Manager Decision: Not started
-- Stage 4E / 05–07: Locked
+- Status: Complete; squash-merged to `main`
+- Merge: Squash merge `2c2ab07a77d02d8e2c1d2f4e70010430b0e74cfb` (PR #66) by repository owner `poyinghuang` on 2026-08-24
+- Stage 4E: Specification unlocked after post-merge `main` CI; runtime remains locked until the 4E specification is approved and merged
 
 ## Implemented scope
 
@@ -25,11 +25,11 @@ No credentials, real Meta Insights, network provider calls, production activatio
 
 ## Known Manager Review note
 
-The specification text says V15 contains only the three `CREATE INDEX` statements. Delivery sync nevertheless requires an observed-state-only entity UPDATE plus `ENTITY_RESULT_APPLIED`. V15 therefore also `CREATE OR REPLACE`s the two V12 entity-update functions. Audit `operation_uuid` is a non-FK column; observation-only events use a fresh UUID and `PAUSE` as the required operation type of the existing audit record. Manager should treat this as a specification-versus-V12-trigger finding, not as a credential/spend escalation.
+The specification text said V15 contains only the three `CREATE INDEX` statements. Delivery sync nevertheless required an observed-state-only entity UPDATE plus `ENTITY_RESULT_APPLIED`. V15 therefore also `CREATE OR REPLACE`s the two V12 entity-update functions. Audit `operation_uuid` is a non-FK column; observation-only events use a fresh UUID and `PAUSE` as the required operation type of the existing audit record. No `docs/management/reviews/stage-04d-runtime-manager-review.md` was merged with PR #66. Unlock of Stage 4E specification follows agent-assignments: runtime merge plus post-merge `main` CI.
 
 ## Local verification
 
-Recorded before the Draft PR Head exists. Exact-head CI IDs will be added after Push and Pull Request workflows finish. Unrun checks are not marked Passed.
+Recorded on implementation Head `c8d8fcb` before squash-merge. Unrun checks were not marked Passed locally.
 
 | Check | Result |
 | --- | --- |
@@ -37,7 +37,13 @@ Recorded before the Draft PR Head exists. Exact-head CI IDs will be added after 
 | Frontend lint / typecheck / Vitest / build | Passed — 24 files / 155 tests; production build succeeded |
 | `npm audit --omit=dev` | Passed — 0 vulnerabilities |
 | `docker compose config --quiet` | Passed |
-| Playwright / Compose cold health / Smoke / actionlint / Gitleaks | Not run locally; required on exact-head CI |
+| Playwright / Compose cold health / Smoke / actionlint / Gitleaks | Not run locally; executed on CI |
 | `git diff --check` | Passed on `c8d8fcb` |
 
-Stage 4E remains locked until Stage 4D runtime merge and post-merge `main` CI.
+## Exact-head and post-merge CI
+
+- PR #66 Push `quality-and-compose` / `secret-scan` succeeded on the pre-merge Head (runs `32649468054` and `32649466262`).
+- PR #66 squash-merged to `main` at `2c2ab07a77d02d8e2c1d2f4e70010430b0e74cfb`.
+- Post-merge main CI Run `32744056926` passed. `quality-and-compose` job `97485192201` and `secret-scan` job `97485192433` succeeded. Playwright artifact upload was skipped after E2E passed.
+
+Stage 4D runtime is closed on `main`. Stage 4E specification may proceed; Stage 4E runtime, optional Meta proof, and 05–07 stay locked.

@@ -35,6 +35,7 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 | Documentation | Runtime completion report and gate headers | In progress |
 | Project Manager | Idle until Draft PR + exact-head CI | Idle |
 | Review | Idle until Manager Review is requested | Idle |
+| Backend / Frontend | Idle for 4E runtime until this specification merges | Idle |
 | Product Owner / AI Workflow | Idle. Do not open Dashboard or Decision Engine | Idle |
 
 Human review required for this 4E FAKE runtime: **No**, unless the Manager finds an escalation trigger (credentials, Meta smoke, spend, Auth/RBAC/Tenant).
