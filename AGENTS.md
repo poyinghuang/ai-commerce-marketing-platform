@@ -70,3 +70,13 @@ Manager Decision 只能是：
 5. Manager Decision 為 `APPROVE` 後才允許合併。
 
 Repository 目前尚未啟用自動 `manager-gate` Required Check 或對應 Branch Protection。不得建立永遠成功、只驗證文字或可由 PR 作者自行繞過的假 Gate。
+
+## Voice progress reporting
+
+Owner 語音摘要是管理層 overlay，不取代本文件的 Stage Gate、測試或人工升級規則。
+
+- 政策：`docs/management/voice-reporting.md`
+- 評估與計畫：`docs/voice-reports/VOICE_REPORTING_INTEGRATION_PLAN.md`
+- 機器狀態快照：`.project/status.json`
+
+TTS 與通知失敗屬於 non-blocking observability failure。Manager Decision 仍只能是 `APPROVE`、`REQUEST_CHANGES`、`ESCALATE_TO_HUMAN`。

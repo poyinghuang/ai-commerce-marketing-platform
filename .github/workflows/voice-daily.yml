@@ -1,0 +1,52 @@
+name: Daily voice summary
+
+on:
+  schedule:
+    - cron: "0 13 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+jobs:
+  generate-daily-artifact:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.18.0"
+
+      - name: Generate daily spoken summary artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TZ: Asia/Taipei
+        run: |
+          DATE="$(TZ=Asia/Taipei date +%F)"
+          node tools/voice-reports/cli.mjs collect-daily \
+            --date "$DATE" \
+            --status .project/status.json \
+            --out /tmp/daily-evidence.json
+          node tools/voice-reports/cli.mjs generate-daily \
+            --input /tmp/daily-evidence.json \
+            --out /tmp/daily-voice.md
+          node tools/voice-reports/cli.mjs speak --file /tmp/daily-voice.md
+          mkdir -p artifacts/voice-reports
+          cp /tmp/daily-evidence.json /tmp/daily-voice.md artifacts/voice-reports/
+
+      - name: Upload daily voice artifact
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v7.0.1
+        with:
+          name: daily-voice-${{ github.run_id }}
+          path: artifacts/voice-reports
+          if-no-files-found: ignore
+          retention-days: 14
