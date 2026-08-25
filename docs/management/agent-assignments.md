@@ -67,6 +67,6 @@ Escalate immediately; do not merge around them:
 
 ## Sequence after this assignment
 
-1. Stage 05 runtime PR [#70](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/70) is squash-merged at `9e0f4b4`. Post-merge main CI Run `32792642634` passed.
+1. Stage 05 runtime PR [#70](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/70) is squash-merged at `9e0f4b4`. Post-merge main CI Run `32792642634` passed. Close-out Draft PR [#71](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/71).
 2. Do not start Stage 06 runtime or optional Meta proof until a Stage 06 specification is approved and merged.
 3. Stage 06 remains suggestion-only: unapproved recommendations must not execute.
