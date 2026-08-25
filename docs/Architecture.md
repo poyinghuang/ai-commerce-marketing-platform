@@ -25,7 +25,7 @@
 ### Dashboard
 提供待辦、審核、投放、成效、異常與 AI 建議工作台。
 
-Stage 05 實作該工作台，只讀既有 Product Quality、Campaign Plan、Stage 03 審核佇列與 Stage 04 FAKE 投放／成效。此處的「AI 建議」是既有素材審核（approve/reject），不是 Stage 06 Decision Engine。
+Stage 05 已交付該工作台，只讀既有 Product Quality、Campaign Plan、Stage 03 審核佇列與 Stage 04 FAKE 投放／成效。此處的「AI 建議」是既有素材審核（approve/reject），不是 Stage 06 Decision Engine。
 
 ## Provider Interfaces
 

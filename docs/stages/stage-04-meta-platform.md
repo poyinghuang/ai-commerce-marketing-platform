@@ -12,7 +12,7 @@
 - Latest closed slice: Stage 4E specification PR #67 at `031d657`; 4E runtime PR #68 at `42515e2`; post-merge main CI Run `32754399607` passed
 - Human Review Required: Defaults approved on 2026-08-15; new approval remains mandatory before real credentials, spend, production access, or live delivery
 - Merge: 4A–4E merged; tag `stage-04-complete` peels to `031d657`
-- Stage 05: Specification merged (PR #69 at `3bbbc69`); runtime is the current gate; Stage 06 remains locked
+- Stage 05: Closed — spec PR #69 at `3bbbc69`; runtime PR #70 at `9e0f4b4`; post-merge main CI Run `32792642634` passed; Stage 06 specification is the current gate
 
 ## Objective
 
