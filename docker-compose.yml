@@ -26,6 +26,7 @@ services:
       PLATFORM_STAGE4B_ENABLED: "true"
       PLATFORM_STAGE4C_ENABLED: "true"
       PLATFORM_STAGE4D_ENABLED: "true"
+      PLATFORM_STAGE5_ENABLED: "true"
       DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ai_commerce}
       DATABASE_USERNAME: ${POSTGRES_USER:-ai_commerce}
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-ai_commerce_local}
@@ -56,6 +57,7 @@ services:
       PLATFORM_STAGE4B_ENABLED: "true"
       PLATFORM_STAGE4C_ENABLED: "true"
       PLATFORM_STAGE4D_ENABLED: "true"
+      PLATFORM_STAGE5_ENABLED: "true"
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
     ports:
       - "${FRONTEND_PORT:-3000}:3000"

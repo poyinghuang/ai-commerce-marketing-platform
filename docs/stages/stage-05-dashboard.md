@@ -2,14 +2,16 @@
 
 ## Gate status
 
-- Status: Specification draft on Draft PR [#69](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/69); runtime locked until this specification `APPROVE` + merge + post-merge `main` CI
-- Branch: `codex/stage-05-dashboard-specification`
-- Base: `031d6575a2d6102af5dd1574ca2c2d74799310f4` (PR #67 squash merge; annotated tag `stage-04-complete`)
-- Stage 04 prerequisite: Passed — 4A–4E FAKE LOCAL/TEST on `main`; tag `stage-04-complete` peels to `031d657`; post-merge `main` CI Run `32754399607` passed `quality-and-compose` and `secret-scan`
+- Status: Specification squash-merged; runtime Draft PR [#70](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/70)
+- Specification: PR [#69](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/69) squash-merged at `3bbbc692393a2663fa2d5cbc04feddb11ce27c47`
+- Post-merge `main` CI: Run `32759493087` passed `quality-and-compose` and `secret-scan`
+- Runtime branch: `codex/stage-05-dashboard-runtime`
+- Base: `3bbbc692393a2663fa2d5cbc04feddb11ce27c47` (PR #69 squash merge)
+- Stage 04 prerequisite: Passed — 4A–4E FAKE LOCAL/TEST on `main`; tag `stage-04-complete` peels to `031d657`; post-merge `main` CI Run `32754399607` passed
 - Product settings: Stage 04 owner defaults of 2026-08-15 remain authoritative (Asia/Taipei, `7d_click` / `1d_view`, daily snapshots, account currency, null means unknown, create stays `PAUSED`)
-- Implementation: Locked
-- Manager Decision: Not started
-- Merge: Not started
+- Implementation: In progress
+- Manager Decision: Not started for runtime
+- Merge: Runtime not started
 - Stage 06 Decision Engine / optional Meta paused proof: **Locked**
 
 This document is the implementation contract for Stage 05. It does not authorize credentials, `META_TEST_READ_WRITE_PAUSED`, `META_TEST_DELIVERY`, real Meta, spend, production, Auth/RBAC/Tenant, a scheduler, a new platform write or refresh port, or Decision Engine behavior.
@@ -357,9 +359,9 @@ Parent stub mapped to executable proof:
 ## Stage gate
 
 - [x] Stage 04 FAKE complete: tag `stage-04-complete` on `031d6575a2d6102af5dd1574ca2c2d74799310f4`; post-merge `main` CI Run `32754399607` passed.
-- [ ] Independent Manager Review records exactly `APPROVE` for this specification Head.
-- [ ] The approval-record commit passed full exact-head Push and Pull Request CI.
-- [ ] Specification squash-merged; post-merge `main` CI passed.
-- [ ] Runtime Draft PR; exact-head CI and Manager Review pending.
+- [x] Independent Manager Review recorded `APPROVE` for the specification Head.
+- [x] The specification Head passed full exact-head Push and Pull Request CI.
+- [x] Specification squash-merged as PR [#69](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/69) at `3bbbc69`; post-merge `main` CI Run `32759493087` passed.
+- [ ] Runtime Draft PR [#70](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/70); exact-head CI and Manager Review pending.
 
-Stage 05 runtime stays locked until this specification is approved and merged. Stage 06 and optional Meta paused proof stay locked until Stage 05 runtime is approved, merged, and post-merge `main` CI has passed (Meta proof still needs its own human record).
+Stage 05 runtime is unlocked. Stage 06 and optional Meta paused proof stay locked until Stage 05 runtime is approved, merged, and post-merge `main` CI has passed (Meta proof still needs its own human record).
