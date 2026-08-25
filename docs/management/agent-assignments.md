@@ -19,7 +19,7 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 | --- | --- |
 | Gate | Stage 06 Decision Engine **runtime** |
 | Branch | `codex/stage-06-decision-engine-runtime` |
-| PR | Not opened |
+| PR | Draft [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73) |
 | Base | `d77b2e0` (PR #72 squash merge) |
 | Stage 06 spec | Closed — PR [#72](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/72) squash-merged at `d77b2e043e97179e5235ee50c68677757f36bd63`; post-merge main CI Run `32804409128` passed |
 | Stage 05 | Closed — spec PR [#69](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/69) at `3bbbc69`; runtime PR [#70](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/70) at `9e0f4b4`; close-out PR [#71](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/71) at `3d3b7b3`; post-merge main CI Run `32795522589` passed |
@@ -34,7 +34,7 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 | AI Workflow / Backend / Frontend / QA | Implement suggestion-only runtime per `docs/stages/stage-06-decision-engine.md` | Assigned |
 | Architecture | Guard V16 additive-only and no execute-on-approve | Assigned |
 | Documentation | Keep Stage 06 gate, assignments, and completion report aligned | Assigned |
-| Project Manager | Idle until runtime Draft PR + exact-head CI | Idle |
+| Project Manager | Idle until exact-head CI on Draft PR [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73) | Idle |
 | Review | Idle until Manager Review is requested | Idle |
 | Product Owner | Idle. Do not add auto-execute | Idle |
 
