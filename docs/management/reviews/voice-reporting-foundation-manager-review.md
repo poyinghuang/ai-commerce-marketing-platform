@@ -101,7 +101,7 @@ This approval-record commit sits on top of `aa802ac`. Merge is allowed only afte
 
 - Decision：`APPROVE`
 - Decision rationale：Exact-head Push and Pull Request `quality-and-compose` and `secret-scan` succeeded on implementation Head `aa802ac`. Diff is docs/tooling only. Manager Gate enum is unchanged. TTS failure cannot fail required product checks except generator unit tests, which passed and do not call TTS. No `CRITICAL`, `BLOCKING`, or open `MAJOR` finding. Human Review Required remains No
-- Required next action：This approval-record commit must pass complete exact-head Push and Pull Request CI. Then rebind Approved Commit to that exact PR Head, mark PR #74 Ready, and squash-merge. Do not start Stage 07. Do not modify PR #73
+- Required next action：Completed. Approval-record exact-head CI passed; PR #74 was marked Ready and squash-merged at `0c5f23ba7cf4eee2841bfe817fe18930ef47d4d7`. Do not start Stage 07. Do not modify PR #73.
 - Human approval required：`No`
 - Human approval reason／evidence：Escalation policy checked. No credential, Auth/RBAC/Tenant, production, spend, destructive migration, System of Record, breaking API, workflow write-permission, or critical security trigger
 
@@ -109,8 +109,9 @@ This approval-record commit sits on top of `aa802ac`. Merge is allowed only afte
 
 - Manager Review：Passed
 - Manager Decision：APPROVE
-- Approved Commit：`aa802acf09ee25af63307be5da25d88b514711d1` (implementation). After this approval-record commit’s exact-head CI, Manager rebinds Approved Commit to that newer PR Head and merges only that SHA
-- Approved CI Run：Push `32867715375` (job `97866964144`); Pull Request `32867760489` (job `97867106259`); secret-scan jobs `97866963896` / `97867105890`
-- Commands actually executed：`git status -sb`, `git rev-parse HEAD`, `git diff --name-only origin/main...HEAD`, empty product-path diff, `gh pr view 74`, `gh run view` `32867715375` and `32867760489`; local generator tests 19/19; independent inspection of CI delta, scheduled workflow permissions, mapping tests, and first spoken summaries
-- Merge allowed：Yes under governance after this approval-record Head passes exact-head CI and the PR leaves Draft. **Not executed** in this review commit
-- Next Stage allowed：Voice VR-2/VR-3/VR-4 remain optional and VR-3/VR-4 need credentials (`ESCALATE_TO_HUMAN`). Product Stage 07 remains locked
+- Approved Commit：`a3aa81e604ea36a8599e08f406fbeaa8704ade86` (approval-record Head). Implementation content Head `aa802acf09ee25af63307be5da25d88b514711d1`. Squash merge on `main`: `0c5f23ba7cf4eee2841bfe817fe18930ef47d4d7`
+- Approved CI Run：Implementation Push `32867715375` / PR `32867760489`. Approval-record Push `32869082028` (job `97871482101`); PR `32869091462` (job `97871512146`); secret-scan jobs `97871481868` / `97871512187`
+- Commands actually executed：`git status -sb`, `git rev-parse HEAD`, `git diff --name-only origin/main...HEAD`, empty product-path diff, `gh pr view 74`, `gh run view` implementation and approval-record runs; local generator tests 19/19; independent inspection of CI delta, scheduled workflow permissions, mapping tests, and first spoken summaries; `gh pr ready 74`; `gh pr merge 74 --squash`
+- Merge allowed：Yes
+- Merge executed：PR #74 squash-merged 2026-08-25
+- Next Stage allowed：Voice VR-2 remains optional. VR-3/VR-4 need credentials (`ESCALATE_TO_HUMAN`). Product Stage 07 remains locked. Stage 06 runtime remains Draft PR #73

@@ -18,9 +18,9 @@
   "human_action_required": false,
   "human_action_reason": null,
   "next_stage": "squash-merge Stage 06 runtime after leaving Draft; post-merge main CI; Stage 07 remains locked",
-  "last_updated": "2026-08-25T23:40:00+08:00",
+  "last_updated": "2026-08-26T00:12:00+08:00",
   "last_voice_report": {
-    "stage": "docs/voice-reports/stages/stage-06-specification-voice-summary.md",
+    "stage": "docs/voice-reports/stages/voice-reporting-foundation-voice-summary.md",
     "daily": "docs/voice-reports/daily/2026-08-25.md"
   },
   "evidence": {
@@ -29,10 +29,11 @@
       "github",
       "docs/stages/stage-06-decision-engine.md",
       "docs/management/reviews/stage-06-runtime-manager-review.md",
-      "docs/voice-reports/evidence/2026-08-25.json"
+      "docs/voice-reports/evidence/2026-08-25.json",
+      "PR #74 squash merge 0c5f23ba7cf4eee2841bfe817fe18930ef47d4d7"
     ],
-    "main_head": "d77b2e043e97179e5235ee50c68677757f36bd63",
-    "main_ci_run": "32804409128",
+    "main_head": "0c5f23ba7cf4eee2841bfe817fe18930ef47d4d7",
+    "main_ci_run": "32870299400",
     "active_pr_head": "e65e9068b16913181ca460550fc9be813ca01748"
   }
 }
