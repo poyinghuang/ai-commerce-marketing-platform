@@ -19,7 +19,7 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 | --- | --- |
 | Gate | Stage 06 Decision Engine **specification** |
 | Branch | `codex/stage-06-decision-engine-specification` |
-| PR | Draft (record number after open) |
+| PR | Draft [#72](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/72) |
 | Base | `3d3b7b3` (PR #71 squash merge) |
 | Stage 05 | Closed — spec PR [#69](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/69) at `3bbbc69`; runtime PR [#70](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/70) at `9e0f4b4`; close-out PR [#71](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/71) at `3d3b7b3`; post-merge main CI Run `32795522589` passed |
 | Stage 04 | Closed FAKE 4A–4E; tag `stage-04-complete`; post-merge main CI Run `32754399607` passed |

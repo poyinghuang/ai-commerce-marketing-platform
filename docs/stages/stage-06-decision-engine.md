@@ -2,8 +2,9 @@
 
 ## Gate status
 
-- Status: Specification Draft (docs-only); runtime locked
+- Status: Specification Draft PR [#72](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/72) (docs-only); runtime locked
 - Branch: `codex/stage-06-decision-engine-specification`
+- Draft PR: [#72](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/72)
 - Base: `3d3b7b3175c2d47d850a29144173d10fc50a48a5` (PR [#71](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/71) squash merge)
 - Stage 05 prerequisite: Passed — spec PR [#69](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/69) at `3bbbc69`; runtime PR [#70](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/70) at `9e0f4b4`; close-out PR [#71](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/71) at `3d3b7b3`; post-merge `main` CI Run `32795522589` passed `quality-and-compose` and `secret-scan`
 - Stage 04 prerequisite: Passed — 4A–4E FAKE LOCAL/TEST on `main`; tag `stage-04-complete` peels to `031d657`
