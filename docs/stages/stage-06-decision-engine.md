@@ -2,23 +2,21 @@
 
 ## Gate status
 
-- Status: Specification Draft PR [#72](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/72) (docs-only); runtime locked
-- Branch: `codex/stage-06-decision-engine-specification`
-- Draft PR: [#72](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/72)
-- Base: `3d3b7b3175c2d47d850a29144173d10fc50a48a5` (PR [#71](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/71) squash merge)
-- Stage 05 prerequisite: Passed — spec PR [#69](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/69) at `3bbbc69`; runtime PR [#70](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/70) at `9e0f4b4`; close-out PR [#71](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/71) at `3d3b7b3`; post-merge `main` CI Run `32795522589` passed `quality-and-compose` and `secret-scan`
+- Status: Specification squash-merged; runtime Draft in progress
+- Specification: PR [#72](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/72) squash-merged at `d77b2e043e97179e5235ee50c68677757f36bd63`; post-merge `main` CI Run `32804409128` passed `quality-and-compose` and `secret-scan`
+- Branch: `codex/stage-06-decision-engine-runtime`
+- Base: `d77b2e043e97179e5235ee50c68677757f36bd63` (PR [#72](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/72) squash merge)
+- Stage 05 prerequisite: Passed — spec PR [#69](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/69) at `3bbbc69`; runtime PR [#70](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/70) at `9e0f4b4`; close-out PR [#71](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/71) at `3d3b7b3`; post-merge `main` CI Run `32795522589` passed
 - Stage 04 prerequisite: Passed — 4A–4E FAKE LOCAL/TEST on `main`; tag `stage-04-complete` peels to `031d657`
 - Product settings: Stage 04 owner defaults of 2026-08-15 remain authoritative (Asia/Taipei, `7d_click` / `1d_view`, daily snapshots, account currency, null means unknown, create stays `PAUSED`)
-- Implementation: Not started; unlock only after this specification `APPROVE`, squash-merge, and post-merge `main` CI
-- Manager Review: Passed (cycle 2) for lock-down content Head `aea9193359a4aab29347cee657a9e33170943639`
-- Manager Decision: `APPROVE`
-- Merge: Allowed after this approval-record Head passes exact-head CI; not executed in the cycle-2 commit
+- Implementation: In progress
+- Manager Review: Passed (cycle 2) for specification content Head `aea9193359a4aab29347cee657a9e33170943639`; rebound merge Head `3a46b4790438dfcbd57b4d3abd2ce8b5275be8f5`
+- Manager Decision: Specification `APPROVE` merged; runtime not started
+- Merge: Specification squash-merged at `d77b2e0`
 - Optional Meta paused proof: **Locked** (separate human record)
 - Auto-execute: **Forbidden** in this Stage and until a recorded human decision (`ESCALATE_TO_HUMAN`)
 
 This document is the implementation contract for Stage 06. It does not authorize credentials, `META_TEST_READ_WRITE_PAUSED`, `META_TEST_DELIVERY`, real Meta, spend, production, Auth/RBAC/Tenant, a scheduler, a new platform write or refresh port, an apply/execute path, or LLM-authored recommendations.
-
-This specification PR is docs-only. It must not add Java, TypeScript, Flyway, flags, or UI.
 
 ## Parent stub (unchanged intent)
 
@@ -502,7 +500,7 @@ Do not add an execute error catalog. Stage 4B/4C/4D/03D codes remain on those ro
 
 This specification PR is docs-only. Runtime must prove:
 
-- `git diff --exit-code origin/main -- backend/src/main/resources/db/migration` is **not** empty only because of additive `V16__create_decision_recommendations.sql`; V1–V15 bytes unchanged; this specification PR itself has an empty migration diff.
+- `git diff --exit-code origin/main -- backend/src/main/resources/db/migration` is **not** empty only because of additive `V16__create_decision_recommendations.sql`; V1–V15 bytes unchanged.
 - Default/production/`adapter=meta`/missing `stage6` expose no decision controller.
 - Generate and GET record **zero** adapter invocations and **zero** snapshot inserts and **zero** `platform_operations` rows.
 - Approve/reject record zero adapter invocations, zero `desired_state`/budget column changes, zero AI job rows, and zero Stage 03D review decisions.
@@ -533,8 +531,8 @@ Parent stub mapped to executable proof:
 
 - [x] Stage 05 FAKE complete: spec PR #69, runtime PR #70, close-out PR #71 at `3d3b7b3`; post-merge `main` CI Run `32795522589` passed.
 - [x] Independent Manager Review recorded `APPROVE` for specification content Head `aea9193359a4aab29347cee657a9e33170943639`.
-- [ ] The approval-record Head passed full exact-head Push and Pull Request CI.
-- [ ] Specification squash-merged; post-merge `main` CI passed.
-- [ ] Runtime locked until the previous box is true.
+- [x] Approval-record Head `3a46b4790438dfcbd57b4d3abd2ce8b5275be8f5` passed Push CI `32803703553` and PR CI `32803706288`.
+- [x] Specification squash-merged as PR [#72](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/72) at `d77b2e0`; post-merge `main` CI Run `32804409128` passed.
+- [ ] Runtime Draft PR, exact-head CI, Manager `APPROVE`, merge, and post-merge `main` CI.
 
-Stage 06 runtime stays locked until this specification is `APPROVE`d, squash-merged, and post-merge `main` CI has passed. Optional Meta paused proof stays locked until a separate human record.
+Stage 06 runtime is the current gate. Optional Meta paused proof stays locked until a separate human record.
