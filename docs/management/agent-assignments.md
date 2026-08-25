@@ -23,7 +23,7 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 | Base | `3d3b7b3` (PR #71 squash merge) |
 | Stage 05 | Closed — spec PR [#69](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/69) at `3bbbc69`; runtime PR [#70](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/70) at `9e0f4b4`; close-out PR [#71](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/71) at `3d3b7b3`; post-merge main CI Run `32795522589` passed |
 | Stage 04 | Closed FAKE 4A–4E; tag `stage-04-complete`; post-merge main CI Run `32754399607` passed |
-| Manager Decision | Not started for Stage 06 specification |
+| Manager Decision | Cycle 1 `REQUEST_CHANGES` on `b58096e`; lock-downs pending cycle-2 review after exact-head CI |
 | Optional Meta paused proof | **Locked** until a separate human record |
 
 ## Assigned now (Stage 06 specification)

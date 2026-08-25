@@ -10,7 +10,8 @@
 - Stage 04 prerequisite: Passed — 4A–4E FAKE LOCAL/TEST on `main`; tag `stage-04-complete` peels to `031d657`
 - Product settings: Stage 04 owner defaults of 2026-08-15 remain authoritative (Asia/Taipei, `7d_click` / `1d_view`, daily snapshots, account currency, null means unknown, create stays `PAUSED`)
 - Implementation: Not started; unlock only after this specification `APPROVE`, squash-merge, and post-merge `main` CI
-- Manager Decision: Not started
+- Manager Review: Cycle 1 `REQUEST_CHANGES` on `b58096edc7a70e0e4907ac4cac3820bc80f04a27`; lock-downs in this Head are not approved until cycle 2
+- Manager Decision: `REQUEST_CHANGES`
 - Merge: Not started
 - Optional Meta paused proof: **Locked** (separate human record)
 - Auto-execute: **Forbidden** in this Stage and until a recorded human decision (`ESCALATE_TO_HUMAN`)
@@ -152,11 +153,15 @@ Response: `DecisionPageView` with `content`, `page`, `size`, `totalElements`, `t
 
 ### `GET /api/decision-recommendations/{recommendationUuid}`
 
-No query. Returns `RecommendationDetailView` including decision history. Missing or other-account UUID is `404` `DECISION_NOT_FOUND`. Weak `ETag` `W/"<version>"`.
+No query. Returns `RecommendationDetailView` including the immutable decision if present. Missing or other-account UUID is `404` `DECISION_NOT_FOUND`. Weak `ETag` `W/"<version>"`.
 
 ### `POST /api/decision-recommendations/{recommendationUuid}/approve`
 
+Follow Stage 03D, not the generate empty-POST rule:
+
 - body must be absent or `{}`
+- BFF may forward `Content-Type` when the body is `{}`
+- unknown fields or non-object bodies are `400`
 - requires `If-Match: W/"<version>"`
 - no query
 
@@ -234,7 +239,7 @@ RecommendationView
   currency: "TWD"
   attributionClickDays: 7
   attributionViewDays: 1
-  desiredState: PAUSED | ACTIVE | ARCHIVED
+  desiredState: DRAFT | PAUSED | ACTIVE
   reasonSummary: String
   riskSummary: String
   evidence: RecommendationEvidence
@@ -261,7 +266,7 @@ RecommendationEvidence
   // frequency is omitted in this Stage
 
 RecommendationDetailView
-  (same fields as RecommendationView)
+  (RecommendationView fields in the same declaration order)
   decision: Optional<RecommendationDecisionView>
 
 RecommendationDecisionView
@@ -270,6 +275,8 @@ RecommendationDecisionView
   reason: Optional<String>
   decidedAt: Instant
 ```
+
+At most one decision exists per recommendation (`UNIQUE(recommendation_uuid)`). Detail is not a decision list.
 
 Every successful generate, list item, and detail includes all four `Stage06Warning` values in that declaration order.
 
@@ -287,15 +294,19 @@ The UI does not construct Graph URLs.
 
 1. Resolve the Stage 4B FAKE account with the same fingerprint/reference rules as Dashboard (`local` vs `test` UUID pair). Failure is `503` `PLATFORM_ACCOUNT_CONFIGURATION_INVALID`.
 2. Compute the canonical window with the **exact** Stage 4D SQL (`platform_taipei_business_date(statement_timestamp())`), not JVM `Clock` or Browser input.
-3. Eligible campaigns: `platform_campaigns` for that account whose `desired_state <> 'ARCHIVED'`.
-4. For each eligible campaign, select the **latest** `platform_metric_snapshots` row for that campaign UUID and canonical window identity (greatest `revision_number`). Ignore rows whose `platform_ad_set_uuid` or `platform_ad_uuid` is not null.
-5. A campaign with no such row is skipped (`skippedIncompleteCount`). A present row may still fail individual rules when required bases are NULL; that campaign is considered but that type is not emitted.
+3. Eligible campaigns: `platform_campaigns` for that account whose `desired_state <> 'ARCHIVED'` (same predicate as Stage 05 platform-campaign lists). `DRAFT`, `PAUSED`, and `ACTIVE` are eligible. `ARCHIVED` is not.
+4. For each eligible campaign, select the **latest** `platform_metric_snapshots` row where `entity_type = 'CAMPAIGN'`, `platform_campaign_uuid` is that campaign, `platform_ad_set_uuid IS NULL`, `platform_ad_uuid IS NULL`, and the row matches the canonical window identity (`window_start`, `window_end`, `timezone='Asia/Taipei'`, `attribution_click_days=7`, `attribution_view_days=1`, `currency='TWD'`). Use greatest `revision_number`.
+5. Count definitions (exact):
+   - `consideredCampaignCount` = eligible campaign count from step 3.
+   - `skippedIncompleteCount` = eligible campaigns with **no** snapshot row from step 4.
+   - A campaign with a snapshot that emits **zero** types is counted in `consideredCampaignCount`, is **not** skipped, and creates no row.
+6. `campaignName` is `campaign_plans.campaign_name` for the campaign's `campaign_uuid`.
 
 `asOf` is not accepted. Generate never lists historical windows.
 
 ## RULE_SET_V1
 
-Evaluate every type independently (not first-match-wins) except `AUDIENCE_FATIGUE`, which is never emitted. Derived fields use Stage 4D formulas on that campaign's selected revision. If a required derived field is omitted, the type does not emit.
+Evaluate every type independently (not first-match-wins) except `AUDIENCE_FATIGUE`, which is never emitted. Derived fields use Stage 4D formulas on that campaign's selected revision. Predicates compare `BigDecimal` / integral values from those formulas, never JSON strings. Thresholds are exact scale-6 decimals (`3.000000`, `1.000000`, `50.000000`, `0.005000`, `0.008000`). If a required derived field is omitted, the type does not emit.
 
 `ruleSetKey` stored on every row is exactly `RULE_SET_V1`.
 
@@ -317,7 +328,9 @@ Do not include a proposed budget amount, pause command, or generation payload on
 
 Stage 4D default `SUCCESS` constants (`impressions=10000`, `clicks=100`, `conversions=4`, `spend=25.000000`, `revenue=100.000000`) yield `roas=4.000000` and `ctr=0.010000`, so generate emits `INCREASE_BUDGET` only for those campaigns. Other types require test-only snapshot rows (direct SQL in tests is allowed; generate still must not call an adapter).
 
-`INCREASE_BUDGET` and `DECREASE_BUDGET` must not both emit for the same campaign and window under this rule set (thresholds do not overlap). Runtime must assert that invariant.
+`INCREASE_BUDGET` and `DECREASE_BUDGET` **may both emit** for the same campaign and window. Example fixture: `spend=100.000000`, `conversions=2`, `revenue=400.000000` → `roas=4.000000` and `cpa=50.000000`. Runtime must assert that both types are inserted for that fixture and must **not** assert that the two types are mutually exclusive.
+
+After the emit loop, existing `PENDING` rows for this account whose window identity equals the canonical window and whose `recommendation_type` was **not** emitted remain **unchanged** (status, version, evidence, fingerprint). Generate does not auto-reject, delete, or supersede them. They still appear on `GET ...?status=PENDING` until a human rejects or approves. Runtime must prove: seed `PENDING` `INCREASE_BUDGET`, replace the snapshot with a revision that no longer meets `roas >= 3.000000`, generate, and assert the row is still `PENDING` with the previous version.
 
 ## Persistence (V16, runtime PR only)
 
@@ -335,15 +348,29 @@ V16 is named `V16__create_decision_recommendations.sql`. V1–V15 remain byte-fo
 - `window_start TIMESTAMPTZ NOT NULL`, `window_end TIMESTAMPTZ NOT NULL`, `timezone VARCHAR(64) NOT NULL CHECK timezone='Asia/Taipei'`
 - `attribution_click_days SMALLINT NOT NULL CHECK = 7`, `attribution_view_days SMALLINT NOT NULL CHECK = 1`
 - `currency CHAR(3) NOT NULL CHECK = 'TWD'`
-- `desired_state VARCHAR(16) NOT NULL` (copied at generate time)
+- `desired_state VARCHAR(16) NOT NULL CHECK` in `DRAFT`, `PAUSED`, `ACTIVE`, `ARCHIVED` (copied at generate time; generate never inserts `ARCHIVED`)
 - `reason_summary VARCHAR(500) NOT NULL`, `risk_summary VARCHAR(500) NOT NULL`
-- evidence bases and derived columns matching `RecommendationEvidence` (NULL allowed; no frequency column)
+- evidence columns (NULL allowed; no frequency column):
+  - `impressions BIGINT CHECK (impressions IS NULL OR impressions >= 0)`
+  - `reach BIGINT CHECK (reach IS NULL OR reach >= 0)`
+  - `clicks BIGINT CHECK (clicks IS NULL OR clicks >= 0)`
+  - `conversions BIGINT CHECK (conversions IS NULL OR conversions >= 0)`
+  - `spend NUMERIC(19,6) CHECK (spend IS NULL OR spend >= 0)`
+  - `revenue NUMERIC(19,6) CHECK (revenue IS NULL OR revenue >= 0)`
+  - `ctr NUMERIC(19,6) CHECK (ctr IS NULL OR ctr >= 0)`
+  - `cpc NUMERIC(19,6) CHECK (cpc IS NULL OR cpc >= 0)`
+  - `cpm NUMERIC(19,6) CHECK (cpm IS NULL OR cpm >= 0)`
+  - `cpa NUMERIC(19,6) CHECK (cpa IS NULL OR cpa >= 0)`
+  - `cvr NUMERIC(19,6) CHECK (cvr IS NULL OR cvr >= 0)`
+  - `roas NUMERIC(19,6) CHECK (roas IS NULL OR roas >= 0)`
 - `rule_set_key VARCHAR(32) NOT NULL CHECK = 'RULE_SET_V1'`
 - `evidence_fingerprint CHAR(64) NOT NULL CHECK` `^[0-9a-f]{64}$`
 - `version BIGINT NOT NULL DEFAULT 0 CHECK >= 0`
 - `created_at`, `updated_at TIMESTAMPTZ NOT NULL`
 
-Unique: `(platform_account_uuid, platform_campaign_uuid, recommendation_type, window_start, window_end, timezone)`.
+Unique: `(platform_account_uuid, platform_campaign_uuid, recommendation_type, window_start, window_end, timezone, attribution_click_days, attribution_view_days, currency)`.
+
+List index (also in V16): `(platform_account_uuid, status, updated_at DESC, recommendation_uuid DESC)`.
 
 `CHECK (window_end > window_start)`.
 
@@ -371,9 +398,11 @@ PostgreSQL remains the System of Record. Recommendations are not an ads ledger a
 
 ## Generate transaction
 
-1. Resolve account and canonical window inside a read eligibility step.
-2. For each eligible campaign, load the latest campaign-grain snapshot for that window (or skip).
-3. Evaluate `RULE_SET_V1`. Compute `evidence_fingerprint` as lowercase SHA-256 of UTF-8 compact JSON (no pretty-print, no space after `:` or `,`) with exactly these keys in lexicographic order:
+Persist runs in **one** database transaction after account and window resolution. Lock `platform_accounts` for the resolved Stage 4B account first, then visit eligible campaigns in `platform_campaign_uuid ASC` order. Approve/reject lock that account first, then the recommendation row. There is no adapter call and no lock held across an external call.
+
+1. Resolve account and canonical window (same transaction).
+2. For each eligible campaign in UUID order, load the latest campaign-grain snapshot for that window (or skip).
+3. Evaluate `RULE_SET_V1`. Compute `evidence_fingerprint` as lowercase SHA-256 of UTF-8 compact JSON (no pretty-print, no space after `:` or `,`) with exactly these keys in lexicographic order. Instants are second-precision UTC matching `^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$`. UUIDs are lowercase. `metricSourceFingerprint` is the selected snapshot's `source_fingerprint`.
 
 ```text
 {
@@ -381,24 +410,36 @@ PostgreSQL remains the System of Record. Recommendations are not an ads ledger a
   "metricSourceFingerprint": "<64 hex from the selected snapshot>",
   "recommendationType": "<enum name>",
   "ruleSetKey": "RULE_SET_V1",
-  "windowEnd": "<second-precision UTC instant>",
-  "windowStart": "<second-precision UTC instant>"
+  "windowEnd": "<instant>",
+  "windowStart": "<instant>"
 }
 ```
+
+Runtime must hash this golden SUCCESS Campaign fixture and assert the stored `evidence_fingerprint`. The metric fingerprint value is the Stage 4D SUCCESS Campaign golden hash. The window values are the Stage 4D golden window, not a live `statement_timestamp()` window.
+
+```text
+{"campaignUuid":"00000000-0000-4000-8000-0000000000c1","metricSourceFingerprint":"0f322b3764cc00ff1d548932116f6ce9379944a70c6af198c935ef0003624b73","recommendationType":"INCREASE_BUDGET","ruleSetKey":"RULE_SET_V1","windowEnd":"2026-08-22T16:00:00Z","windowStart":"2026-08-21T16:00:00Z"}
+```
+
+SHA-256 (lowercase hex) = `c6d95966c5b6f0d94f55e75e5ddb3fb5ebc4ea2843449cae09375e073053e33f`.
 
 4. For each emitted type:
    - no row for the unique key → `INSERT` `PENDING`, `createdCount++`
    - `PENDING` and same fingerprint → replay, zero version bump, `replayedCount++`
    - `PENDING` and different fingerprint → update evidence, increment `version` once, `updatedCount++`
    - `APPROVED` or `REJECTED` → replay existing terminal row, do not reopen, `replayedCount++` (not counted in `items` echo unless it was insert/update)
+5. Leave inapplicable existing `PENDING` rows unchanged as specified under RULE_SET_V1.
+6. Commit. Generate that only replays is still HTTP `200`.
 
-5. Commit. Generate that only replays is still HTTP `200`.
-
-Generate emits **zero** Audit events on a pure replay (all candidates replayed, `createdCount=0`, `updatedCount=0`). Insert or evidence-update emits exactly one Audit `CREATE`/`UPDATE` on subject `DECISION_RECOMMENDATION` per changed row, with redacted values (no fingerprint, no account UUID in the public audit payload beyond existing sanitizer rules).
-
-Approve/reject: lock recommendation, verify `If-Match` version, reject terminal with `409` `DECISION_ALREADY_DECIDED`, insert decision, set status, increment version once, append Audit `CREATE` on `DECISION_RECOMMENDATION_DECISION` in the same transaction. Failed/stale requests write no decision and do not increment version.
+SQLSTATE `23505` on insert maps to load the existing unique-key row and apply the same PENDING/terminal replay rules. Zero automatic retry.
 
 SQLSTATE `40001`/`40P01` maps to `409` `DECISION_CONCURRENCY_CONFLICT` with zero automatic retry.
+
+Generate emits **zero** Audit events on a pure replay (all candidates replayed, `createdCount=0`, `updatedCount=0`, and no inapplicable-row writes). Insert or evidence-update emits exactly one Audit `CREATE`/`UPDATE` on `entity_type=DECISION_RECOMMENDATION` per changed row. Approve/reject emit `CREATE` on `DECISION_RECOMMENDATION_DECISION` plus `UPDATE` on `DECISION_RECOMMENDATION` for `status` in the same transaction. Reuse the existing `audit_logs` append helper used by `ReviewDecisionService`. `product_uuid` is NULL. Change `value_type` only `STRING`, `UUID`, `ENUM`, or `TIMESTAMP`. Allowed insert fields: `recommendationUuid` UUID, `recommendationType` ENUM, `status` ENUM. Approve/reject decision fields: `recommendationDecisionUuid` UUID, `decision` ENUM, `reviewerType` ENUM, `reviewerId` STRING, optional `reason` STRING. Status transition field: `status` ENUM `PENDING` → `APPROVED` or `REJECTED`. Forbidden in audit changes: fingerprints, `platformAccountUuid`, metric bases, derived KPIs, spend/revenue.
+
+Approve/reject: lock account then recommendation, verify `If-Match` version, reject terminal with `409` `DECISION_ALREADY_DECIDED`, insert decision, set status, increment version once. Failed/stale requests write no decision, no Audit, and do not increment version.
+
+Persisted evidence numerics are the same `BigDecimal`/integral values used in predicates. HTTP serializes money and derived fields as Stage 4B/4D canonical strings.
 
 ## Application package
 
@@ -430,6 +471,8 @@ UI:
 
 - No new App Router page is required. `/dashboard` stays the Stage 05 workbench.
 - When both Frontend flags are on, add an eighth visible region **優化建議**, visually distinct from **AI 建議**. Empty state is explicit. Do not rename **AI 建議**.
+- Existing Stage 05 heading assertions (`今日待辦`, `AI 建議`, and the other named stub regions) must remain. Additive **優化建議** must not remove them. The test title "seven stub regions" may be renamed; the heading queries must still pass when `PLATFORM_STAGE6_ENABLED=true`.
+- BFF `POST .../generate` must omit `Content-Type`, matching Stage 4D empty POST.
 - Region load is `GET /api/decision-recommendations?status=PENDING` only (no generate on load).
 - A **Generate suggestions** control requires a second explicit confirm and then `POST .../generate`.
 - Approve disabled only when status is not `PENDING`. Reject requires a nonblank reason. Both require `If-Match` from `version` and a second explicit confirm (not a GET).
@@ -465,7 +508,8 @@ This specification PR is docs-only. Runtime must prove:
 - Approve/reject record zero adapter invocations, zero `desired_state`/budget column changes, zero AI job rows, and zero Stage 03D review decisions.
 - `AUDIENCE_FATIGUE` is never inserted. Frequency is absent from JSON.
 - NULL spend omits ROAS/CPA and does not emit money rules; NULL clicks/impressions omit CTR rules; missing snapshots increment `skippedIncompleteCount` and do not zero-fill.
-- `SUCCESS` fixtures emit `INCREASE_BUDGET` only; overlap invariant holds.
+- `SUCCESS` fixtures emit `INCREASE_BUDGET` only. A constructed `roas=4` and `cpa=50` fixture emits both `INCREASE_BUDGET` and `DECREASE_BUDGET`. Stale `PENDING` rows whose type no longer emits remain unchanged.
+- Golden `evidence_fingerprint` SHA-256 `c6d95966c5b6f0d94f55e75e5ddb3fb5ebc4ea2843449cae09375e073053e33f` for the named SUCCESS Campaign JSON.
 - `com.aicommerce.platform.decision` has no dependency on the five platform ports; `ai` and `dashboard` still have none.
 - `GET /api/dashboard` JSON contract remains unchanged (no decision fields).
 - Frontend: both flags required for the region; flag-off BFF `404`; approve/reject happy path; generate not on load.
