@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status: Specification squash-merged; runtime Draft in progress
+- Status: Specification squash-merged; runtime Manager `APPROVE` recorded; merge pending approval-record CI
 - Specification: PR [#72](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/72) squash-merged at `d77b2e043e97179e5235ee50c68677757f36bd63`; post-merge `main` CI Run `32804409128` passed `quality-and-compose` and `secret-scan`
 - Branch: `codex/stage-06-decision-engine-runtime`
 - Base: `d77b2e043e97179e5235ee50c68677757f36bd63` (PR [#72](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/72) squash merge)
@@ -10,9 +10,9 @@
 - Stage 04 prerequisite: Passed — 4A–4E FAKE LOCAL/TEST on `main`; tag `stage-04-complete` peels to `031d657`
 - Product settings: Stage 04 owner defaults of 2026-08-15 remain authoritative (Asia/Taipei, `7d_click` / `1d_view`, daily snapshots, account currency, null means unknown, create stays `PAUSED`)
 - Implementation: Runtime Draft PR [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73)
-- Manager Review: Passed (cycle 2) for specification content Head `aea9193359a4aab29347cee657a9e33170943639`; rebound merge Head `3a46b4790438dfcbd57b4d3abd2ce8b5275be8f5`
-- Manager Decision: Specification `APPROVE` merged; runtime Draft [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73) awaiting exact-head CI and Manager Review
-- Merge: Specification squash-merged at `d77b2e0`
+- Manager Review: Specification cycle 2 Passed at `aea9193` / rebound `3a46b47`. Runtime cycle 1 Passed for implementation Head `50fcd8b71656381b612e25bafe1e14b5bce8ddfe` — `docs/management/reviews/stage-06-runtime-manager-review.md`
+- Manager Decision: Runtime `APPROVE` for `50fcd8b`; merge after the approval-record Head passes exact-head CI
+- Merge: Specification squash-merged at `d77b2e0`. Runtime PR [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73) not yet merged
 - Optional Meta paused proof: **Locked** (separate human record)
 - Auto-execute: **Forbidden** in this Stage and until a recorded human decision (`ESCALATE_TO_HUMAN`)
 
@@ -534,6 +534,8 @@ Parent stub mapped to executable proof:
 - [x] Approval-record Head `3a46b4790438dfcbd57b4d3abd2ce8b5275be8f5` passed Push CI `32803703553` and PR CI `32803706288`.
 - [x] Specification squash-merged as PR [#72](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/72) at `d77b2e0`; post-merge `main` CI Run `32804409128` passed.
 - [x] Runtime Draft PR [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73).
-- [ ] Exact-head CI, Manager `APPROVE`, merge, and post-merge `main` CI.
+- [x] Implementation Head `50fcd8b` exact-head CI: Push `32811159731`, PR `32811163525`.
+- [x] Independent Manager Review recorded `APPROVE` for runtime implementation Head `50fcd8b`.
+- [ ] Approval-record Head exact-head CI, mark Ready, squash-merge, and post-merge `main` CI.
 
 Stage 06 runtime is the current gate. Optional Meta paused proof stays locked until a separate human record.

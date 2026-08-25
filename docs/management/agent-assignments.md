@@ -24,18 +24,18 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 | Stage 06 spec | Closed — PR [#72](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/72) squash-merged at `d77b2e043e97179e5235ee50c68677757f36bd63`; post-merge main CI Run `32804409128` passed |
 | Stage 05 | Closed — spec PR [#69](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/69) at `3bbbc69`; runtime PR [#70](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/70) at `9e0f4b4`; close-out PR [#71](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/71) at `3d3b7b3`; post-merge main CI Run `32795522589` passed |
 | Stage 04 | Closed FAKE 4A–4E; tag `stage-04-complete`; post-merge main CI Run `32754399607` passed |
-| Manager Decision | Not started for Stage 06 runtime |
+| Manager Decision | `APPROVE` for implementation Head `50fcd8b`; merge after approval-record exact-head CI |
 | Optional Meta paused proof | **Locked** until a separate human record |
 
 ## Assigned now (Stage 06 runtime)
 
 | Agent | Duty | Status |
 | --- | --- | --- |
-| AI Workflow / Backend / Frontend / QA | Implement suggestion-only runtime per `docs/stages/stage-06-decision-engine.md` | Assigned |
-| Architecture | Guard V16 additive-only and no execute-on-approve | Assigned |
+| AI Workflow / Backend / Frontend / QA | Suggestion-only runtime delivered on Draft PR [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73) | Delivered |
+| Architecture | Guard V16 additive-only and no execute-on-approve | Delivered for this slice |
 | Documentation | Keep Stage 06 gate, assignments, and completion report aligned | Assigned |
-| Project Manager | Idle until exact-head CI on Draft PR [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73) | Idle |
-| Review | Idle until Manager Review is requested | Idle |
+| Project Manager | Cycle-1 `APPROVE` recorded; merge owner after approval-record exact-head CI | Assigned |
+| Review | Cycle-1 complete — `docs/management/reviews/stage-06-runtime-manager-review.md` | Delivered |
 | Product Owner | Idle. Do not add auto-execute | Idle |
 
 Human review required for FAKE suggestion-only Stage 06 runtime: **No**, unless auto-execute or execute-on-approve appears. **Yes** immediately if approve/reject calls pause, resume, budget, refresh, publication, or AI execute.
@@ -69,5 +69,5 @@ Escalate immediately; do not merge around them:
 ## Sequence after this assignment
 
 1. Stage 06 specification PR [#72](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/72) is squash-merged at `d77b2e0`. Post-merge main CI Run `32804409128` passed.
-2. Implement Stage 06 runtime on `codex/stage-06-decision-engine-runtime`. Do not merge until Manager `APPROVE` and exact-head CI.
-3. Stage 06 remains suggestion-only: unapproved recommendations must not execute. Approved recommendations in this Stage also must not execute.
+2. Stage 06 runtime is on Draft PR [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73). Manager `APPROVE` is recorded for implementation Head `50fcd8b`. Merge only the approval-record Head after its exact-head CI.
+3. Stage 06 remains suggestion-only: unapproved recommendations must not execute. Approved recommendations in this Stage also must not execute. Do not start Stage 07 until merge and post-merge `main` CI.
