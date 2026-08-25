@@ -12,7 +12,7 @@
 - Implementation: Merged
 - Manager Decision: Merged on `main`
 - Merge: Runtime PR #70 squash-merged at `9e0f4b4`
-- Stage 06 Decision Engine specification: Unlocked
+- Stage 06 Decision Engine specification: In progress on `codex/stage-06-decision-engine-specification` (docs-only; see `docs/stages/stage-06-decision-engine.md`)
 - Optional Meta paused proof: **Locked** (separate human record)
 
 This document is the implementation contract for Stage 05. It does not authorize credentials, `META_TEST_READ_WRITE_PAUSED`, `META_TEST_DELIVERY`, real Meta, spend, production, Auth/RBAC/Tenant, a scheduler, a new platform write or refresh port, or Decision Engine behavior.
@@ -365,4 +365,4 @@ Parent stub mapped to executable proof:
 - [x] Specification squash-merged as PR [#69](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/69) at `3bbbc69`; post-merge `main` CI Run `32759493087` passed.
 - [x] Runtime squash-merged as PR [#70](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/70) at `9e0f4b4`; post-merge `main` CI Run `32792642634` passed.
 
-Stage 05 FAKE is closed. Stage 06 Decision Engine specification is the current gate. Optional Meta paused proof stays locked until a separate human record.
+Stage 05 FAKE is closed. `GET /api/dashboard` and the dashboard package stay as specified here. Stage 06 adds separate decision routes and an additive **優化建議** region; it must not rename **AI 建議** or put Decision Engine fields on this GET. Optional Meta paused proof stays locked until a separate human record.

@@ -20,7 +20,7 @@
 透過統一 Platform Adapter 對接 Meta、Google、LINE、TikTok 等平台。
 
 ### Decision Engine
-讀取標準化成效資料，產生加碼、降預算、停投、換素材等建議。
+讀取標準化成效資料，產生加碼、降預算、停投、換素材等建議。AI 只輸出建議，不直接執行外部操作。Stage 06 FAKE 切片是確定性規則引擎（`RULE_SET_V1`），建議需含原因、數據與風險，並由人工批准或拒絕；批准在該切片只寫決策紀錄，不呼叫平台寫入或刷新 Port。Dashboard 的「AI 建議」仍是 Stage 03 素材審核，與 Decision Engine「優化建議」分開。Frequency／受眾疲乏延後，直到成效快照有獨立 Frequency 欄位。
 
 ### Dashboard
 提供待辦、審核、投放、成效、異常與 AI 建議工作台。
