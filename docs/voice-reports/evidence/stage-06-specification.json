@@ -1,0 +1,30 @@
+{
+  "stage_id": "stage-06-specification",
+  "stage_label": "Stage 6 規格",
+  "status": "completed",
+  "completed": [
+    "建議型決策引擎的規格",
+    "明確規定建議可以批准或拒絕，但批准後仍然不會自動執行廣告操作"
+  ],
+  "testing": {
+    "unit": "passed",
+    "integration": "passed",
+    "e2e": "passed",
+    "ci": "passed"
+  },
+  "incomplete": [],
+  "risks": [
+    "執行階段還沒合併，所以產品主線上還看不到建議引擎畫面"
+  ],
+  "manager_gate": "APPROVE",
+  "conditions": [],
+  "next": "會把 Stage 6 執行階段合併進主線，並確認合併後的自動檢查通過。",
+  "human_action_required": false,
+  "human_action_reason": null,
+  "evidence_index": [
+    "docs/stages/stage-06-decision-engine.md",
+    "docs/management/reviews/stage-06-specification-manager-review.md",
+    "PR #72 squash-merged at d77b2e043e97179e5235ee50c68677757f36bd63",
+    "post-merge main CI Run 32804409128 passed quality-and-compose and secret-scan"
+  ]
+}

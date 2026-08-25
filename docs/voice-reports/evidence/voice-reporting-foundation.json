@@ -1,0 +1,35 @@
+{
+  "stage_id": "voice-reporting-foundation",
+  "stage_label": "語音進度匯報基礎",
+  "status": "partial",
+  "completed": [
+    "現有治理流程盤點",
+    "中文語音摘要產生器",
+    "可替換的語音與通知介面",
+    "第一份 Stage 與每日朗讀稿",
+    "Remote CI 與 Manager 審查"
+  ],
+  "testing": {
+    "unit": "passed",
+    "integration": "passed",
+    "e2e": "passed",
+    "ci": "passed"
+  },
+  "incomplete": [
+    "這個變更已通過自動檢查與 Manager 審查，但還沒合併到主線"
+  ],
+  "risks": [
+    "語音匯報失敗不得阻擋產品 Stage 6 合併"
+  ],
+  "manager_gate": "APPROVE",
+  "conditions": [],
+  "next": "會在核准紀錄的自動檢查通過後 squash 合併。Stage 7 仍然鎖定。",
+  "human_action_required": false,
+  "human_action_reason": null,
+  "evidence_index": [
+    "docs/voice-reports/VOICE_REPORTING_INTEGRATION_PLAN.md",
+    "docs/management/reviews/voice-reporting-foundation-manager-review.md",
+    "Draft PR #74 Head aa802acf09ee25af63307be5da25d88b514711d1",
+    "Push CI Run 32867715375 and Pull Request CI Run 32867760489 passed quality-and-compose and secret-scan"
+  ]
+}

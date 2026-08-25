@@ -184,6 +184,15 @@ Approved CI Run: <RUN_ID>
 - 不可合併有 Blocking Finding 的 PR。
 - 不可在人工核准完成前繼續依賴工作。
 
+## Voice progress reporting
+
+Stage Voice Summary 與 Daily Voice Summary 是給 Project Owner 的口語摘要，不是 Gate 本身。產生規則見 `docs/management/voice-reporting.md`。
+
+- 合併與 post-merge CI 之後，依證據產生 Stage Voice Summary。
+- `.project/status.json` 只能從 git／PR／CI／Stage Report／Manager Review 產生，不得手改成比證據更樂觀。
+- 語音失敗（TTS、通知、排程 artifact）不得用來阻擋產品合併，也不得用來略過本政策的 Gate。
+- 本節不新增 Manager Decision 值。
+
 ## Current implementation phase
 
 目前使用人工 Manager Review。`quality-and-compose` 與 `secret-scan` 是現有 CI；尚未啟用自動 `manager-gate` Required Check 或 Branch Protection。自動化前必須另行審查事件來源、權限、fork 行為、approval provenance、Action SHA pinning 與 bypass 管理。

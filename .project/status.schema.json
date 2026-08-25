@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-commerce-marketing-platform.local/project-status.schema.json",
+  "title": "Project progress snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project",
+    "milestone",
+    "current_stage",
+    "stage_status",
+    "active_pr",
+    "ci_status",
+    "manager_gate",
+    "blockers",
+    "human_action_required",
+    "next_stage",
+    "last_updated",
+    "evidence"
+  ],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "project": { "type": "string", "minLength": 1 },
+    "milestone": { "type": "string", "minLength": 1 },
+    "current_stage": { "type": "string", "minLength": 1 },
+    "stage_status": {
+      "type": "string",
+      "enum": ["not_started", "in_progress", "partial", "completed", "blocked", "needs_human"]
+    },
+    "active_pr": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["number", "draft", "state"],
+      "properties": {
+        "number": { "type": "integer", "minimum": 1 },
+        "title": { "type": "string" },
+        "draft": { "type": "boolean" },
+        "state": { "type": "string" }
+      }
+    },
+    "ci_status": {
+      "type": "string",
+      "enum": ["passing", "failing", "pending", "not_verified"]
+    },
+    "manager_gate": {
+      "type": "string",
+      "enum": ["Pending", "APPROVE", "REQUEST_CHANGES", "ESCALATE_TO_HUMAN"]
+    },
+    "voice_manager_decision": {
+      "type": "string",
+      "enum": [
+        "APPROVED",
+        "APPROVED_WITH_CONDITIONS",
+        "NEEDS_CHANGES",
+        "ESCALATE_TO_HUMAN",
+        "REJECTED",
+        "PENDING"
+      ]
+    },
+    "conditions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "blockers": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "human_action_required": { "type": "boolean" },
+    "human_action_reason": { "type": ["string", "null"] },
+    "next_stage": { "type": "string" },
+    "last_updated": { "type": "string", "minLength": 1 },
+    "last_voice_report": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "stage": { "type": ["string", "null"] },
+        "daily": { "type": ["string", "null"] }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["sources"],
+      "properties": {
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

@@ -83,4 +83,5 @@ Commands and results：
 - [ ] 沒有提交 Secret、`.env` 或 build artifacts。
 - [ ] 完成報告與實際結果一致。
 - [ ] Stage 文件已更新。
+- [ ] 若此 PR 關閉一個 Stage／Sub-stage，已依證據產生 Voice Summary；否則標示不適用。
 - [ ] PR 保持 Draft，直到 CI 與 Manager Review 完成。
