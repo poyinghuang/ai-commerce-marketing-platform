@@ -10,9 +10,9 @@
 - Stage 04 prerequisite: Passed — 4A–4E FAKE LOCAL/TEST on `main`; tag `stage-04-complete` peels to `031d657`
 - Product settings: Stage 04 owner defaults of 2026-08-15 remain authoritative (Asia/Taipei, `7d_click` / `1d_view`, daily snapshots, account currency, null means unknown, create stays `PAUSED`)
 - Implementation: Not started; unlock only after this specification `APPROVE`, squash-merge, and post-merge `main` CI
-- Manager Review: Cycle 1 `REQUEST_CHANGES` on `b58096edc7a70e0e4907ac4cac3820bc80f04a27`; lock-downs in this Head are not approved until cycle 2
-- Manager Decision: `REQUEST_CHANGES`
-- Merge: Not started
+- Manager Review: Passed (cycle 2) for lock-down content Head `aea9193359a4aab29347cee657a9e33170943639`
+- Manager Decision: `APPROVE`
+- Merge: Allowed after this approval-record Head passes exact-head CI; not executed in the cycle-2 commit
 - Optional Meta paused proof: **Locked** (separate human record)
 - Auto-execute: **Forbidden** in this Stage and until a recorded human decision (`ESCALATE_TO_HUMAN`)
 
@@ -532,8 +532,8 @@ Parent stub mapped to executable proof:
 ## Stage gate
 
 - [x] Stage 05 FAKE complete: spec PR #69, runtime PR #70, close-out PR #71 at `3d3b7b3`; post-merge `main` CI Run `32795522589` passed.
-- [ ] Independent Manager Review recorded `APPROVE` for the specification Head.
-- [ ] The specification Head passed full exact-head Push and Pull Request CI.
+- [x] Independent Manager Review recorded `APPROVE` for specification content Head `aea9193359a4aab29347cee657a9e33170943639`.
+- [ ] The approval-record Head passed full exact-head Push and Pull Request CI.
 - [ ] Specification squash-merged; post-merge `main` CI passed.
 - [ ] Runtime locked until the previous box is true.
 

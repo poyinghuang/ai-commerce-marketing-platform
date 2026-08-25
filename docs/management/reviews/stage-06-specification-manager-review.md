@@ -114,3 +114,72 @@ Architecture applied the required contract lock-downs on this branch after `b580
 ## Approval record
 
 Not applicable for cycle 1. Decision is `REQUEST_CHANGES`. Merge allowed：No. Next Stage allowed：No.
+
+# Cycle 2
+
+## Review identity
+
+- Review date：2026-08-25
+- Reviewer：Independent Project Manager / Lead Reviewer / Stage Gate Owner
+- Head Commit：reviewed lock-down content `aea9193359a4aab29347cee657a9e33170943639`
+- Interval reviewed：`b58096e..aea9193`
+
+## Status before cycle 2
+
+- Cycle 1：`REQUEST_CHANGES` on `b58096e`
+- Specification lock-downs：Landed in `aea9193` together with the cycle-1 report
+- Remote CI：Passed at exact `aea9193`
+- Merge：Not started; PR #72 remains Draft
+
+## Cycle 2 verification
+
+| Verification | Command／Run | Result | Evidence／Notes |
+| --- | --- | --- | --- |
+| Interval diff | `git diff --stat b58096e..aea9193` | Passed | Three Markdown files only; no runtime/migration |
+| Diff check | `git diff --check b58096e..aea9193` | Passed | |
+| Finding 06-SPEC-001 | RULE_SET_V1 co-emit fixture | Closed | Mutual exclusion removed; `roas=4` and `cpa=50` must insert both types |
+| Finding 06-SPEC-002 | Inapplicable PENDING | Closed | Leave unchanged; runtime test named |
+| Finding 06-SPEC-003 | Fingerprint Instant + golden hash | Closed | `Z` seconds; SHA-256 `c6d95966c5b6f0d94f55e75e5ddb3fb5ebc4ea2843449cae09375e073053e33f` |
+| Finding 06-SPEC-004 | V16 evidence columns | Closed | Named BIGINT bases and NUMERIC(19,6) derived |
+| Finding 06-SPEC-005 | Unique key / campaign-grain select | Closed | Attribution 7/1 + TWD in unique key; `entity_type='CAMPAIGN'` |
+| Finding 06-SPEC-006 | desiredState | Closed | `DRAFT\|PAUSED\|ACTIVE`; ARCHIVED not generated |
+| Finding 06-SPEC-007 | Generate counts | Closed | Eligible vs missing-snapshot; no-emit is considered |
+| Finding 06-SPEC-008 | Concurrency / audit / approve | Closed | Account-then-UUID locks; `23505` replay; `audit_logs` helper; 03D `{}` + optional Content-Type |
+| Push CI | `32802942869` | Passed | Head `aea9193`; `quality-and-compose` `97667308504`; `secret-scan` `97667308664` |
+| PR CI | `32802945958` | Passed | Same Head; `quality-and-compose` `97667317363`; `secret-scan` `97667317507` |
+
+Required steps skipped：only Playwright artifact upload after E2E pass. Node.js 20 deprecation annotation remains non-blocking.
+
+## Findings
+
+| ID | Severity | Status |
+| --- | --- | --- |
+| 06-SPEC-001 | BLOCKING | Closed |
+| 06-SPEC-002 | MAJOR | Closed |
+| 06-SPEC-003 | MAJOR | Closed |
+| 06-SPEC-004 | MAJOR | Closed |
+| 06-SPEC-005 | MAJOR | Closed |
+| 06-SPEC-006 | MAJOR | Closed |
+| 06-SPEC-007 | MAJOR | Closed |
+| 06-SPEC-008 | MAJOR | Closed |
+
+Remaining finding IDs：None.
+
+## Stage Gate decision
+
+- Decision：`APPROVE`
+- Decision rationale：Exact-head Push and Pull Request `quality-and-compose` and `secret-scan` succeeded on `aea9193`. Independently, `git diff b58096e..aea9193` closes 06-SPEC-001 through 06-SPEC-008 with named V16 columns, golden fingerprint, generate counts, stale-PENDING leave, co-emit fixture, and generate concurrency/audit rules. The PR remains documentation-only inside FAKE LOCAL/TEST suggestion-only. Approve still does not execute. Human Review Required remains No.
+- Required next action：This approval-record commit must pass complete exact-head Push and Pull Request CI. Then rebind Approved Commit to that exact PR Head, mark PR #72 Ready, and squash-merge. Do not start Stage 06 runtime until merge and post-merge `main` CI. Optional Meta paused proof stays locked.
+- Human approval required：`No`
+- Human approval reason／evidence：Escalation policy re-checked. No credential, Auth/RBAC/Tenant, production, spend, destructive migration, System of Record, breaking prior API, auto-execute, execute-on-approve, or critical security trigger.
+
+## Approval record
+
+- Manager Review：Passed (cycle 2)
+- Manager Decision：APPROVE
+- Approved Commit：`aea9193359a4aab29347cee657a9e33170943639` (lock-down content). After this approval-record commit's exact-head CI, Manager rebinds Approved Commit to that newer PR Head in the PR comment and merges only that SHA.
+- Approved CI Run：Push `32802942869` (job `97667308504`); Pull Request `32802945958` (job `97667317363`); secret-scan jobs `97667308664` / `97667317507`
+- Commands actually executed：`git fetch`; `git status -sb`; `git rev-parse HEAD`; `git log origin/main..HEAD`; `git diff --check origin/main...b58096e` and `b58096e..aea9193`; `git diff --exit-code origin/main --` V1–V15 SQL; `gh pr view 72`; `gh run view` on `32797067219`, `32797070570`, `32795522589`, `32802942869`, `32802945958`; independent inspection of Stage 05/4D/03D/V11/V12 contracts against the Stage 06 specification
+- Merge allowed：Yes under governance after this approval-record Head passes exact-head CI and the PR leaves Draft. **Not executed** in the cycle-2 review commit
+- Next Stage allowed：No until merge and post-merge `main` CI. Stage 06 runtime remains locked
+
