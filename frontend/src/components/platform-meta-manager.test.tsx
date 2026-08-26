@@ -125,6 +125,24 @@ describe("PlatformMetaManager",()=>{
   const confirm=fetch.mock.calls.find(call=>String(call[0]).endsWith("/metrics-refresh")&&(call[1]?.method??"GET")==="POST");
   expect(confirm?.[1]?.headers).toBeUndefined();
  });
+ it("posts Google preview-confirm and operations to the Google base paths",async()=>{
+  const request="11111111-1111-4111-8111-111111111111",operation="22222222-2222-4222-8222-222222222222",entity="33333333-3333-4333-8333-333333333333";
+  vi.stubGlobal("crypto",{randomUUID:()=>request});
+  const preview={clientRequestUuid:request,operationType:"CREATE_CAMPAIGN",entityType:"CAMPAIGN",desiredState:"PAUSED",expectedCampaignPlanVersion:0,reservation:{kind:"NONE",reservedDelta:"0",accountDayRemainingAfter:"1000"},policy:{currency:"TWD"},warnings:[]};
+  const created={operationUuid:operation,operationType:"CREATE_CAMPAIGN",entityType:"CAMPAIGN",entityUuid:entity,status:"SUCCEEDED",attemptCount:1,reconciliationCount:0,maxAttempts:3,createdAt:"2000-01-01T00:00:00Z",updatedAt:"2000-01-01T00:00:00Z",version:2};
+  const fetch=vi.fn().mockResolvedValueOnce(response(preview)).mockResolvedValueOnce(response(created,202,{etag:'W/"2"'})).mockResolvedValueOnce(response({version:0,desiredState:"PAUSED"},200,{etag:'W/"0"'}));
+  vi.stubGlobal("fetch",fetch);
+  render(<PlatformMetaManager title="Google platform operations" apiBase="/api/platforms/google" operationsBase="/api/platforms/google/operations"/>);
+  expect(screen.getByRole("heading",{name:"Google platform operations"})).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Campaign Plan UUID"),{target:{value:request}});
+  fireEvent.click(screen.getByText("Preview paused Campaign"));
+  await screen.findByText("Confirm FAKE operation");
+  fireEvent.click(screen.getByText("Confirm FAKE operation"));
+  await screen.findByText("SUCCEEDED");
+  expect(String(fetch.mock.calls[0][0])).toBe("/api/platforms/google/campaigns/preview");
+  expect(String(fetch.mock.calls[1][0])).toBe("/api/platforms/google/campaigns");
+  expect(String(fetch.mock.calls[2][0])).toBe(`/api/platforms/google/campaigns/${entity}`);
+ });
 });
 
 function response(body:unknown,status=200,headers:Record<string,string>={}){return new Response(JSON.stringify(body),{status,headers:{"content-type":"application/json",...headers}});}

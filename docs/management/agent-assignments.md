@@ -10,37 +10,39 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 1. One Stage or Milestone at a time. No dependent work until merge and post-merge `main` CI pass.
 2. Manager Decision is only `APPROVE`, `REQUEST_CHANGES`, or `ESCALATE_TO_HUMAN`.
 3. Agents must not lower acceptance, skip required checks, or treat unrun tests as Passed.
-4. Flyway V1–V16 stay immutable. 7A and 7B add no migration. 7C-1 may add additive V17 only, as named in `docs/stages/stage-07-expansion.md`.
+4. Flyway V1–V16 stay immutable. 7A and 7B add no migration. 7C-1 added additive V17 only, as named in `docs/stages/stage-07-expansion.md`. 7C-2 adds no migration.
 5. Deterministic `FAKE` in `LOCAL`/`TEST` remains the default execution path. Real Meta, Google Ads, LINE, TikTok, credentials, spend, production, Auth/RBAC/Tenant, and System of Record changes stay frozen until a recorded human decision.
 
 ## Current gate
 
 | Item | Value |
 | --- | --- |
-| Gate | Stage 07 **7C-1** FAKE_GOOGLE adapter + additive V17 |
-| Branch | `codex/stage-07c-1-fake-google-adapter` |
-| PR | Draft [#79](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/79) |
+| Gate | Stage 07 **7C-2** gated `/platforms/google` FAKE UI |
+| Branch | `codex/stage-07c-2-google-fake-ui` |
+| PR | Draft [#80](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/80) |
 | Specification | PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) squash-merged at `2851003`; post-merge main CI Run `32928585609` passed |
 | 7A | PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) squash-merged at `eb2618d`; post-merge main CI Run `32940348609` passed |
 | 7B | PR [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78) squash-merged at `da01b13`; post-merge main CI Run `32944155884` passed |
-| Base | `da01b13` (PR #78 squash merge) |
+| 7C-1 | PR [#79](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/79) squash-merged at `f5faa28`; post-merge main CI Run `32971029793` passed |
+| Base | `f5faa28` (PR #79 squash merge) |
 | Stage 06 | Closed — spec PR [#72](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/72) at `d77b2e0`; runtime PR [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73) at `d22d80a`; close-out PR [#75](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/75) at `771f776`; post-merge main CI Run `32923254447` passed |
-| Manager Decision | Not started for 7C-1 runtime |
+| Manager Decision | Not started for 7C-2 runtime |
 | Optional Meta paused proof | **Locked** until a separate human record |
-| Next after 7C-1 | **7C-2** gated `/platforms/google` |
+| Next after 7C-2 | Stage 07 FAKE close-out. 7D/7E LINE/TikTok stay locked |
 
-## Assigned now (7C-1 runtime)
+## Assigned now (7C-2 runtime)
 
 | Agent | Duty | Status |
 | --- | --- | --- |
-| Backend | Deliver `DeterministicFakeGooglePlatformAdapter` + additive V17 | In progress |
-| QA | Adapter, V17 compatibility, and compile-path proofs | In progress |
-| Documentation | Keep Stage 07 gate headers and 7C-1 completion report aligned | In progress |
-| Project Manager | Idle until a 7C-1 Draft PR + exact-head CI | Idle |
+| Frontend | Deliver gated `/platforms/google` preview-confirm UI + same-origin BFF | In progress |
+| Backend | Deliver `/api/platforms/google/**` on the 7C-1 FAKE_GOOGLE account | In progress |
+| QA | Google web gates, account isolation, GET-only page load | In progress |
+| Documentation | Keep Stage 07 gate headers and 7C-2 completion report aligned | In progress |
+| Project Manager | Idle until a 7C-2 Draft PR + exact-head CI | Idle |
 | Review | Idle until Manager Review is requested | Idle |
-| Architecture / Frontend / AI Workflow / Product Owner | Idle. Do not start 7C-2, `/platforms/google`, or live ads | Idle |
+| Architecture / AI Workflow / Product Owner | Idle. Do not start 7D/7E or live ads | Idle |
 
-Human review required for this FAKE_GOOGLE key: **No**, unless Google Ads API/SDK, credentials, spend, a second live ads platform, paid provider, or Decision Engine auto-execute appears. **Yes** immediately before live Google Ads / LINE / TikTok / paid image provider.
+Human review required for this gated FAKE Google UI: **No**, unless Google Ads API/SDK, credentials, spend, a second live ads platform, paid provider, or Decision Engine auto-execute appears. **Yes** immediately before live Google Ads / LINE / TikTok / paid image provider.
 
 ## Roster for later Stages
 
@@ -51,8 +53,8 @@ Do not start a later row until the previous row is merged and post-merge `main` 
 | 07 Expansion spec | Architecture | Research, Documentation, Project Manager | No for FAKE docs-only; **Yes** if live ads or credentials appear | Stage 06 complete — **merged** PR #76 |
 | 07A second image provider runtime | AI Workflow | Backend, QA, Project Manager | No for LOCAL/TEST bean swap | 07 spec merge — **merged** PR #77 |
 | 07B second storage provider runtime | Backend | QA, Project Manager | No for LOCAL/TEST bean swap | 7A merged + post-merge CI — **merged** PR #78 |
-| 07C-1 FAKE_GOOGLE adapter + V17 | Backend | Architecture, QA, Project Manager | No for FAKE key; **Yes** if Google Ads API/SDK appears | 7B merged + post-merge CI — **unlocked** |
-| 07C-2 Google FAKE UI | Frontend | Backend, QA, Project Manager | No for gated FAKE UI | 7C-1 merged + post-merge CI |
+| 07C-1 FAKE_GOOGLE adapter + V17 | Backend | Architecture, QA, Project Manager | No for FAKE key; **Yes** if Google Ads API/SDK appears | 7B merged + post-merge CI — **merged** PR #79 |
+| 07C-2 Google FAKE UI | Frontend | Backend, QA, Project Manager | No for gated FAKE UI | 7C-1 merged + post-merge CI — **unlocked** |
 | 4E optional Meta paused proof | Research + Project Manager | Backend, QA | **Yes** — credentials, test-account access | Separate human record; `META_TEST_DELIVERY` stays disabled |
 | 07D/07E LINE / TikTok | Architecture | Research, Backend, Project Manager | **Yes** before a second live ads platform | Separate specification after 7C-2 |
 | Live Google Sheets / Drive read / Meta Insights | Architecture | Research, Backend, Project Manager | **Yes** — credentials and live APIs | Separate specification after Stage 07 FAKE close |
@@ -72,6 +74,6 @@ Escalate immediately; do not merge around them:
 
 ## Sequence after this assignment
 
-1. Stage 07B runtime PR [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78) is squash-merged at `da01b13`. Post-merge main CI Run `32944155884` passed.
-2. Complete 7C-1 runtime. Do not start 7C-2, `/platforms/google`, or live ads until 7C-1 is approved, merged, and post-merge `main` CI has passed.
+1. Stage 07C-1 runtime PR [#79](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/79) is squash-merged at `f5faa28`. Post-merge main CI Run `32971029793` passed.
+2. Complete 7C-2 runtime. Do not start 7D/7E, live Google Ads, or live Sheets/Drive/Meta Insights until 7C-2 is approved, merged, and post-merge `main` CI has passed.
 3. Live Google Ads / LINE / TikTok and live Sheets/Drive/Meta Insights remain locked.

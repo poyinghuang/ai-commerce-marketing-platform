@@ -17,8 +17,8 @@ import org.springframework.stereotype.Component;
 public final class Stage7C1AccountInitializer implements ApplicationRunner {
     public static final UUID LOCAL_UUID=UUID.fromString("00000000-0000-4000-8000-00000000007c");
     public static final UUID TEST_UUID=UUID.fromString("00000000-0000-4000-8000-00000000007d");
-    static final String LOCAL_FINGERPRINT="1a7fa62f6a1005a7605fa034354b13434813854b456f92d3ed686e1146285984";
-    static final String TEST_FINGERPRINT="f7ae8128469276ec37fee6c7b37a7e3b6ae33117ca034ed183a0f3b3076fcf61";
+    public static final String LOCAL_FINGERPRINT="1a7fa62f6a1005a7605fa034354b13434813854b456f92d3ed686e1146285984";
+    public static final String TEST_FINGERPRINT="f7ae8128469276ec37fee6c7b37a7e3b6ae33117ca034ed183a0f3b3076fcf61";
     private final JdbcTemplate jdbc; private final Environment environment;
     public Stage7C1AccountInitializer(JdbcTemplate jdbc,Environment environment){this.jdbc=jdbc;this.environment=environment;}
     @Override public void run(ApplicationArguments args){

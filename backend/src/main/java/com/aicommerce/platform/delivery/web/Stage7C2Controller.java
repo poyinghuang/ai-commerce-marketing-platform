@@ -1,0 +1,83 @@
+package com.aicommerce.platform.delivery.web;
+
+import java.net.URI;
+import java.time.Instant;
+import java.util.*;
+
+import com.aicommerce.platform.common.web.ResourceEtag;
+import com.aicommerce.platform.delivery.application.*;
+import com.aicommerce.platform.delivery.domain.*;
+import com.aicommerce.platform.web.RequestIdFilter;
+import com.aicommerce.platform.web.error.ApiError;
+import com.aicommerce.platform.web.error.FieldErrorDetail;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.context.annotation.Profile;
+import org.springframework.http.*;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.dao.DataAccessException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+
+@RestController
+@Profile("(local | test) & !production")
+@ConditionalOnExpression("'${platform.adapter:}' == 'fake' && '${platform.web.enabled:false}' == 'true' && '${platform.stage4b.enabled:false}' == 'true' && '${platform.stage7.google.web.enabled:false}' == 'true'")
+@RequestMapping("/api")
+public class Stage7C2Controller {
+    private final Stage4BService service;
+    public Stage7C2Controller(Stage4BService service){this.service=service;}
+
+    public record CampaignPreviewRequest(UUID clientRequestUuid,UUID campaignUuid){}
+    public record CampaignConfirmRequest(UUID clientRequestUuid,UUID campaignUuid,Long expectedCampaignPlanVersion){}
+    public record AdSetPreviewRequest(UUID clientRequestUuid,PlatformBudgetType budgetType,String budgetAmount){}
+    public record AdSetConfirmRequest(UUID clientRequestUuid,PlatformBudgetType budgetType,String budgetAmount,Long expectedCampaignPlanVersion){}
+    public record StateMutationRequest(UUID clientRequestUuid,PlatformDesiredState targetDesiredState){}
+    public record BudgetMutationRequest(UUID clientRequestUuid,String newBudgetAmount){}
+
+    @PostMapping(path="/platforms/google/campaigns/preview",consumes=MediaType.APPLICATION_JSON_VALUE)
+    public Stage4BViews.Preview previewCampaign(@RequestBody CampaignPreviewRequest body){required(body,new String[]{"clientRequestUuid","campaignUuid"},body==null?null:body.clientRequestUuid(),body==null?null:body.campaignUuid());return service.previewCampaign(body.clientRequestUuid(),body.campaignUuid());}
+    @PostMapping(path="/platforms/google/campaigns",consumes=MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Stage4BViews.Operation> confirmCampaign(@RequestBody CampaignConfirmRequest body,HttpServletRequest request){required(body,new String[]{"clientRequestUuid","campaignUuid","expectedCampaignPlanVersion"},body==null?null:body.clientRequestUuid(),body==null?null:body.campaignUuid(),body==null?null:body.expectedCampaignPlanVersion());if(body.expectedCampaignPlanVersion()<0)invalid("expectedCampaignPlanVersion");return response(service.confirmCampaign(body.clientRequestUuid(),body.campaignUuid(),body.expectedCampaignPlanVersion(),requestId(request)));}
+    @PostMapping(path="/platforms/google/campaigns/{campaign}/ad-sets/preview",consumes=MediaType.APPLICATION_JSON_VALUE)
+    public Stage4BViews.Preview previewAdSet(@PathVariable UUID campaign,@RequestBody AdSetPreviewRequest body){required(body,new String[]{"clientRequestUuid","budgetType","budgetAmount"},body==null?null:body.clientRequestUuid(),body==null?null:body.budgetType(),body==null?null:body.budgetAmount());money("budgetAmount",body.budgetAmount());return service.previewAdSet(campaign,body.clientRequestUuid(),body.budgetType(),body.budgetAmount());}
+    @PostMapping(path="/platforms/google/campaigns/{campaign}/ad-sets",consumes=MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Stage4BViews.Operation> confirmAdSet(@PathVariable UUID campaign,@RequestHeader(value=HttpHeaders.IF_MATCH,required=false)String ifMatch,@RequestBody AdSetConfirmRequest body,HttpServletRequest request){required(body,new String[]{"clientRequestUuid","budgetType","budgetAmount","expectedCampaignPlanVersion"},body==null?null:body.clientRequestUuid(),body==null?null:body.budgetType(),body==null?null:body.budgetAmount(),body==null?null:body.expectedCampaignPlanVersion());money("budgetAmount",body.budgetAmount());if(body.expectedCampaignPlanVersion()<0)invalid("expectedCampaignPlanVersion");return response(service.confirmAdSet(campaign,body.clientRequestUuid(),body.budgetType(),body.budgetAmount(),body.expectedCampaignPlanVersion(),version(ifMatch),requestId(request)));}
+    @PostMapping(path="/platforms/google/campaigns/{id}/state-preview",consumes=MediaType.APPLICATION_JSON_VALUE)
+    public Stage4BViews.Preview previewCampaignState(@PathVariable UUID id,@RequestBody StateMutationRequest body){state(body);return service.previewState(PlatformEntityType.CAMPAIGN,id,body.clientRequestUuid(),body.targetDesiredState());}
+    @PostMapping(path="/platforms/google/ad-sets/{id}/state-preview",consumes=MediaType.APPLICATION_JSON_VALUE)
+    public Stage4BViews.Preview previewAdSetState(@PathVariable UUID id,@RequestBody StateMutationRequest body){state(body);return service.previewState(PlatformEntityType.AD_SET,id,body.clientRequestUuid(),body.targetDesiredState());}
+    @PostMapping(path="/platforms/google/campaigns/{id}/{action:pause|resume}",consumes=MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Stage4BViews.Operation> campaignState(@PathVariable UUID id,@PathVariable String action,@RequestHeader(value=HttpHeaders.IF_MATCH,required=false)String ifMatch,@RequestBody StateMutationRequest body,HttpServletRequest request){stateRoute(action,body);return response(service.confirmState(PlatformEntityType.CAMPAIGN,id,body.clientRequestUuid(),body.targetDesiredState(),version(ifMatch),requestId(request)));}
+    @PostMapping(path="/platforms/google/ad-sets/{id}/{action:pause|resume}",consumes=MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Stage4BViews.Operation> adSetState(@PathVariable UUID id,@PathVariable String action,@RequestHeader(value=HttpHeaders.IF_MATCH,required=false)String ifMatch,@RequestBody StateMutationRequest body,HttpServletRequest request){stateRoute(action,body);return response(service.confirmState(PlatformEntityType.AD_SET,id,body.clientRequestUuid(),body.targetDesiredState(),version(ifMatch),requestId(request)));}
+    @PostMapping(path="/platforms/google/ad-sets/{id}/budget-preview",consumes=MediaType.APPLICATION_JSON_VALUE)
+    public Stage4BViews.Preview previewBudget(@PathVariable UUID id,@RequestBody BudgetMutationRequest body){required(body,new String[]{"clientRequestUuid","newBudgetAmount"},body==null?null:body.clientRequestUuid(),body==null?null:body.newBudgetAmount());money("newBudgetAmount",body.newBudgetAmount());return service.previewBudget(id,body.clientRequestUuid(),body.newBudgetAmount());}
+    @PostMapping(path="/platforms/google/ad-sets/{id}/budget",consumes=MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Stage4BViews.Operation> budget(@PathVariable UUID id,@RequestHeader(value=HttpHeaders.IF_MATCH,required=false)String ifMatch,@RequestBody BudgetMutationRequest body,HttpServletRequest request){required(body,new String[]{"clientRequestUuid","newBudgetAmount"},body==null?null:body.clientRequestUuid(),body==null?null:body.newBudgetAmount());money("newBudgetAmount",body.newBudgetAmount());return response(service.confirmBudget(id,body.clientRequestUuid(),body.newBudgetAmount(),version(ifMatch),requestId(request)));}
+    @GetMapping("/platforms/google/campaigns/{id}") public ResponseEntity<Stage4BViews.Campaign> campaign(@PathVariable UUID id){var value=service.campaign(id);return ResponseEntity.ok().eTag(ResourceEtag.format(value.version())).body(value);}
+    @GetMapping("/platforms/google/ad-sets/{id}") public ResponseEntity<Stage4BViews.AdSet> adSet(@PathVariable UUID id){var value=service.adSet(id);return ResponseEntity.ok().eTag(ResourceEtag.format(value.version())).body(value);}
+    @GetMapping("/platforms/google/operations/{id}") public ResponseEntity<Stage4BViews.Operation> operation(@PathVariable UUID id){var value=service.operation(id);return ResponseEntity.ok().eTag(ResourceEtag.format(value.version())).body(value);}
+    @PostMapping("/platforms/google/operations/{id}/retry") public ResponseEntity<Stage4BViews.Operation> retry(@PathVariable UUID id,@RequestHeader(value=HttpHeaders.IF_MATCH,required=false)String ifMatch,@RequestBody(required=false)byte[] body){empty(body);return response(service.retry(id,version(ifMatch)));}
+    @PostMapping("/platforms/google/operations/{id}/reconcile") public ResponseEntity<Stage4BViews.Operation> reconcile(@PathVariable UUID id,@RequestHeader(value=HttpHeaders.IF_MATCH,required=false)String ifMatch,@RequestBody(required=false)byte[] body){empty(body);return response(service.reconcile(id,version(ifMatch)));}
+
+    @ExceptionHandler(Stage4BException.class) ResponseEntity<ApiError> stageError(Stage4BException ex,HttpServletRequest request){return ResponseEntity.status(ex.status()).body(error(ex.code(),request,ex.field()));}
+    @ExceptionHandler({HttpMessageNotReadableException.class,MethodArgumentTypeMismatchException.class}) ResponseEntity<ApiError> malformedRequest(Exception ex,HttpServletRequest request){String field="body";if(ex instanceof HttpMessageNotReadableException unreadable&&unreadable.getCause() instanceof tools.jackson.databind.DatabindException binding&&!binding.getPath().isEmpty())field=binding.getPath().getFirst().getPropertyName();return ResponseEntity.badRequest().body(error("PLATFORM_REQUEST_INVALID",request,field));}
+    @ExceptionHandler(PlatformOperationException.class) ResponseEntity<ApiError> operationError(PlatformOperationException ex,HttpServletRequest request){String source=ex.code().name();boolean operationRoute=request.getRequestURI().startsWith("/api/platforms/google/operations/");String code=switch(ex.code()){case PLATFORM_OPERATION_NOT_FOUND->"PLATFORM_RESOURCE_NOT_FOUND";case PLATFORM_STALE_VERSION->operationRoute?"PLATFORM_OPERATION_STALE":"PLATFORM_ENTITY_STALE";case PLATFORM_ACCOUNT_INACTIVE,PLATFORM_ACCOUNT_ENVIRONMENT_MISMATCH,PLATFORM_PROVIDER_UNSUPPORTED->"PLATFORM_ACCOUNT_CONFIGURATION_INVALID";default->source;};HttpStatus status=switch(code){case "PLATFORM_CONTRACT_INVALID"->HttpStatus.BAD_REQUEST;case "PLATFORM_RESOURCE_NOT_FOUND"->HttpStatus.NOT_FOUND;case "PLATFORM_OPERATION_STALE","PLATFORM_ENTITY_STALE"->HttpStatus.PRECONDITION_FAILED;case "PLATFORM_ADAPTER_UNAVAILABLE","PLATFORM_ACCOUNT_CONFIGURATION_INVALID"->HttpStatus.SERVICE_UNAVAILABLE;default->HttpStatus.CONFLICT;};return ResponseEntity.status(status).body(error(code,request));}
+    @ExceptionHandler(DataAccessException.class) ResponseEntity<ApiError> databaseError(DataAccessException ex,HttpServletRequest request){Throwable cause=ex.getMostSpecificCause();String state=cause instanceof java.sql.SQLException sql?sql.getSQLState():null;if("40001".equals(state)||"40P01".equals(state))return ResponseEntity.status(HttpStatus.CONFLICT).body(error("PLATFORM_LEDGER_CONCURRENCY_CONFLICT",request));throw ex;}
+    private ResponseEntity<Stage4BViews.Operation> response(Stage4BViews.Confirmation c){var v=c.operation();HttpStatus status=c.replay()?HttpStatus.OK:HttpStatus.ACCEPTED;if(v.normalizedErrorCode().filter(code->code==PlatformStableErrorCode.PLATFORM_RATE_LIMITED||code==PlatformStableErrorCode.PLATFORM_TEMPORARILY_UNAVAILABLE).isPresent())status=HttpStatus.TOO_MANY_REQUESTS;return ResponseEntity.status(status).eTag(ResourceEtag.format(v.version())).location(URI.create("/api/platforms/google/operations/"+v.operationUuid())).body(v);}
+    private static void state(StateMutationRequest b){required(b,new String[]{"clientRequestUuid","targetDesiredState"},b==null?null:b.clientRequestUuid(),b==null?null:b.targetDesiredState());if(b.targetDesiredState()!=PlatformDesiredState.PAUSED&&b.targetDesiredState()!=PlatformDesiredState.ACTIVE)invalid("targetDesiredState");}
+    private static void stateRoute(String action,StateMutationRequest b){state(b);if(("pause".equals(action)&&b.targetDesiredState()!=PlatformDesiredState.PAUSED)||("resume".equals(action)&&b.targetDesiredState()!=PlatformDesiredState.ACTIVE))invalid("targetDesiredState");}
+    private static long version(String value){if(value==null)throw new Stage4BException("PLATFORM_IF_MATCH_REQUIRED",HttpStatus.PRECONDITION_REQUIRED,"If-Match");try{return ResourceEtag.parse(value);}catch(Exception e){throw new Stage4BException("PLATFORM_REQUEST_INVALID",HttpStatus.BAD_REQUEST,"If-Match");}}
+    private static void empty(byte[] body){if(body!=null&&body.length>0&&!new String(body,java.nio.charset.StandardCharsets.UTF_8).isBlank())invalid("body");}
+    private static void required(Object body,String[] fields,Object...values){if(body==null)invalid("body");for(int index=0;index<values.length;index++)if(values[index]==null)invalid(fields[index]);}private static void invalid(String field){throw new Stage4BException("PLATFORM_REQUEST_INVALID",HttpStatus.BAD_REQUEST,field);}
+    private static void money(String field,String value){
+        if(value==null||!value.matches("^(?:0|[1-9][0-9]*)(?:\\.[0-9]{0,5}[1-9])?$"))invalid(field);
+        try{
+            var amount=new java.math.BigDecimal(value);
+            if(amount.signum()<=0||amount.scale()>6)invalid(field);
+        }catch(NumberFormatException ex){invalid(field);}
+    }
+    private static String requestId(HttpServletRequest r){return (String)r.getAttribute(RequestIdFilter.REQUEST_ATTRIBUTE);}
+    private static ApiError error(String code,HttpServletRequest r){return error(code,r,null);}private static ApiError error(String code,HttpServletRequest r,String field){List<FieldErrorDetail> fields=field==null?List.of():List.of(new FieldErrorDetail(field,"If-Match".equals(field)?"Invalid If-Match":"body".equals(field)?"Invalid request body":"Invalid value"));return new ApiError(code,message(code),requestId(r),Instant.now(),r.getRequestURI(),fields);}
+    private static String message(String code){return switch(code){case "PLATFORM_REQUEST_INVALID"->"Platform request is invalid";case "PLATFORM_CONTRACT_INVALID"->"Platform contract is invalid";case "PLATFORM_RESOURCE_NOT_FOUND"->"Platform resource was not found";case "PLATFORM_IF_MATCH_REQUIRED"->"If-Match is required";case "PLATFORM_ENTITY_STALE"->"The platform entity changed; reload and retry";case "PLATFORM_OPERATION_STALE"->"The platform operation changed; reload and retry";case "PLATFORM_CAMPAIGN_PLAN_STALE"->"The Campaign Plan changed; preview again";case "PLATFORM_CAMPAIGN_PLAN_INELIGIBLE"->"The Campaign Plan is not eligible for platform creation";case "PLATFORM_CAMPAIGN_ALREADY_MAPPED"->"The Campaign Plan already has a platform campaign";case "PLATFORM_POLICY_REJECTED"->"Platform policy rejected the request";case "PLATFORM_EVIDENCE_INVALID"->"Platform evidence is inconsistent";case "PLATFORM_BUDGET_CAP_EXCEEDED"->"The authorized budget capacity is insufficient";case "PLATFORM_LEDGER_CONCURRENCY_CONFLICT"->"The budget authorization changed concurrently";case "PLATFORM_LEGACY_OPERATION_INERT"->"The legacy operation is read-only";case "PLATFORM_ACCOUNT_CONFIGURATION_INVALID"->"The local platform account is unavailable";case "PLATFORM_ADAPTER_UNAVAILABLE"->"The fake platform adapter is unavailable";case "PLATFORM_RETRY_NOT_DUE"->"The operation is not yet eligible for retry";case "PLATFORM_MAX_ATTEMPTS_EXCEEDED"->"The operation has no retry attempts remaining";case "PLATFORM_MAX_RECONCILIATIONS_EXCEEDED"->"The operation has no reconciliation attempts remaining";case "PLATFORM_IDEMPOTENCY_CONFLICT"->"The request conflicts with an existing operation";case "PLATFORM_PROVIDER_RETRYABLE"->"The fake provider result may be retried later";default->"The operation is not eligible for this action";};}
+}

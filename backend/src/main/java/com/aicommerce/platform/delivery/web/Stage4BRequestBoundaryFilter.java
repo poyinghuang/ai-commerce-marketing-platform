@@ -41,8 +41,8 @@ final class Stage4BRequestBoundaryFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path=request.getRequestURI();
-        return !(path.startsWith("/api/platforms/meta/") || path.startsWith("/api/platform-operations/")
-                || path.startsWith("/api/platform-entities/"));
+        return !(path.startsWith("/api/platforms/meta/") || path.startsWith("/api/platforms/google/")
+                || path.startsWith("/api/platform-operations/") || path.startsWith("/api/platform-entities/"));
     }
 
     @Override

@@ -29,3 +29,7 @@ platform:
     enabled: true
   stage6:
     enabled: true
+  stage7:
+    google:
+      web:
+        enabled: true
