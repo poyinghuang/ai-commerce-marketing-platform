@@ -17,28 +17,27 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 
 | Item | Value |
 | --- | --- |
-| Gate | Stage 07 **7A** second FAKE image provider runtime |
-| Branch | `codex/stage-07a-secondary-image-provider` |
-| PR | Draft [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) |
+| Gate | Stage 07 **7B** fake-object storage provider runtime |
+| Branch | `codex/stage-07b-fake-object-storage` |
+| PR | Draft [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78) |
 | Specification | PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) squash-merged at `2851003`; post-merge main CI Run `32928585609` passed |
-| Base | `2851003` (PR #76 squash merge) |
+| 7A | PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) squash-merged at `eb2618d`; post-merge main CI Run `32940348609` passed |
+| Base | `eb2618d` (PR #77 squash merge) |
 | Stage 06 | Closed — spec PR [#72](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/72) at `d77b2e0`; runtime PR [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73) at `d22d80a`; close-out PR [#75](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/75) at `771f776`; post-merge main CI Run `32923254447` passed |
-| Stage 05 | Closed — spec PR [#69](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/69) at `3bbbc69`; runtime PR [#70](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/70) at `9e0f4b4`; close-out PR [#71](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/71) at `3d3b7b3`; post-merge main CI Run `32795522589` passed |
-| Stage 04 | Closed FAKE 4A–4E; tag `stage-04-complete`; post-merge main CI Run `32754399607` passed |
-| Manager Decision | Not started for 7A runtime |
+| Manager Decision | Not started for 7B runtime |
 | Optional Meta paused proof | **Locked** until a separate human record |
-| Next after 7A | **7B** fake-object storage; 7C locked |
+| Next after 7B | **7C-1** FAKE_GOOGLE adapter + V17 |
 
-## Assigned now (7A runtime)
+## Assigned now (7B runtime)
 
 | Agent | Duty | Status |
 | --- | --- | --- |
-| AI Workflow | Deliver `FakeSecondaryImageGenerationProvider` behind `ImageGenerationProvider` | In progress |
-| Backend / QA | Profile, compile-path, and focused generate proofs | In progress |
-| Documentation | Keep Stage 07 gate headers and 7A completion report aligned | In progress |
-| Project Manager | Idle until a 7A Draft PR + exact-head CI | Idle |
+| Backend | Deliver `FakeObjectStorageProvider` behind `StorageProvider` | In progress |
+| QA | Profile, compile-path, and ensure-tree proofs | In progress |
+| Documentation | Keep Stage 07 gate headers and 7B completion report aligned | In progress |
+| Project Manager | Idle until a 7B Draft PR + exact-head CI | Idle |
 | Review | Idle until Manager Review is requested | Idle |
-| Architecture / Frontend / Product Owner | Idle. Do not start 7B, V17, `/platforms/google`, or live ads | Idle |
+| Architecture / Frontend / AI Workflow / Product Owner | Idle. Do not start 7C, V17, `/platforms/google`, or live ads | Idle |
 
 Human review required for this LOCAL/TEST bean swap: **No**, unless credentials, spend, a second live ads platform, paid provider, or Decision Engine auto-execute appears. **Yes** immediately before live Google Ads / LINE / TikTok / paid image provider.
 
@@ -49,8 +48,8 @@ Do not start a later row until the previous row is merged and post-merge `main` 
 | Stage | Lead | Supporting agents | Human required | Unlock condition |
 | --- | --- | --- | --- | --- |
 | 07 Expansion spec | Architecture | Research, Documentation, Project Manager | No for FAKE docs-only; **Yes** if live ads or credentials appear | Stage 06 complete — **merged** PR #76 |
-| 07A second image provider runtime | AI Workflow | Backend, QA, Project Manager | No for LOCAL/TEST bean swap | 07 spec `APPROVE` + merge — **unlocked** |
-| 07B second storage provider runtime | Backend | QA, Project Manager | No for LOCAL/TEST bean swap | 7A merged + post-merge CI |
+| 07A second image provider runtime | AI Workflow | Backend, QA, Project Manager | No for LOCAL/TEST bean swap | 07 spec merge — **merged** PR #77 |
+| 07B second storage provider runtime | Backend | QA, Project Manager | No for LOCAL/TEST bean swap | 7A merged + post-merge CI — **unlocked** |
 | 07C-1 FAKE_GOOGLE adapter + V17 | Backend | Architecture, QA, Project Manager | No for FAKE key; **Yes** if Google Ads API/SDK appears | 7B merged + post-merge CI |
 | 07C-2 Google FAKE UI | Frontend | Backend, QA, Project Manager | No for gated FAKE UI | 7C-1 merged + post-merge CI |
 | 4E optional Meta paused proof | Research + Project Manager | Backend, QA | **Yes** — credentials, test-account access | Separate human record; `META_TEST_DELIVERY` stays disabled |
@@ -72,6 +71,6 @@ Escalate immediately; do not merge around them:
 
 ## Sequence after this assignment
 
-1. Stage 07 specification PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) is squash-merged at `2851003`. Post-merge main CI Run `32928585609` passed.
-2. Complete 7A runtime on Draft PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77). Do not start 7B, V17, `/platforms/google`, or live ads until 7A is approved, merged, and post-merge `main` CI has passed.
+1. Stage 07A runtime PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) is squash-merged at `eb2618d`. Post-merge main CI Run `32940348609` passed.
+2. Complete 7B runtime on Draft PR [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78). Do not start 7C, V17, `/platforms/google`, or live ads until 7B is approved, merged, and post-merge `main` CI has passed.
 3. Live Google Ads / LINE / TikTok and live Sheets/Drive/Meta Insights remain locked.

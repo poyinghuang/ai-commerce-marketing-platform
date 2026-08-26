@@ -1,6 +1,6 @@
 # AI Commerce Marketing Platform
 
-以 AI 為核心的電商素材、廣告投放、成效分析與決策平台。本 Repository 已完成 Stage 01、完整 Stage 02 Product Knowledge Center、完整 Stage 03 AI Creative Factory、Stage 04 Meta Ads Adapter 的 4A–4E FAKE LOCAL/TEST 切片（tag `stage-04-complete`）、Stage 05 Dashboard FAKE LOCAL/TEST runtime，以及 Stage 06 Decision Engine FAKE LOCAL/TEST runtime（建議型、不自動執行）。Stage 07 Expansion **specification** 已合併（PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) at `2851003`）。目前 Gate 是 **7A** 第二個 FAKE Image Provider runtime（live ads 仍鎖定）。
+以 AI 為核心的電商素材、廣告投放、成效分析與決策平台。本 Repository 已完成 Stage 01、完整 Stage 02 Product Knowledge Center、完整 Stage 03 AI Creative Factory、Stage 04 Meta Ads Adapter 的 4A–4E FAKE LOCAL/TEST 切片（tag `stage-04-complete`）、Stage 05 Dashboard FAKE LOCAL/TEST runtime，以及 Stage 06 Decision Engine FAKE LOCAL/TEST runtime（建議型、不自動執行）。Stage 07 Expansion **specification** 已合併（PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) at `2851003`）。**7A** 已合併（PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) at `eb2618d`）。目前 Gate 是 **7B** 第二個 FAKE Storage Provider runtime（live ads 仍鎖定）。
 
 ## Stage 01 技術基線
 

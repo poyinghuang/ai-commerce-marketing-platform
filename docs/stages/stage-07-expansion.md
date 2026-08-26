@@ -2,16 +2,17 @@
 
 ## Gate status
 
-- Status: Specification merged; **7A runtime** Draft PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77)
-- Specification: PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) squash-merged at `2851003bce4765e989296a124e3a7679a81ca6fd`; post-merge `main` CI Run `32928585609` passed
-- Branch: `codex/stage-07a-secondary-image-provider`
-- Base: `2851003bce4765e989296a124e3a7679a81ca6fd` (PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) squash merge)
+- Status: Specification and 7A merged; **7B runtime** Draft PR [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78)
+- Specification: PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) squash-merged at `2851003`; post-merge `main` CI Run `32928585609` passed
+- 7A: PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) squash-merged at `eb2618d`; post-merge `main` CI Run `32940348609` passed (`quality-and-compose` + `secret-scan`; Playwright artifact upload skipped after E2E pass)
+- Branch: `codex/stage-07b-fake-object-storage`
+- Base: `eb2618dc172d5fc095fceaa924beee20c226dd8f` (PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) squash merge)
 - Stage 06 prerequisite: Passed — spec PR [#72](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/72) at `d77b2e0`; runtime PR [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73) at `d22d80a`; close-out PR [#75](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/75) at `771f776`; post-merge `main` CI Run `32923254447` passed
 - Stage 05 prerequisite: Passed — spec PR #69, runtime PR #70, close-out PR #71
 - Stage 04 prerequisite: Passed — 4A–4E FAKE; tag `stage-04-complete` peels to `031d657`
-- Implementation: 7A unlocked after spec merge + post-merge CI. 7B and 7C stay locked until 7A merge + post-merge `main` CI
-- Manager Decision: Specification merged on `main` via PR #76. 7A runtime Manager Review not started
-- Merge: Specification merged. 7A runtime not merged
+- Implementation: 7B unlocked after 7A merge + post-merge CI. 7C stays locked until 7B merge + post-merge `main` CI
+- Manager Decision: 7B runtime Manager Review not started
+- Merge: Specification and 7A merged. 7B runtime not merged
 - Optional Meta paused proof: **Locked** (separate human record)
 - Live ads / paid providers / second **live** ads platform: **Locked** until a recorded human decision (`ESCALATE_TO_HUMAN`)
 - Auto-execute: **Forbidden**
@@ -214,7 +215,8 @@ Docs-only specification: **No**, unless credentials, spend, a second live ads pl
 - [x] Stage 06 FAKE complete: spec #72, runtime #73, close-out #75 at `771f776`; post-merge `main` CI Run `32923254447` passed.
 - [x] Specification Head `cd40cbf` passed exact-head Push Run `32924104147` and Pull Request Run `32924107965` (`quality-and-compose` and `secret-scan`).
 - [x] Specification squash-merged: PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) at `2851003`; post-merge `main` CI Run `32928585609` passed.
-- [ ] 7A runtime Manager `APPROVE` + merge + post-merge `main` CI.
-- [ ] 7B / 7C remain locked until 7A post-merge CI.
+- [x] 7A runtime squash-merged: PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) at `eb2618d`; post-merge `main` CI Run `32940348609` passed.
+- [ ] 7B runtime Manager `APPROVE` + merge + post-merge `main` CI.
+- [ ] 7C remains locked until 7B post-merge CI.
 
-Current gate is 7A runtime. Live ads stay locked.
+Current gate is 7B runtime. Live ads stay locked.
