@@ -204,6 +204,7 @@ class Stage4CLegacyOperationIntegrationTest {
 
     private String rows(String table) {
         String where = switch (table) {
+            case "platform_accounts" -> " where platform_account_uuid='" + ACCOUNT + "'";
             case "ai_prompt_templates" -> " where prompt_template_uuid='" + TEMPLATE + "'";
             case "ai_prompt_template_versions" -> " where prompt_template_version_uuid='" + TEMPLATE_VERSION + "'";
             case "audit_logs" -> " where audit_uuid='" + AUDIT + "'";
@@ -317,6 +318,7 @@ class Stage4CLegacyOperationIntegrationTest {
                 claimReconcile(jdbc, tx, RECONCILE_RECOVERY);
                 for (String table : GRAPH_TABLES) {
                     String where = switch (table) {
+                        case "platform_accounts" -> " where platform_account_uuid='" + ACCOUNT + "'";
                         case "ai_prompt_templates" -> " where prompt_template_uuid='" + TEMPLATE + "'";
                         case "ai_prompt_template_versions" -> " where prompt_template_version_uuid='" + TEMPLATE_VERSION + "'";
                         case "audit_logs" -> " where audit_uuid='" + AUDIT + "'";
