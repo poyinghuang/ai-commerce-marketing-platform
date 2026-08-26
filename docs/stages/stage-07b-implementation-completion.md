@@ -6,8 +6,8 @@
 - Base: `eb2618dc172d5fc095fceaa924beee20c226dd8f` (PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) squash merge)
 - Scope: LOCAL/TEST second `StorageProvider` bean behind `platform.storage.provider`; persist opaque folder IDs with `storage_provider='GOOGLE_DRIVE'`; no V7 edit, no upload/download, no live Drive
 - Specification: PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76); 7A PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) at `eb2618d`; post-merge main CI Run `32940348609` passed
-- Status: Runtime Draft PR [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78); Manager Review not started
-- Manager Decision: Not started
+- Status: Runtime PR [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78) squash-merged at `da01b13`; post-merge main CI Run `32944155884` passed
+- Manager Decision: Merged on `main`
 
 ## Implemented scope
 
@@ -19,11 +19,11 @@
 
 ## Boundaries preserved
 
-No upload/download/delete/rename. No Google SDK in `com.aicommerce.platform.asset` or `ProductStorageFolderService`. Distinct `storage_provider` values and V17 remain out of 7B. Live ads stay locked.
+No upload/download/delete/rename. No Google SDK in `com.aicommerce.platform.asset` or `ProductStorageFolderService`. Distinct `storage_provider` values remain out of 7B. Live ads stay locked.
 
 ## Local verification
 
-Recorded on this runtime branch before exact-head CI. Unrun checks are not Passed.
+Recorded on the 7B runtime branch before exact-head CI. Unrun checks are not Passed.
 
 | Check | Result |
 | --- | --- |
@@ -35,8 +35,6 @@ Recorded on this runtime branch before exact-head CI. Unrun checks are not Passe
 
 ## Exact-head CI
 
-Not yet recorded. Fill after Push and Pull Request `quality-and-compose` plus `secret-scan` pass on the reviewed Head.
+Runtime PR [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78) squash-merged at `da01b13`. Post-merge `main` CI Run [`32944155884`](https://github.com/poyinghuang/ai-commerce-marketing-platform/actions/runs/32944155884) passed both jobs.
 
-## Next gate
-
-7C-1 `FAKE_GOOGLE` adapter + additive V17 stays locked until this 7B runtime is Manager `APPROVE`, squash-merged, and post-merge `main` CI passes.
+Stage 07B FAKE is closed on `main`. Do not start 7C-2 from this close-out. 7C-1 is the next gate.

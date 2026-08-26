@@ -13,14 +13,17 @@ import com.aicommerce.platform.delivery.application.port.PlatformMetricsReadPort
 import com.aicommerce.platform.delivery.domain.FreshnessStatus;
 import com.aicommerce.platform.delivery.domain.PlatformDesiredState;
 import com.aicommerce.platform.delivery.domain.PlatformObservedState;
+import com.aicommerce.platform.delivery.domain.ProviderKey;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Component
+@Primary
 @Profile("(local | test) & !production")
 @ConditionalOnProperty(name = "platform.adapter", havingValue = "fake")
 public class DeterministicFakePlatformReadAdapter implements PlatformDeliveryReadPort, PlatformMetricsReadPort {
@@ -50,6 +53,11 @@ public class DeterministicFakePlatformReadAdapter implements PlatformDeliveryRea
     public DeterministicFakePlatformReadAdapter(Scenario scenario, Clock clock) {
         this.scenario = Objects.requireNonNull(scenario);
         this.clock = Objects.requireNonNull(clock);
+    }
+
+    @Override
+    public ProviderKey providerKey() {
+        return ProviderKey.FAKE;
     }
 
     public int invocationCount() {

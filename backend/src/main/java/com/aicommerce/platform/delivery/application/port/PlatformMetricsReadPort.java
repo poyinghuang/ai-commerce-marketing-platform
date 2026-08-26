@@ -7,8 +7,13 @@ import java.util.UUID;
 
 import com.aicommerce.platform.delivery.domain.FreshnessStatus;
 import com.aicommerce.platform.delivery.domain.PlatformEntityType;
+import com.aicommerce.platform.delivery.domain.ProviderKey;
 
 public interface PlatformMetricsReadPort {
+    default ProviderKey providerKey() {
+        return ProviderKey.FAKE;
+    }
+
     MetricObservation readWindow(MetricReadCommand command);
 
     record MetricReadCommand(

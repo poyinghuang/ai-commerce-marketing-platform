@@ -1,2 +1,6 @@
 package com.aicommerce.platform.delivery.application.port;
-public interface PlatformOperationReconciliationPort { PlatformReconciliationOutcome reconcile(PlatformReconciliationQuery query); }
+import com.aicommerce.platform.delivery.domain.ProviderKey;
+public interface PlatformOperationReconciliationPort {
+ default ProviderKey providerKey(){return ProviderKey.FAKE;}
+ PlatformReconciliationOutcome reconcile(PlatformReconciliationQuery query);
+}

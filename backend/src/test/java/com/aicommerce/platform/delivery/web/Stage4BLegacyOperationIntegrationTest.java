@@ -121,7 +121,7 @@ class Stage4BLegacyOperationIntegrationTest {
     private String rows(String table,String order){return rows(jdbc,table,order);}
     private static String rows(JdbcTemplate jdbc,String table,String order){String json="audit_logs".equals(table)?"to_jsonb(t)-'stage4b_operation_ordinal'":"to_jsonb(t)";return jdbc.queryForObject("select coalesce(jsonb_agg("+json+" order by "+order+"),'[]')::text from "+table+" t",String.class);}
     private static String v12Rows(JdbcTemplate jdbc,String table,String order){
-        String where=switch(table){case "ai_prompt_templates"->" where prompt_template_uuid='"+TEMPLATE+"'";case "ai_prompt_template_versions"->" where prompt_template_version_uuid='"+TEMPLATE_VERSION+"'";default->"";};
+        String where=switch(table){case "platform_accounts"->" where platform_account_uuid='"+ACCOUNT+"'";case "ai_prompt_templates"->" where prompt_template_uuid='"+TEMPLATE+"'";case "ai_prompt_template_versions"->" where prompt_template_version_uuid='"+TEMPLATE_VERSION+"'";default->"";};
         String json="audit_logs".equals(table)?"to_jsonb(t)-'stage4b_operation_ordinal'":"to_jsonb(t)";
         return jdbc.queryForObject("select coalesce(jsonb_agg("+json+" order by "+order+"),'[]')::text from "+table+" t"+where,String.class);
     }
