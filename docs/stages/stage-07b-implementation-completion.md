@@ -6,7 +6,7 @@
 - Base: `eb2618dc172d5fc095fceaa924beee20c226dd8f` (PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) squash merge)
 - Scope: LOCAL/TEST second `StorageProvider` bean behind `platform.storage.provider`; persist opaque folder IDs with `storage_provider='GOOGLE_DRIVE'`; no V7 edit, no upload/download, no live Drive
 - Specification: PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76); 7A PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) at `eb2618d`; post-merge main CI Run `32940348609` passed
-- Status: Runtime not merged; Manager Review not started
+- Status: Runtime Draft PR [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78); Manager Review not started
 - Manager Decision: Not started
 
 ## Implemented scope

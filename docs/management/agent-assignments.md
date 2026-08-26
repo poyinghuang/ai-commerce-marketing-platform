@@ -19,6 +19,7 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 | --- | --- |
 | Gate | Stage 07 **7B** fake-object storage provider runtime |
 | Branch | `codex/stage-07b-fake-object-storage` |
+| PR | Draft [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78) |
 | Specification | PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) squash-merged at `2851003`; post-merge main CI Run `32928585609` passed |
 | 7A | PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) squash-merged at `eb2618d`; post-merge main CI Run `32940348609` passed |
 | Base | `eb2618d` (PR #77 squash merge) |
@@ -71,5 +72,5 @@ Escalate immediately; do not merge around them:
 ## Sequence after this assignment
 
 1. Stage 07A runtime PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) is squash-merged at `eb2618d`. Post-merge main CI Run `32940348609` passed.
-2. Complete 7B runtime on `codex/stage-07b-fake-object-storage`. Do not start 7C, V17, `/platforms/google`, or live ads until 7B is approved, merged, and post-merge `main` CI has passed.
+2. Complete 7B runtime on Draft PR [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78). Do not start 7C, V17, `/platforms/google`, or live ads until 7B is approved, merged, and post-merge `main` CI has passed.
 3. Live Google Ads / LINE / TikTok and live Sheets/Drive/Meta Insights remain locked.

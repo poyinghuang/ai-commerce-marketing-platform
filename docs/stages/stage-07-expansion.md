@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status: Specification and 7A merged; **7B runtime** in progress
+- Status: Specification and 7A merged; **7B runtime** Draft PR [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78)
 - Specification: PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) squash-merged at `2851003`; post-merge `main` CI Run `32928585609` passed
 - 7A: PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) squash-merged at `eb2618d`; post-merge `main` CI Run `32940348609` passed (`quality-and-compose` + `secret-scan`; Playwright artifact upload skipped after E2E pass)
 - Branch: `codex/stage-07b-fake-object-storage`
