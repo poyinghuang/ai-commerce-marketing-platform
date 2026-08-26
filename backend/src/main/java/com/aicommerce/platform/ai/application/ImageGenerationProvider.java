@@ -12,6 +12,14 @@ public interface ImageGenerationProvider {
 
     ImageResult await(ImageRequest request, ImageSubmission submission);
 
+    default String jobProviderKey() {
+        return "stub";
+    }
+
+    default String jobModelKey() {
+        return "stub-image";
+    }
+
     record ImageRequest(
             UUID generationJobUuid,
             String workflowKey,

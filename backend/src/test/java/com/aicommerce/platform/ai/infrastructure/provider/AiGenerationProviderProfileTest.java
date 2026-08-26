@@ -15,10 +15,12 @@ import com.aicommerce.platform.ai.application.ImageGenerationProvider;
 import com.aicommerce.platform.ai.application.AssetBinaryStore;
 import com.aicommerce.platform.ai.application.TextGenerationProvider;
 import com.aicommerce.platform.ai.domain.GenerationType;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.core.env.MapPropertySource;
 
 class AiGenerationProviderProfileTest {
 
@@ -30,6 +32,7 @@ class AiGenerationProviderProfileTest {
             context.register(
                     StubTextGenerationProvider.class,
                     StubImageGenerationProvider.class,
+                    FakeSecondaryImageGenerationProvider.class,
                     DeterministicAiCostCeilingProvider.class,
                     DenyTextGenerationProvider.class,
                     DenyImageGenerationProvider.class,
@@ -108,5 +111,61 @@ class AiGenerationProviderProfileTest {
                 Arguments.of("production,local", new String[] {"production", "local"}, false),
                 Arguments.of("production,test", new String[] {"production", "test"}, false),
                 Arguments.of("production,comfyui", new String[] {"production", "comfyui"}, false));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("imageProviderFlags")
+    void selectsExactlyOneImageProviderForTheNamedFlag(
+            String scenario, String[] profiles, String imageProvider, Class<?> expectedImage) {
+        try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext()) {
+            context.getEnvironment().setActiveProfiles(profiles);
+            if (imageProvider != null) {
+                context.getEnvironment().getPropertySources().addFirst(
+                        new MapPropertySource("image-flag", Map.of("platform.image.provider", imageProvider)));
+            }
+            context.register(
+                    StubImageGenerationProvider.class,
+                    FakeSecondaryImageGenerationProvider.class,
+                    DenyImageGenerationProvider.class);
+            context.refresh();
+            Map<String, ImageGenerationProvider> imageProviders = context.getBeansOfType(ImageGenerationProvider.class);
+            assertThat(imageProviders).hasSize(1);
+            ImageGenerationProvider image = imageProviders.values().iterator().next();
+            assertThat(image).isExactlyInstanceOf(expectedImage);
+            if (expectedImage == FakeSecondaryImageGenerationProvider.class) {
+                assertThat(image.jobProviderKey()).isEqualTo("FAKE_SECONDARY_IMAGE");
+                assertThat(image.submit(imageRequest()).providerJobId()).startsWith("fake-secondary-image-");
+            }
+        }
+    }
+
+    @Test
+    void localWrongImageProviderValueLoadsNoSecondaryOrStubBean() {
+        try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext()) {
+            context.getEnvironment().setActiveProfiles("local");
+            context.getEnvironment().getPropertySources().addFirst(
+                    new MapPropertySource("image-flag", Map.of("platform.image.provider", "comfyui")));
+            context.register(
+                    StubImageGenerationProvider.class,
+                    FakeSecondaryImageGenerationProvider.class,
+                    DenyImageGenerationProvider.class);
+            context.refresh();
+            assertThat(context.getBeansOfType(ImageGenerationProvider.class)).isEmpty();
+            assertThat(context.getBeansOfType(FakeSecondaryImageGenerationProvider.class)).isEmpty();
+        }
+    }
+
+    private static Stream<Arguments> imageProviderFlags() {
+        return Stream.of(
+                Arguments.of("local-default-stub", new String[] {"local"}, null, StubImageGenerationProvider.class),
+                Arguments.of("local-stub", new String[] {"local"}, "stub", StubImageGenerationProvider.class),
+                Arguments.of("test-fake-secondary", new String[] {"test"}, "fake-secondary",
+                        FakeSecondaryImageGenerationProvider.class),
+                Arguments.of("local-fake-secondary", new String[] {"local"}, "fake-secondary",
+                        FakeSecondaryImageGenerationProvider.class),
+                Arguments.of("production-ignores-fake-secondary", new String[] {"production"}, "fake-secondary",
+                        DenyImageGenerationProvider.class),
+                Arguments.of("production-local-ignores-fake-secondary", new String[] {"production", "local"},
+                        "fake-secondary", DenyImageGenerationProvider.class));
     }
 }

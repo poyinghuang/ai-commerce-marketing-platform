@@ -87,7 +87,8 @@ public class ImageGenerationService {
         try {
             return foundation.create(new CreateGenerationFoundationCommand(product.getProductUuid(), plan.getCreativePlanUuid(),
                     List.of(new GenerationJobFoundationRequest(version.getPromptTemplateVersionUuid(), GenerationType.IMAGE,
-                            "stub", "stub-image", rendered.prompt(), version.getNegativePrompt(), rendered.snapshot()))),
+                            provider.jobProviderKey(), provider.jobModelKey(), rendered.prompt(),
+                            version.getNegativePrompt(), rendered.snapshot()))),
                     contexts.forCurrentActor(requestId));
         } catch (AiGenerationException exception) {
             throw exception;
