@@ -4,7 +4,7 @@
 
 - Scope: Stage 07 FAKE LOCAL/TEST expansion proofs (second Image Provider, second Storage Provider, `FAKE_GOOGLE` adapter + gated UI)
 - Specification: PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) squash-merged at `2851003`; post-merge main CI Run `32928585609` passed
-- Status: FAKE slices squash-merged; this close-out records Stage 07 FAKE closed
+- Status: FAKE slices squash-merged; close-out Draft PR [#81](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/81)
 - Manager Decision: Not started for this close-out
 
 ## Closed slices

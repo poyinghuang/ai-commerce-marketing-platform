@@ -19,7 +19,7 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 | --- | --- |
 | Gate | Stage 07 FAKE **close-out** |
 | Branch | `codex/stage-07-closeout` |
-| PR | Not opened |
+| PR | Draft [#81](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/81) |
 | Specification | PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) squash-merged at `2851003`; post-merge main CI Run `32928585609` passed |
 | 7A | PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) squash-merged at `eb2618d`; post-merge main CI Run `32940348609` passed |
 | 7B | PR [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78) squash-merged at `da01b13`; post-merge main CI Run `32944155884` passed |
@@ -36,7 +36,7 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 | Agent | Duty | Status |
 | --- | --- | --- |
 | Documentation | Record 7C-2 merge, post-merge `main` CI, and Stage 07 FAKE close | Assigned |
-| Project Manager | Idle until a close-out Draft PR + exact-head CI | Idle |
+| Project Manager | Idle until exact-head CI on Draft PR [#81](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/81) | Idle |
 | Review | Idle until Manager Review is requested | Idle |
 | Architecture / Research / Backend / Frontend / QA / AI Workflow / Product Owner | Idle. Do not start 7D/7E or live APIs | Idle |
 
