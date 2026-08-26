@@ -14,7 +14,7 @@
 - Manager Review: Specification cycle 2 Passed at `aea9193` / rebound `3a46b47`. Runtime cycle 1 Passed for implementation Head `50fcd8b71656381b612e25bafe1e14b5bce8ddfe` — `docs/management/reviews/stage-06-runtime-manager-review.md`
 - Manager Decision: Merged on `main`
 - Merge: Specification squash-merged at `d77b2e0`. Runtime PR [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73) squash-merged at `d22d80a`
-- Stage 07 Expansion specification: Unlocked
+- Stage 07 Expansion specification: In progress on `codex/stage-07-expansion-specification`
 - Optional Meta paused proof: **Locked** (separate human record)
 - Auto-execute: **Forbidden** in this Stage and until a recorded human decision (`ESCALATE_TO_HUMAN`)
 
@@ -541,4 +541,4 @@ Parent stub mapped to executable proof:
 - [x] Approval-record Head `e65e906` exact-head CI: Push `32828192447`, PR `32828196567`.
 - [x] Runtime squash-merged as PR [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73) at `d22d80a`; post-merge `main` CI Run `32914761189` passed.
 
-Stage 06 FAKE is closed. Stage 07 Expansion specification is the current gate. Optional Meta paused proof stays locked until a separate human record. Auto-execute remains forbidden.
+Stage 07 specification is in progress on `codex/stage-07-expansion-specification`. 7A is the first runtime after this spec merges. Live ads stay locked.
