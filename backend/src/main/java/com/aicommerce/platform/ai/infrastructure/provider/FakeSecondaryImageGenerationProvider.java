@@ -11,15 +11,28 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Profile("(local | test) & !production")
-@ConditionalOnProperty(name = "platform.image.provider", havingValue = "stub", matchIfMissing = true)
-public class StubImageGenerationProvider implements ImageGenerationProvider {
+@ConditionalOnProperty(name = "platform.image.provider", havingValue = "fake-secondary")
+public class FakeSecondaryImageGenerationProvider implements ImageGenerationProvider {
+
+    public static final String PROVIDER_KEY = "FAKE_SECONDARY_IMAGE";
+    public static final String MODEL_KEY = "deterministic-fake-secondary";
+
+    @Override
+    public String jobProviderKey() {
+        return PROVIDER_KEY;
+    }
+
+    @Override
+    public String jobModelKey() {
+        return MODEL_KEY;
+    }
 
     @Override
     public ImageSubmission submit(ImageRequest request) {
         return new ImageSubmission(
-                "stub-image-" + request.generationJobUuid(),
-                "deterministic-local-stub",
-                Map.of("fixture", "stage-03"));
+                "fake-secondary-image-" + request.generationJobUuid(),
+                MODEL_KEY,
+                Map.of("fixture", "stage-07a"));
     }
 
     @Override

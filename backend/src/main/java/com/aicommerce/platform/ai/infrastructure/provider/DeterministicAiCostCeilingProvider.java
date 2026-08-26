@@ -20,7 +20,8 @@ public class DeterministicAiCostCeilingProvider implements AiCostCeilingProvider
             "TEXT:stub:stub-text-cost-invariant", ceiling("0.500000", "2.000000"),
             "TEXT:stub:stub-text-daily", ceiling("0.500000", "6.000000"),
             "TEXT:stub:stub-text-over-job", ceiling("0.500000", "7.000000"),
-            "IMAGE:stub:stub-image", ceiling("1.000000", "4.000000"));
+            "IMAGE:stub:stub-image", ceiling("1.000000", "4.000000"),
+            "IMAGE:FAKE_SECONDARY_IMAGE:deterministic-fake-secondary", ceiling("1.000000", "4.000000"));
 
     @Override
     public AiCostCeiling ceilingFor(GenerationType generationType, String providerKey, String modelKey) {

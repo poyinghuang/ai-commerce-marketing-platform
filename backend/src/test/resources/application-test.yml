@@ -13,6 +13,8 @@ app:
     startup-repair-enabled: true
 platform:
   adapter: fake
+  image:
+    provider: stub
   web:
     enabled: true
   stage4b:
