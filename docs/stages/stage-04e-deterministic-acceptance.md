@@ -11,7 +11,7 @@
 - Manager Decision: Specification and runtime merged on `main`
 - Merge: Specification PR [#67](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/67) squash-merged at `031d6575a2d6102af5dd1574ca2c2d74799310f4`; post-merge main CI Run `32754399607` passed
 - Tag: `stage-04-complete` peels to `031d657`
-- Optional Meta paused proof: **Locked** (separate human record). Stage 05 Dashboard is closed; Stage 06 Decision Engine specification is the current gate.
+- Optional Meta paused proof: **Locked** (separate human record). Stage 05 Dashboard is closed; Stage 06 Decision Engine is closed; Stage 07 Expansion specification is the current gate.
 
 This document is the Stage 04 deterministic-FAKE acceptance contract. It does not authorize credentials, `META_TEST_READ_WRITE_PAUSED`, `META_TEST_DELIVERY`, real Meta, spend, production, Auth/RBAC/Tenant, Dashboard, or Decision Engine behavior.
 
@@ -105,4 +105,4 @@ Runtime merge to `main` plus post-merge CI is necessary but not sufficient. The 
 - [x] Runtime PR #68 squash-merged at `42515e227aca81fd3a0da51f177df891db6aac7f` (merged before the specification PR).
 - [x] Tag `stage-04-complete` created on `031d657`.
 
-Optional Meta paused proof stays locked until a separate human record. Stage 05 Dashboard is closed. Stage 06 Decision Engine specification is the current gate.
+Optional Meta paused proof stays locked until a separate human record. Stage 05 Dashboard is closed. Stage 06 Decision Engine is closed. Stage 07 Expansion specification is the current gate.

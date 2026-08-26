@@ -6,8 +6,8 @@
 - Base: `d77b2e043e97179e5235ee50c68677757f36bd63` (PR #72 squash merge)
 - Scope: FAKE LOCAL/TEST suggestion engine over existing Stage 4D campaign-grain snapshots; additive V16 recommendation tables; no auto-execute, scheduler, LLM, credentials, or production enablement
 - Specification: PR [#72](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/72) squash-merged at `d77b2e0`; post-merge main CI Run `32804409128` passed
-- Status: Runtime Draft PR [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73); Manager `APPROVE` recorded for implementation Head `50fcd8b`
-- Manager Decision: `APPROVE` — merge after the approval-record Head passes exact-head CI
+- Status: Runtime PR [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73) squash-merged at `d22d80a`; post-merge main CI Run `32914761189` passed
+- Manager Decision: Merged on `main`
 
 ## Implemented scope
 
@@ -51,6 +51,11 @@ Implementation Head `50fcd8b71656381b612e25bafe1e14b5bce8ddfe`:
 - Pull Request Run [`32811163525`](https://github.com/poyinghuang/ai-commerce-marketing-platform/actions/runs/32811163525) `SUCCESS`; `quality-and-compose` job `97690633924`; `secret-scan` job `97690634074`
 - Required steps skipped: only Playwright artifact upload after E2E pass
 
-Manager Review: `docs/management/reviews/stage-06-runtime-manager-review.md`. Do not merge until the approval-record Head also passes the same exact-head jobs.
+Approval-record Head `e65e9068b16913181ca460550fc9be813ca01748`:
 
-Stage 06 remains suggestion-only. Optional Meta paused proof stays locked until a separate human record.
+- Push Run [`32828192447`](https://github.com/poyinghuang/ai-commerce-marketing-platform/actions/runs/32828192447) `SUCCESS`
+- Pull Request Run [`32828196567`](https://github.com/poyinghuang/ai-commerce-marketing-platform/actions/runs/32828196567) `SUCCESS`
+
+Manager Review: `docs/management/reviews/stage-06-runtime-manager-review.md`. Runtime PR [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73) squash-merged at `d22d80a`. Post-merge `main` CI Run [`32914761189`](https://github.com/poyinghuang/ai-commerce-marketing-platform/actions/runs/32914761189) passed both jobs. Playwright artifact upload skipped after an E2E pass.
+
+Stage 06 FAKE is closed on `main`. Do not start Stage 07 runtime or optional Meta paused proof from this close-out. Stage 07 specification is the next gate.

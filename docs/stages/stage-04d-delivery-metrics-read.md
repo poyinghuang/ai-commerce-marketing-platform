@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status: Runtime squash-merged; post-merge `main` CI passed; Stage 4E closed; Stage 05 closed; Stage 06 specification unlocked
+- Status: Runtime squash-merged; post-merge `main` CI passed; Stage 4E closed; Stage 05 closed; Stage 06 closed; Stage 07 specification unlocked
 - Branch: `codex/stage-04d-delivery-metrics-runtime` (merged)
 - Base: `aa90804` (PR #65 squash merge)
 - Stage 4C prerequisite: Passed; PR #64 squash-merged at `acb833d9622925fa185bf905aeac5bddf93f0d6e`; post-merge main CI Run `32504910043` passed
@@ -455,4 +455,4 @@ The BFF adds only the six Backend paths above. It does not reuse `/api/platforms
 - [x] Specification PR #65 squash-merged at `aa90804`; post-merge `main` CI Run `32540462993` passed.
 - [x] Runtime PR #66 squash-merged at `2c2ab07a77d02d8e2c1d2f4e70010430b0e74cfb`; post-merge main CI Run `32744056926` passed.
 
-Stage 4E FAKE is closed. Stage 05 Dashboard is closed. Stage 06 Decision Engine specification is the current gate.
+Stage 4E FAKE is closed. Stage 05 Dashboard is closed. Stage 06 Decision Engine is closed. Stage 07 Expansion specification is the current gate.
