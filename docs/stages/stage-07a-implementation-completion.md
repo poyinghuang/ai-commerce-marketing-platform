@@ -6,8 +6,8 @@
 - Base: `2851003bce4765e989296a124e3a7679a81ca6fd` (PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) squash merge)
 - Scope: LOCAL/TEST second `ImageGenerationProvider` bean behind `platform.image.provider`; persist `FAKE_SECONDARY_IMAGE`; no migration, no ComfyUI workflow edit, no live ads
 - Specification: PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) squash-merged at `2851003`; post-merge main CI Run `32928585609` passed
-- Status: Runtime Draft PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77); Manager Review not started
-- Manager Decision: Not started
+- Status: Runtime PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) squash-merged at `eb2618d`; post-merge main CI Run `32940348609` passed
+- Manager Decision: Merged on `main`
 
 ## Implemented scope
 
@@ -37,8 +37,12 @@ Recorded on this runtime branch before exact-head CI. Unrun checks are not Passe
 
 ## Exact-head CI
 
-Not yet recorded. Fill after Push and Pull Request `quality-and-compose` plus `secret-scan` pass on the reviewed Head.
+Implementation Head `1ca1b27eaaed44dd6f12d6601ed9c5e9c0ffb181` (PR #77 record commit):
 
-## Next gate
+- Push Run [`32935689295`](https://github.com/poyinghuang/ai-commerce-marketing-platform/actions/runs/32935689295) `SUCCESS`
+- Pull Request Run [`32935693514`](https://github.com/poyinghuang/ai-commerce-marketing-platform/actions/runs/32935693514) `SUCCESS`
+- Required steps skipped: only Playwright artifact upload after E2E pass
 
-7B fake-object `StorageProvider` stays locked until this 7A runtime is Manager `APPROVE`, squash-merged, and post-merge `main` CI passes. Live Google Sheets / Drive read and Meta Insights remain a later human-gated specification.
+Runtime PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) squash-merged at `eb2618d`. Post-merge `main` CI Run [`32940348609`](https://github.com/poyinghuang/ai-commerce-marketing-platform/actions/runs/32940348609) passed both jobs. Playwright artifact upload skipped after an E2E pass.
+
+Stage 07A FAKE is closed on `main`. Do not start 7C from this close-out. 7B is the next gate.
