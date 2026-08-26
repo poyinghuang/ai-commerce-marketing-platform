@@ -41,6 +41,7 @@ class MigrationCompatibilityTest {
     private static final String V14_SHA256 = "03acc103faa2bd1cf94324cd2e7255e31d0e583cc5da7a88db9fab803289ad25";
     private static final String V15_SHA256 = "5af45b88aa833faf4e6c533511a854ddb5109ec91e52c0adfd8016861c7be986";
     private static final String V16_SHA256 = "88d388201a974403d963a6dcd7d5cfafbdc460cff013c1639cd7ec8134db6484";
+    private static final String V17_SHA256 = "bc95563e6fe7fdeb6fd706b08df41659d564d1ed96b2578f25d3000e07c8a714";
 
     @Container
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17.6-alpine3.22");
@@ -49,11 +50,11 @@ class MigrationCompatibilityTest {
     void emptyDatabaseRunsV1ThroughV12AndRepeatMigrationHasNoPendingWork() {
         Flyway flyway = flyway("empty_case", null);
 
-        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(17);
+        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(18);
         assertThat(List.of(flyway.info().applied()).stream()
                 .filter(info -> info.getVersion() != null)
                 .map(info -> info.getVersion().getVersion()))
-                .containsExactly("1", "2", "3", "4", "5", "6", "6.1", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16");
+                .containsExactly("1", "2", "3", "4", "5", "6", "6.1", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17");
         assertThat(flyway.info().pending()).isEmpty();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
     }
@@ -386,7 +387,7 @@ class MigrationCompatibilityTest {
         });
         jdbc.update("INSERT INTO audit_logs(audit_uuid,operation_uuid,request_id,actor_type,actor_id,source,action,entity_type,entity_uuid,product_uuid) VALUES (?,?,'v12-audit','SYSTEM','migration-test','SYSTEM','UPDATE','PRODUCT',?,?)",legacyAudit,UUID.randomUUID(),product,product);
         Flyway latest=flyway(schema,null);
-        assertThat(latest.migrate().migrationsExecuted).isEqualTo(5);
+        assertThat(latest.migrate().migrationsExecuted).isEqualTo(6);
         assertThat(jdbc.queryForObject("SELECT review_status FROM ai_generation_outputs WHERE generation_output_uuid=?",String.class,output)).isEqualTo("APPROVED");
         assertThat(jdbc.queryForObject("SELECT decision FROM ai_review_decisions WHERE review_decision_uuid=?",String.class,decision)).isEqualTo("APPROVED");
         assertThat(jdbc.queryForMap("SELECT campaign_name,objective,budget_daily,currency,version FROM campaign_plans WHERE campaign_uuid=?",campaignPlan)).containsEntry("campaign_name","Preserved Campaign").containsEntry("objective","sales").containsEntry("currency","TWD").containsEntry("version",7L);
@@ -416,6 +417,7 @@ class MigrationCompatibilityTest {
         assertThat(sha256("db/migration/V14__add_stage4c_ad_publication_integrity.sql")).isEqualTo(V14_SHA256);
         assertThat(sha256("db/migration/V15__add_platform_metric_as_of_indexes.sql")).isEqualTo(V15_SHA256);
         assertThat(sha256("db/migration/V16__create_decision_recommendations.sql")).isEqualTo(V16_SHA256);
+        assertThat(sha256("db/migration/V17__allow_fake_google_provider_key.sql")).isEqualTo(V17_SHA256);
     }
 
     @Test
@@ -497,19 +499,48 @@ class MigrationCompatibilityTest {
     }
 
     @Test
-    void failedForwardOnlyV17CollisionLeavesEveryV16ObjectInPlace() {
-        String schema="forward_v17_case";
-        assertThat(flyway(schema,null).migrate().migrationsExecuted).isEqualTo(17);
+    void failedV17MigrationRollsBackEveryPartialV17Object() {
+        String schema="atomic_v17_case";
+        assertThat(flyway(schema,MigrationVersion.fromVersion("16")).migrate().migrationsExecuted).isEqualTo(17);
+        JdbcTemplate jdbc=jdbcTemplate();
+        jdbc.execute("ALTER TABLE "+schema+".platform_accounts ADD CONSTRAINT ck_platform_accounts_provider_key_v17 CHECK (true)");
+
+        assertThatThrownBy(()->flyway(schema,null).migrate()).isInstanceOf(FlywayException.class);
+
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*) FROM information_schema.check_constraints
+                WHERE constraint_schema=? AND constraint_name='ck_platform_accounts_provider_key_v17'
+                """,Integer.class,schema)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT "+schema+".is_valid_platform_evidence(?::jsonb)",Boolean.class,
+                "{\"schemaVersion\":1,\"providerKey\":\"FAKE_GOOGLE\",\"attemptKind\":\"SUBMIT\",\"resultKind\":\"UNKNOWN_OUTCOME\"}"))
+                .isFalse();
+        assertThatThrownBy(()->jdbc.update("INSERT INTO "+schema+".platform_accounts(platform_account_uuid,provider_key,environment,account_reference,external_account_fingerprint,currency,timezone) VALUES (?,'FAKE_GOOGLE','TEST',?,?, 'TWD','Asia/Taipei')",
+                UUID.randomUUID(),"atomic-"+UUID.randomUUID(),"c".repeat(64)))
+                .isInstanceOf(RuntimeException.class);
+        assertThat(flyway(schema,MigrationVersion.fromVersion("16")).info().current().getVersion().getVersion()).isEqualTo("16");
+    }
+
+    @Test
+    void failedForwardOnlyV18CollisionLeavesEveryV17ObjectInPlace() {
+        String schema="forward_v18_case";
+        assertThat(flyway(schema,null).migrate().migrationsExecuted).isEqualTo(18);
+        JdbcTemplate jdbc=jdbcTemplate(schema);
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*) FROM information_schema.check_constraints
+                WHERE constraint_schema=? AND constraint_name='ck_platform_accounts_provider_key_v17'
+                """,Integer.class,schema)).isEqualTo(1);
+        jdbc.update("INSERT INTO platform_accounts(platform_account_uuid,provider_key,environment,account_reference,external_account_fingerprint,currency,timezone) VALUES (?,'FAKE_GOOGLE','TEST',?,?, 'TWD','Asia/Taipei')",
+                UUID.randomUUID(),"v17-"+UUID.randomUUID(),"d".repeat(64));
         var colliding=org.flywaydb.core.Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(),postgres.getUsername(),postgres.getPassword())
-                .locations("classpath:db/migration","classpath:db/test-forward-v17")
+                .locations("classpath:db/migration","classpath:db/test-forward-v18")
                 .defaultSchema(schema).schemas(schema).createSchemas(true).cleanDisabled(true).load();
         assertThatThrownBy(colliding::migrate).isInstanceOf(FlywayException.class);
-        JdbcTemplate jdbc=jdbcTemplate(schema);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM information_schema.tables WHERE table_schema=? AND table_name='decision_recommendations'",Integer.class,schema)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM information_schema.tables WHERE table_schema=? AND table_name='decision_recommendation_decisions'",Integer.class,schema)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM pg_indexes WHERE schemaname=? AND indexname='idx_decision_recommendations_list'",Integer.class,schema)).isEqualTo(1);
-        assertThat(colliding.info().current().getVersion().getVersion()).isEqualTo("16");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM platform_accounts WHERE provider_key='FAKE_GOOGLE'",Integer.class)).isEqualTo(1);
+        assertThat(colliding.info().current().getVersion().getVersion()).isEqualTo("17");
     }
 
     @Test
@@ -527,7 +558,7 @@ class MigrationCompatibilityTest {
                 VALUES (?,?,'CAMPAIGN',?,'2026-08-16T00:00:00Z'::timestamptz,'2026-08-17T00:00:00Z'::timestamptz,'Asia/Taipei','TWD',10000,25.000000,1,'2026-08-17T02:00:00Z'::timestamptz,'FRESH',?)
                 """, snapshot, account, campaign, "a".repeat(64));
         var before=jdbc.queryForMap("SELECT metric_snapshot_uuid,platform_account_uuid,entity_type,platform_campaign_uuid,impressions,spend,revision_number,freshness_status,source_fingerprint FROM platform_metric_snapshots WHERE metric_snapshot_uuid=?",snapshot);
-        assertThat(flyway(schema,null).migrate().migrationsExecuted).isEqualTo(2);
+        assertThat(flyway(schema,null).migrate().migrationsExecuted).isEqualTo(3);
         assertThat(jdbc.queryForMap("SELECT metric_snapshot_uuid,platform_account_uuid,entity_type,platform_campaign_uuid,impressions,spend,revision_number,freshness_status,source_fingerprint FROM platform_metric_snapshots WHERE metric_snapshot_uuid=?",snapshot)).isEqualTo(before);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM pg_indexes WHERE schemaname=? AND indexname IN ('idx_platform_metrics_campaign_as_of','idx_platform_metrics_ad_set_as_of','idx_platform_metrics_ad_as_of')",Integer.class,schema)).isEqualTo(3);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM information_schema.tables WHERE table_schema=? AND table_name IN ('decision_recommendations','decision_recommendation_decisions')",Integer.class,schema)).isEqualTo(2);
@@ -580,7 +611,7 @@ class MigrationCompatibilityTest {
                 VALUES (?,?, 'CREATE_AD','AD',?,?, ?, ?::jsonb, ?,'LOCAL_ADMIN','local-admin','v14-legacy')
                 """, operation, account, ad, UUID.randomUUID(), "c".repeat(64), payload, sha);
         String before=jdbc.queryForObject("SELECT request_payload::text FROM platform_operations WHERE operation_uuid=?",String.class,operation);
-        assertThat(flyway(schema,null).migrate().migrationsExecuted).isEqualTo(3);
+        assertThat(flyway(schema,null).migrate().migrationsExecuted).isEqualTo(4);
         assertThat(jdbc.queryForObject("SELECT request_payload::text FROM platform_operations WHERE operation_uuid=?",String.class,operation)).isEqualTo(before);
         assertThat(jdbc.queryForObject("SELECT request_sha256 FROM platform_operations WHERE operation_uuid=?",String.class,operation)).isEqualTo(sha);
         assertThat(jdbc.queryForObject("SELECT jsonb_exists(request_payload,'expectedParentVersion') FROM platform_operations WHERE operation_uuid=?",Boolean.class,operation)).isFalse();

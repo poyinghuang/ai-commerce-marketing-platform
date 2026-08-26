@@ -6,8 +6,13 @@ import java.util.UUID;
 import com.aicommerce.platform.delivery.domain.PlatformDesiredState;
 import com.aicommerce.platform.delivery.domain.PlatformEntityType;
 import com.aicommerce.platform.delivery.domain.PlatformObservedState;
+import com.aicommerce.platform.delivery.domain.ProviderKey;
 
 public interface PlatformDeliveryReadPort {
+    default ProviderKey providerKey() {
+        return ProviderKey.FAKE;
+    }
+
     DeliveryObservation readObservedState(DeliveryReadCommand command);
 
     record DeliveryReadCommand(

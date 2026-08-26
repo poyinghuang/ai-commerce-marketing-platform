@@ -1,2 +1,7 @@
 package com.aicommerce.platform.delivery.application.port;
-public interface PlatformAdPort { PlatformWriteOutcome submitAd(PlatformAdCommand command); PlatformWriteOutcome changeAdState(PlatformStateMutationCommand command); }
+import com.aicommerce.platform.delivery.domain.ProviderKey;
+public interface PlatformAdPort {
+ default ProviderKey providerKey(){return ProviderKey.FAKE;}
+ PlatformWriteOutcome submitAd(PlatformAdCommand command);
+ PlatformWriteOutcome changeAdState(PlatformStateMutationCommand command);
+}

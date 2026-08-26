@@ -264,10 +264,10 @@ public class PlatformOperationTransactions {
             entityMutation=applyDirectEntity(operation,x,now).orElse(null);
             if(entityMutation==null){
                 status="UNKNOWN_OUTCOME"; code="PLATFORM_RESPONSE_AMBIGUOUS";
-                evidence=recoveryEvidence(PlatformAttemptKind.SUBMIT,PlatformEvidenceResultKind.UNKNOWN_OUTCOME);
+                evidence=recoveryEvidence(operation,PlatformAttemptKind.SUBMIT,PlatformEvidenceResultKind.UNKNOWN_OUTCOME);
             }else{status="SUCCEEDED";evidence=x.evidence();external=x.externalId().orElse(null);}
         }
-        else if(outcome instanceof WriteRetryableFailure x){trace=x.safeProviderTraceId().orElse(null);if(operation.getAttemptCount()>=3){status="FAILED_TERMINAL";code="PLATFORM_MAX_ATTEMPTS_EXCEEDED";evidence=new NormalizedPlatformEvidence(1,ProviderKey.FAKE,PlatformAttemptKind.SUBMIT,PlatformEvidenceResultKind.FAILED_TERMINAL,Optional.empty(),Optional.empty(),Optional.empty());}else{status="FAILED_RETRYABLE";code=x.errorCode().name();retry=x.retryAfterSeconds();evidence=x.evidence();}}
+        else if(outcome instanceof WriteRetryableFailure x){trace=x.safeProviderTraceId().orElse(null);if(operation.getAttemptCount()>=3){status="FAILED_TERMINAL";code="PLATFORM_MAX_ATTEMPTS_EXCEEDED";evidence=new NormalizedPlatformEvidence(1,providerKey(operation),PlatformAttemptKind.SUBMIT,PlatformEvidenceResultKind.FAILED_TERMINAL,Optional.empty(),Optional.empty(),Optional.empty());}else{status="FAILED_RETRYABLE";code=x.errorCode().name();retry=x.retryAfterSeconds();evidence=x.evidence();}}
         else if(outcome instanceof WriteTerminalFailure x){status="FAILED_TERMINAL";code=x.errorCode().name();trace=x.safeProviderTraceId().orElse(null);evidence=x.evidence();}
         else {WriteUnknownOutcome x=(WriteUnknownOutcome)outcome;status="UNKNOWN_OUTCOME";code=x.errorCode().name();trace=x.safeProviderTraceId().orElse(null);evidence=x.evidence();}
         String evidenceJson=json(evidence); String attemptStatus=status;
@@ -314,7 +314,7 @@ public class PlatformOperationTransactions {
             if (entityMutation==null) {
                 status = "UNKNOWN_OUTCOME"; attemptStatus = "UNKNOWN_OUTCOME";
                 code = "PLATFORM_RESPONSE_AMBIGUOUS";
-                evidence = recoveryEvidence(PlatformAttemptKind.RECONCILE, PlatformEvidenceResultKind.UNKNOWN_OUTCOME);
+                evidence = recoveryEvidence(operation, PlatformAttemptKind.RECONCILE, PlatformEvidenceResultKind.UNKNOWN_OUTCOME);
             } else {
                 status = "SUCCEEDED"; attemptStatus = "SUCCEEDED"; evidence = found.evidence();
                 external = found.externalId().orElse(null);
@@ -377,7 +377,7 @@ public class PlatformOperationTransactions {
                 : "PLATFORM_RECONCILIATION_INCONCLUSIVE";
         PlatformEvidenceResultKind result = kind == PlatformAttemptKind.SUBMIT
                 ? PlatformEvidenceResultKind.UNKNOWN_OUTCOME : PlatformEvidenceResultKind.STILL_UNKNOWN;
-        String evidence = json(recoveryEvidence(kind, result));
+        String evidence = json(recoveryEvidence(operation, kind, result));
         UUID attemptUuid=jdbc.queryForObject("SELECT operation_attempt_uuid FROM platform_operation_attempts WHERE operation_uuid=? AND attempt_kind=? AND attempt_number=?",UUID.class,operationUuid,kind.name(),number);
         int attemptUpdated = jdbc.update("""
                 UPDATE platform_operation_attempts SET status='UNKNOWN_OUTCOME',normalized_error_code=?,
@@ -415,7 +415,7 @@ public class PlatformOperationTransactions {
                 ? PlatformAttemptKind.SUBMIT : PlatformAttemptKind.RECONCILE;
         int number = kind == PlatformAttemptKind.SUBMIT ? operation.getAttemptCount() : operation.getReconciliationCount();
         String code = "PLATFORM_RESPONSE_AMBIGUOUS";
-        String evidence = json(recoveryEvidence(kind, PlatformEvidenceResultKind.UNKNOWN_OUTCOME));
+        String evidence = json(recoveryEvidence(operation, kind, PlatformEvidenceResultKind.UNKNOWN_OUTCOME));
         String trace = retainedTrace.filter(value -> !value.isBlank()).orElse(null);
         UUID attemptUuid = jdbc.queryForObject(
                 "SELECT operation_attempt_uuid FROM platform_operation_attempts WHERE operation_uuid=? AND attempt_kind=? AND attempt_number=?",
@@ -472,7 +472,7 @@ public class PlatformOperationTransactions {
 
     private void validateAccount(UUID accountUuid,UUID operationUuid){
         PlatformAccountPolicy policy=Objects.requireNonNull(accountPolicies.requirePolicy(accountUuid));
-        if(policy.providerKey()!=ProviderKey.FAKE)throw new PlatformOperationException(PlatformStableErrorCode.PLATFORM_PROVIDER_UNSUPPORTED,Optional.of(operationUuid));
+        if(policy.providerKey()!=ProviderKey.FAKE&&policy.providerKey()!=ProviderKey.FAKE_GOOGLE)throw new PlatformOperationException(PlatformStableErrorCode.PLATFORM_PROVIDER_UNSUPPORTED,Optional.of(operationUuid));
         if(!policy.active())throw new PlatformOperationException(PlatformStableErrorCode.PLATFORM_ACCOUNT_INACTIVE,Optional.of(operationUuid));
         if(!policy.currency().equals("TWD")||!policy.timezone().equals("Asia/Taipei"))throw new PlatformOperationException(PlatformStableErrorCode.PLATFORM_POLICY_REJECTED,Optional.of(operationUuid));
         boolean test=java.util.Arrays.asList(environment.getActiveProfiles()).contains("test");
@@ -685,9 +685,13 @@ public class PlatformOperationTransactions {
 
     private static BigDecimal canonicalMoney(BigDecimal value){BigDecimal normalized=value.stripTrailingZeros();return normalized.scale()<0?normalized.setScale(0):normalized;}
 
-    private NormalizedPlatformEvidence recoveryEvidence(PlatformAttemptKind kind,
+    private ProviderKey providerKey(PlatformOperation operation) {
+        return accountPolicies.requirePolicy(operation.getPlatformAccountUuid()).providerKey();
+    }
+
+    private NormalizedPlatformEvidence recoveryEvidence(PlatformOperation operation, PlatformAttemptKind kind,
             PlatformEvidenceResultKind result) {
-        return new NormalizedPlatformEvidence(1, ProviderKey.FAKE, kind, result, Optional.empty(),
+        return new NormalizedPlatformEvidence(1, providerKey(operation), kind, result, Optional.empty(),
                 Optional.empty(), Optional.empty());
     }
 

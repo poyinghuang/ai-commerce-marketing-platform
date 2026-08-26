@@ -1,14 +1,15 @@
 package com.aicommerce.platform.delivery.infrastructure.provider;
 import java.nio.charset.StandardCharsets; import java.security.*; import java.util.*; import java.util.concurrent.atomic.AtomicInteger;
 import com.aicommerce.platform.delivery.application.port.*; import com.aicommerce.platform.delivery.domain.*;
-import org.springframework.beans.factory.annotation.Autowired; import org.springframework.beans.factory.annotation.Value; import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty; import org.springframework.context.annotation.Profile; import org.springframework.stereotype.Component; import org.springframework.transaction.support.TransactionSynchronizationManager;
-@Component @Profile("(local | test) & !production") @ConditionalOnProperty(name="platform.adapter",havingValue="fake")
+import org.springframework.beans.factory.annotation.Autowired; import org.springframework.beans.factory.annotation.Value; import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty; import org.springframework.context.annotation.Primary; import org.springframework.context.annotation.Profile; import org.springframework.stereotype.Component; import org.springframework.transaction.support.TransactionSynchronizationManager;
+@Component @Primary @Profile("(local | test) & !production") @ConditionalOnProperty(name="platform.adapter",havingValue="fake")
 public class DeterministicFakePlatformAdapter implements PlatformCampaignPort,PlatformAdSetPort,PlatformAdPort,PlatformOperationReconciliationPort {
  private volatile Scenario scenario; private final AtomicInteger invocations=new AtomicInteger(); private volatile boolean transactionObserved;
  public DeterministicFakePlatformAdapter(){this(Scenario.SUCCESS);}
  @Autowired public DeterministicFakePlatformAdapter(@Value("${platform.fake.scenario:SUCCESS}") String scenario){this(Scenario.valueOf(scenario));}
  public DeterministicFakePlatformAdapter(Scenario scenario){this.scenario=Objects.requireNonNull(scenario);}
  public int invocationCount(){return invocations.get();} public boolean transactionObserved(){return transactionObserved;}
+ @Override public ProviderKey providerKey(){return ProviderKey.FAKE;}
  /** Server-owned local/test fixture switch; never exposed by an HTTP or production configuration surface. */
  public void useScenario(Scenario fixture){this.scenario=Objects.requireNonNull(fixture);}
  @Override public PlatformWriteOutcome submitCampaign(PlatformCampaignCommand c){return create(c.identity(),"fake-campaign-");}

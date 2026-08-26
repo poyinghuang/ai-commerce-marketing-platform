@@ -1,2 +1,7 @@
 package com.aicommerce.platform.delivery.application.port;
-public interface PlatformCampaignPort { PlatformWriteOutcome submitCampaign(PlatformCampaignCommand command); PlatformWriteOutcome changeCampaignState(PlatformStateMutationCommand command); }
+import com.aicommerce.platform.delivery.domain.ProviderKey;
+public interface PlatformCampaignPort {
+ default ProviderKey providerKey(){return ProviderKey.FAKE;}
+ PlatformWriteOutcome submitCampaign(PlatformCampaignCommand command);
+ PlatformWriteOutcome changeCampaignState(PlatformStateMutationCommand command);
+}

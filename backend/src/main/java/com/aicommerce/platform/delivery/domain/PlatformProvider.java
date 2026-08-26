@@ -1,2 +1,2 @@
 package com.aicommerce.platform.delivery.domain;
-public enum PlatformProvider { FAKE }
+public enum PlatformProvider { FAKE, FAKE_GOOGLE }
