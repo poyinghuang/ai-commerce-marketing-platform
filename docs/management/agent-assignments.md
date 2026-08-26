@@ -19,7 +19,7 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 | --- | --- |
 | Gate | Stage 07 **7C-2** gated `/platforms/google` FAKE UI |
 | Branch | `codex/stage-07c-2-google-fake-ui` |
-| PR | Draft (fill after open) |
+| PR | Draft [#80](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/80) |
 | Specification | PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) squash-merged at `2851003`; post-merge main CI Run `32928585609` passed |
 | 7A | PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) squash-merged at `eb2618d`; post-merge main CI Run `32940348609` passed |
 | 7B | PR [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78) squash-merged at `da01b13`; post-merge main CI Run `32944155884` passed |

@@ -6,7 +6,7 @@
 - Base: `f5faa286e18889058f1af6758222a7793dc8f184` (PR [#79](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/79) squash merge)
 - Scope: LOCAL/TEST gated `/platforms/google` preview-confirm UI and `/api/platforms/google/**` BFF/Backend on the existing `FAKE_GOOGLE` account; no migration; no Google Ads SDK
 - Specification: PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76); 7C-1 PR [#79](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/79) at `f5faa28`; post-merge main CI Run `32971029793` passed
-- Status: Runtime Draft PR (fill after open); Manager Review not started
+- Status: Runtime Draft PR [#80](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/80); Manager Review not started
 - Manager Decision: Not started
 
 ## Implemented scope
