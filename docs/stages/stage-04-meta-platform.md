@@ -13,7 +13,8 @@
 - Human Review Required: Defaults approved on 2026-08-15; new approval remains mandatory before real credentials, spend, production access, or live delivery
 - Merge: 4A–4E merged; tag `stage-04-complete` peels to `031d657`
 - Stage 05: Closed — spec PR #69 at `3bbbc69`; runtime PR #70 at `9e0f4b4`; post-merge main CI Run `32792642634` passed
-- Stage 06: Closed — spec PR #72 at `d77b2e0`; runtime PR #73 at `d22d80a`; post-merge main CI Run `32914761189` passed; Stage 07 specification is the current gate
+- Stage 06: Closed — spec PR #72 at `d77b2e0`; runtime PR #73 at `d22d80a`; post-merge main CI Run `32914761189` passed
+- Stage 07: Closed FAKE — spec PR #76 at `2851003`; 7A PR #77 at `eb2618d`; 7B PR #78 at `da01b13`; 7C-1 PR #79 at `f5faa28`; 7C-2 PR #80 at `ed3f4cf`; post-merge main CI Run `32974606066` passed
 
 ## Objective
 

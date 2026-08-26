@@ -58,4 +58,4 @@ Approval-record Head `e65e9068b16913181ca460550fc9be813ca01748`:
 
 Manager Review: `docs/management/reviews/stage-06-runtime-manager-review.md`. Runtime PR [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73) squash-merged at `d22d80a`. Post-merge `main` CI Run [`32914761189`](https://github.com/poyinghuang/ai-commerce-marketing-platform/actions/runs/32914761189) passed both jobs. Playwright artifact upload skipped after an E2E pass.
 
-Stage 06 FAKE is closed on `main`. Do not start Stage 07 runtime or optional Meta paused proof from this close-out. Stage 07 specification is the next gate.
+Stage 06 FAKE is closed on `main`. Stage 07 FAKE is closed on `main`. Optional Meta paused proof stays locked until a separate human record. Auto-execute remains forbidden.

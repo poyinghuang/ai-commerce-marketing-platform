@@ -6,8 +6,8 @@
 - Base: `f5faa286e18889058f1af6758222a7793dc8f184` (PR [#79](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/79) squash merge)
 - Scope: LOCAL/TEST gated `/platforms/google` preview-confirm UI and `/api/platforms/google/**` BFF/Backend on the existing `FAKE_GOOGLE` account; no migration; no Google Ads SDK
 - Specification: PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76); 7C-1 PR [#79](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/79) at `f5faa28`; post-merge main CI Run `32971029793` passed
-- Status: Runtime Draft PR [#80](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/80); Manager Review not started
-- Manager Decision: Not started
+- Status: Runtime PR [#80](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/80) squash-merged at `ed3f4cf`; post-merge main CI Run `32974606066` passed
+- Manager Decision: Merged on `main`
 
 ## Implemented scope
 
@@ -36,8 +36,11 @@ Recorded on this runtime branch before exact-head CI. Unrun checks are not Passe
 
 ## Exact-head CI
 
-Not yet recorded. Fill after Push and Pull Request `quality-and-compose` plus `secret-scan` pass on the reviewed Head.
+Runtime Head `1b098eb868dc9e4344d4734c1d761a6c711965d1` (PR #80 record commit):
 
-## Next gate
+- Push Run [`32974302386`](https://github.com/poyinghuang/ai-commerce-marketing-platform/actions/runs/32974302386) `SUCCESS`
+- Pull Request Run [`32974307205`](https://github.com/poyinghuang/ai-commerce-marketing-platform/actions/runs/32974307205) `SUCCESS`
 
-Stage 07 FAKE close-out stays locked until this 7C-2 runtime is Manager `APPROVE`, squash-merged, and post-merge `main` CI passes. 7D/7E LINE/TikTok and live ads stay locked.
+Runtime PR [#80](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/80) squash-merged at `ed3f4cf`. Post-merge `main` CI Run [`32974606066`](https://github.com/poyinghuang/ai-commerce-marketing-platform/actions/runs/32974606066) passed both jobs.
+
+Stage 07C-2 FAKE is closed on `main`. Stage 07 FAKE close-out is the current gate. 7D/7E LINE/TikTok and live ads stay locked.
