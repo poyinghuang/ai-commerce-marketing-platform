@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status: Specification, 7A, and 7B merged; **7C-1 runtime** on `codex/stage-07c-1-fake-google-adapter`
+- Status: Specification, 7A, and 7B merged; **7C-1 runtime** Draft PR [#79](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/79)
 - Specification: PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) squash-merged at `2851003`; post-merge `main` CI Run `32928585609` passed
 - 7A: PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) squash-merged at `eb2618d`; post-merge `main` CI Run `32940348609` passed
 - 7B: PR [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78) squash-merged at `da01b13`; post-merge `main` CI Run `32944155884` passed

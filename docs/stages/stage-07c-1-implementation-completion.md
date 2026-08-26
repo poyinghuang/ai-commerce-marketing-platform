@@ -6,7 +6,7 @@
 - Base: `da01b13cf796913576dbd95591fb2965abff7ddd` (PR [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78) squash merge)
 - Scope: LOCAL/TEST `FAKE_GOOGLE` adapter behind existing platform ports; additive V17 provider-key allow-list; second LOCAL/TEST account row; no REST, no `/platforms/google`, no Google Ads SDK
 - Specification: PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76); 7A PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) at `eb2618d`; 7B PR [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78) at `da01b13`; post-merge main CI Run `32944155884` passed
-- Status: Runtime Draft PR not yet numbered; fill after `gh pr create`
+- Status: Runtime Draft PR [#79](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/79); Manager Review not started
 - Manager Decision: Not started
 
 ## Implemented scope
