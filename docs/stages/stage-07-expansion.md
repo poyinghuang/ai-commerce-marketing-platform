@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status: Specification in progress; runtime locked
+- Status: Specification Draft PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76); runtime locked
 - Branch: `codex/stage-07-expansion-specification`
 - Base: `771f776c7819c408384795d7398c7caf0f708400` (PR [#75](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/75) squash merge)
 - Stage 06 prerequisite: Passed — spec PR [#72](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/72) at `d77b2e0`; runtime PR [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73) at `d22d80a`; close-out PR [#75](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/75) at `771f776`; post-merge `main` CI Run `32923254447` passed
@@ -10,7 +10,7 @@
 - Stage 04 prerequisite: Passed — 4A–4E FAKE; tag `stage-04-complete` peels to `031d657`
 - Implementation: Locked until this specification `APPROVE` + merge + post-merge `main` CI
 - Manager Decision: Not started
-- Merge: Specification not merged
+- Merge: Specification not merged. Draft PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76)
 - Optional Meta paused proof: **Locked** (separate human record)
 - Live ads / paid providers / second **live** ads platform: **Locked** until a recorded human decision (`ESCALATE_TO_HUMAN`)
 - Auto-execute: **Forbidden**
