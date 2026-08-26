@@ -12,7 +12,7 @@
 - Implementation: Merged
 - Manager Decision: Merged on `main`
 - Merge: Runtime PR #70 squash-merged at `9e0f4b4`
-- Stage 06 Decision Engine specification: In progress on `codex/stage-06-decision-engine-specification` (docs-only; see `docs/stages/stage-06-decision-engine.md`)
+- Stage 06 Decision Engine: Closed — spec PR [#72](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/72) at `d77b2e0`; runtime PR [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73) at `d22d80a`; post-merge main CI Run `32914761189` passed
 - Optional Meta paused proof: **Locked** (separate human record)
 
 This document is the implementation contract for Stage 05. It does not authorize credentials, `META_TEST_READ_WRITE_PAUSED`, `META_TEST_DELIVERY`, real Meta, spend, production, Auth/RBAC/Tenant, a scheduler, a new platform write or refresh port, or Decision Engine behavior.

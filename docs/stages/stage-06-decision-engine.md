@@ -2,17 +2,19 @@
 
 ## Gate status
 
-- Status: Specification squash-merged; runtime Manager `APPROVE` recorded; merge pending approval-record CI
+- Status: Specification squash-merged; runtime squash-merged; Stage 06 FAKE closed
 - Specification: PR [#72](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/72) squash-merged at `d77b2e043e97179e5235ee50c68677757f36bd63`; post-merge `main` CI Run `32804409128` passed `quality-and-compose` and `secret-scan`
-- Branch: `codex/stage-06-decision-engine-runtime`
+- Runtime: PR [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73) squash-merged at `d22d80af54b6e3ff8928056126d6f1de7a10cf3d`; post-merge `main` CI Run `32914761189` passed `quality-and-compose` and `secret-scan`
+- Branch: `codex/stage-06-decision-engine-runtime` (merged)
 - Base: `d77b2e043e97179e5235ee50c68677757f36bd63` (PR [#72](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/72) squash merge)
 - Stage 05 prerequisite: Passed — spec PR [#69](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/69) at `3bbbc69`; runtime PR [#70](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/70) at `9e0f4b4`; close-out PR [#71](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/71) at `3d3b7b3`; post-merge `main` CI Run `32795522589` passed
 - Stage 04 prerequisite: Passed — 4A–4E FAKE LOCAL/TEST on `main`; tag `stage-04-complete` peels to `031d657`
 - Product settings: Stage 04 owner defaults of 2026-08-15 remain authoritative (Asia/Taipei, `7d_click` / `1d_view`, daily snapshots, account currency, null means unknown, create stays `PAUSED`)
-- Implementation: Runtime Draft PR [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73)
+- Implementation: Merged
 - Manager Review: Specification cycle 2 Passed at `aea9193` / rebound `3a46b47`. Runtime cycle 1 Passed for implementation Head `50fcd8b71656381b612e25bafe1e14b5bce8ddfe` — `docs/management/reviews/stage-06-runtime-manager-review.md`
-- Manager Decision: Runtime `APPROVE` for `50fcd8b`; merge after the approval-record Head passes exact-head CI
-- Merge: Specification squash-merged at `d77b2e0`. Runtime PR [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73) not yet merged
+- Manager Decision: Merged on `main`
+- Merge: Specification squash-merged at `d77b2e0`. Runtime PR [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73) squash-merged at `d22d80a`
+- Stage 07 Expansion specification: Unlocked
 - Optional Meta paused proof: **Locked** (separate human record)
 - Auto-execute: **Forbidden** in this Stage and until a recorded human decision (`ESCALATE_TO_HUMAN`)
 
@@ -536,6 +538,7 @@ Parent stub mapped to executable proof:
 - [x] Runtime Draft PR [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73).
 - [x] Implementation Head `50fcd8b` exact-head CI: Push `32811159731`, PR `32811163525`.
 - [x] Independent Manager Review recorded `APPROVE` for runtime implementation Head `50fcd8b`.
-- [ ] Approval-record Head exact-head CI, mark Ready, squash-merge, and post-merge `main` CI.
+- [x] Approval-record Head `e65e906` exact-head CI: Push `32828192447`, PR `32828196567`.
+- [x] Runtime squash-merged as PR [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73) at `d22d80a`; post-merge `main` CI Run `32914761189` passed.
 
-Stage 06 runtime is the current gate. Optional Meta paused proof stays locked until a separate human record.
+Stage 06 FAKE is closed. Stage 07 Expansion specification is the current gate. Optional Meta paused proof stays locked until a separate human record. Auto-execute remains forbidden.
