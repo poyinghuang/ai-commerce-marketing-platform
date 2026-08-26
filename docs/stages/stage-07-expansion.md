@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status: Specification merged; **7A runtime** in progress
+- Status: Specification merged; **7A runtime** Draft PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77)
 - Specification: PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) squash-merged at `2851003bce4765e989296a124e3a7679a81ca6fd`; post-merge `main` CI Run `32928585609` passed
 - Branch: `codex/stage-07a-secondary-image-provider`
 - Base: `2851003bce4765e989296a124e3a7679a81ca6fd` (PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) squash merge)

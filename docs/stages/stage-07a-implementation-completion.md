@@ -6,7 +6,7 @@
 - Base: `2851003bce4765e989296a124e3a7679a81ca6fd` (PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) squash merge)
 - Scope: LOCAL/TEST second `ImageGenerationProvider` bean behind `platform.image.provider`; persist `FAKE_SECONDARY_IMAGE`; no migration, no ComfyUI workflow edit, no live ads
 - Specification: PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) squash-merged at `2851003`; post-merge main CI Run `32928585609` passed
-- Status: Runtime not merged; Manager Review not started
+- Status: Runtime Draft PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77); Manager Review not started
 - Manager Decision: Not started
 
 ## Implemented scope

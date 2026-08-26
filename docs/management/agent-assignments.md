@@ -19,6 +19,7 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 | --- | --- |
 | Gate | Stage 07 **7A** second FAKE image provider runtime |
 | Branch | `codex/stage-07a-secondary-image-provider` |
+| PR | Draft [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) |
 | Specification | PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) squash-merged at `2851003`; post-merge main CI Run `32928585609` passed |
 | Base | `2851003` (PR #76 squash merge) |
 | Stage 06 | Closed — spec PR [#72](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/72) at `d77b2e0`; runtime PR [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73) at `d22d80a`; close-out PR [#75](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/75) at `771f776`; post-merge main CI Run `32923254447` passed |
@@ -72,5 +73,5 @@ Escalate immediately; do not merge around them:
 ## Sequence after this assignment
 
 1. Stage 07 specification PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) is squash-merged at `2851003`. Post-merge main CI Run `32928585609` passed.
-2. Complete 7A runtime on `codex/stage-07a-secondary-image-provider`. Do not start 7B, V17, `/platforms/google`, or live ads until 7A is approved, merged, and post-merge `main` CI has passed.
+2. Complete 7A runtime on Draft PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77). Do not start 7B, V17, `/platforms/google`, or live ads until 7A is approved, merged, and post-merge `main` CI has passed.
 3. Live Google Ads / LINE / TikTok and live Sheets/Drive/Meta Insights remain locked.
