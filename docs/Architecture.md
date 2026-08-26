@@ -17,7 +17,7 @@
 包含 Creative Planner、Copywriter、Image Agent、Video Agent 與 QA Agent。
 
 ### Marketing Platform Engine
-透過統一 Platform Adapter 對接 Meta、Google、LINE、TikTok 等平台。
+透過統一 Platform Adapter 對接 Meta、Google、LINE、TikTok 等平台。Stage 04 已交付 Meta 的 FAKE LOCAL/TEST 切片。Stage 07 用同一組 ports 證明可擴充：先加第二個 FAKE Image / Storage bean，再加 `FAKE_GOOGLE` adapter（additive V17）。Live Google / LINE / TikTok、credential 與 spend 仍要人工核准。
 
 ### Decision Engine
 讀取標準化成效資料，產生加碼、降預算、停投、換素材等建議。AI 只輸出建議，不直接執行外部操作。Stage 06 FAKE 切片是確定性規則引擎（`RULE_SET_V1`），建議需含原因、數據與風險，並由人工批准或拒絕；批准在該切片只寫決策紀錄，不呼叫平台寫入或刷新 Port。Dashboard 的「AI 建議」仍是 Stage 03 素材審核，與 Decision Engine「優化建議」分開。Frequency／受眾疲乏延後，直到成效快照有獨立 Frequency 欄位。
@@ -30,10 +30,10 @@ Stage 05 已交付該工作台，只讀既有 Product Quality、Campaign Plan、
 ## Provider Interfaces
 
 - TextProvider
-- ImageProvider
+- ImageProvider（Stage 03 ComfyUI + stub；Stage 07A 增加第二個 FAKE bean，不改上游 workflow）
 - VideoProvider
-- StorageProvider
-- PlatformAdapter
+- StorageProvider（Stage 02E Drive stub；Stage 07B 增加第二個 FAKE bean，不改素材業務邏輯）
+- PlatformAdapter（Stage 04 Meta FAKE；Stage 07C 增加 `FAKE_GOOGLE`，不改 Domain）
 - AnalyticsProvider
 
 ## 建議技術方向
