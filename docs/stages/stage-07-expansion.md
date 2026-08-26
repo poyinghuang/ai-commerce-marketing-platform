@@ -2,19 +2,20 @@
 
 ## Gate status
 
-- Status: Specification, 7A, 7B, and 7C-1 merged; **7C-2 runtime** Draft PR [#80](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/80)
+- Status: Specification, 7A, 7B, 7C-1, and 7C-2 merged; Stage 07 FAKE closed
 - Specification: PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) squash-merged at `2851003`; post-merge `main` CI Run `32928585609` passed
 - 7A: PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) squash-merged at `eb2618d`; post-merge `main` CI Run `32940348609` passed
 - 7B: PR [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78) squash-merged at `da01b13`; post-merge `main` CI Run `32944155884` passed
 - 7C-1: PR [#79](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/79) squash-merged at `f5faa28`; post-merge `main` CI Run `32971029793` passed
-- Branch: `codex/stage-07c-2-google-fake-ui`
+- 7C-2: PR [#80](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/80) squash-merged at `ed3f4cf`; post-merge `main` CI Run `32974606066` passed
+- Branch: `codex/stage-07c-2-google-fake-ui` (merged)
 - Base: `f5faa286e18889058f1af6758222a7793dc8f184` (PR [#79](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/79) squash merge)
 - Stage 06 prerequisite: Passed — spec PR [#72](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/72) at `d77b2e0`; runtime PR [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73) at `d22d80a`; close-out PR [#75](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/75) at `771f776`; post-merge `main` CI Run `32923254447` passed
 - Stage 05 prerequisite: Passed — spec PR #69, runtime PR #70, close-out PR #71
 - Stage 04 prerequisite: Passed — 4A–4E FAKE; tag `stage-04-complete` peels to `031d657`
-- Implementation: 7C-2 unlocked after 7C-1 merge + post-merge CI
-- Manager Decision: 7C-2 runtime Manager Review not started
-- Merge: Specification, 7A, 7B, and 7C-1 merged. 7C-2 runtime not merged
+- Implementation: Merged
+- Manager Decision: Merged on `main`
+- Merge: Specification, 7A, 7B, 7C-1, and 7C-2 merged
 - Optional Meta paused proof: **Locked** (separate human record)
 - Live ads / paid providers / second **live** ads platform: **Locked** until a recorded human decision (`ESCALATE_TO_HUMAN`)
 - Auto-execute: **Forbidden**
@@ -220,6 +221,7 @@ Docs-only specification: **No**, unless credentials, spend, a second live ads pl
 - [x] 7A runtime squash-merged: PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) at `eb2618d`; post-merge `main` CI Run `32940348609` passed.
 - [x] 7B runtime squash-merged: PR [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78) at `da01b13`; post-merge `main` CI Run `32944155884` passed.
 - [x] 7C-1 runtime squash-merged: PR [#79](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/79) at `f5faa28`; post-merge `main` CI Run `32971029793` passed.
-- [ ] 7C-2 runtime Manager `APPROVE` + merge + post-merge `main` CI.
+- [x] 7C-2 runtime squash-merged: PR [#80](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/80) at `ed3f4cf`; post-merge `main` CI Run `32974606066` passed.
+- [ ] Stage 07 FAKE close-out Manager `APPROVE` + merge + post-merge `main` CI.
 
-Current gate is 7C-2 runtime. Live ads stay locked.
+Stage 07 FAKE runtime is closed. Current gate is this docs-only close-out. 7D/7E LINE/TikTok and live Sheets/Drive/Meta Insights stay locked until a separate specification and a recorded human decision. Live ads stay locked.

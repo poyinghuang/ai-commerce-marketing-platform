@@ -37,4 +37,4 @@ Recorded on the 7B runtime branch before exact-head CI. Unrun checks are not Pas
 
 Runtime PR [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78) squash-merged at `da01b13`. Post-merge `main` CI Run [`32944155884`](https://github.com/poyinghuang/ai-commerce-marketing-platform/actions/runs/32944155884) passed both jobs.
 
-Stage 07B FAKE is closed on `main`. Do not start 7C-2 from this close-out. 7C-1 is the next gate.
+Stage 07B FAKE is closed on `main`. 7C-1 and 7C-2 are merged. Stage 07 FAKE close-out is the current gate. 7D/7E stay locked.

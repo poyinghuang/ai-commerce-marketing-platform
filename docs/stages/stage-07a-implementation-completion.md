@@ -45,4 +45,4 @@ Implementation Head `1ca1b27eaaed44dd6f12d6601ed9c5e9c0ffb181` (PR #77 record co
 
 Runtime PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) squash-merged at `eb2618d`. Post-merge `main` CI Run [`32940348609`](https://github.com/poyinghuang/ai-commerce-marketing-platform/actions/runs/32940348609) passed both jobs. Playwright artifact upload skipped after an E2E pass.
 
-Stage 07A FAKE is closed on `main`. Do not start 7C from this close-out. 7B is the next gate.
+Stage 07A FAKE is closed on `main`. 7B, 7C-1, and 7C-2 are merged. Stage 07 FAKE close-out is the current gate. 7D/7E stay locked.

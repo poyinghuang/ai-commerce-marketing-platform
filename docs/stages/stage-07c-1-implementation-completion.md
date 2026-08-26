@@ -26,4 +26,4 @@ Domain campaign/ad-set/ad types gain no Google-only fields. `delivery.domain` an
 
 Runtime PR [#79](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/79) squash-merged at `f5faa28`. Post-merge `main` CI Run [`32971029793`](https://github.com/poyinghuang/ai-commerce-marketing-platform/actions/runs/32971029793) passed both jobs.
 
-Stage 07C-1 FAKE is closed on `main`. Do not start 7D/7E from this close-out. 7C-2 is the next gate.
+Stage 07C-1 FAKE is closed on `main`. 7C-2 is merged. Stage 07 FAKE close-out is the current gate. 7D/7E stay locked.

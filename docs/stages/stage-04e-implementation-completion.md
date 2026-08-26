@@ -8,7 +8,7 @@
 - Specification: PR [#67](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/67) squash-merged at `031d657` (`docs/stages/stage-04e-deterministic-acceptance.md`)
 - Status: Runtime PR [#68](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/68) squash-merged at `42515e2`; post-merge main CI Run `32754399607` passed
 - Manager Decision: Merged on `main`
-- Tag `stage-04-complete`: Created on `031d657`; optional Meta paused proof stays locked; Stage 05 is closed; Stage 06 is closed; Stage 07 specification is unlocked
+- Tag `stage-04-complete`: Created on `031d657`; optional Meta paused proof stays locked; Stage 05 is closed; Stage 06 is closed; Stage 07 FAKE is closed
 
 ## Implemented scope
 
