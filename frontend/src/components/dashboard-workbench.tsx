@@ -26,12 +26,27 @@ type Dashboard = {
   anomalies: Section<Anomaly>;
   kpis: Kpis;
 };
+type Evidence = {
+  impressions?: number; reach?: number; clicks?: number; conversions?: number;
+  spend?: string; revenue?: string; ctr?: string; cpc?: string; cpm?: string; cpa?: string; cvr?: string; roas?: string;
+};
+type Recommendation = {
+  recommendationUuid: string; platformCampaignUuid: string; campaignUuid: string; campaignName: string;
+  recommendationType: string; status: string; reasonSummary: string; riskSummary: string; evidence: Evidence;
+  href: string; productUuid?: string; version: number; warnings: string[];
+};
 
-type Pending = { uuid: string; action: "approve" | "reject" } | null;
+type Pending =
+  | { kind: "review"; uuid: string; action: "approve" | "reject" }
+  | { kind: "generate" }
+  | { kind: "optimize"; uuid: string; action: "approve" | "reject" }
+  | null;
 
-export function DashboardWorkbench() {
+export function DashboardWorkbench({ stage6Enabled = false }: { stage6Enabled?: boolean }) {
   const [data, setData] = useState<Dashboard | null>(null);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<Pending>(null);
   const [reasons, setReasons] = useState<Record<string, string>>({});
@@ -41,17 +56,25 @@ export function DashboardWorkbench() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/dashboard", { cache: "no-store" });
-      const body = await response.json() as Dashboard & { message?: string };
-      if (!response.ok) throw new Error(body.message ?? "Dashboard is unavailable");
+      const dashboardResponse = await fetch("/api/dashboard", { cache: "no-store" });
+      const body = await dashboardResponse.json() as Dashboard & { message?: string };
+      if (!dashboardResponse.ok) throw new Error(body.message ?? "Dashboard is unavailable");
       setData(body);
+      if (stage6Enabled) {
+        const recs = await fetch("/api/decision-recommendations?status=PENDING", { cache: "no-store" });
+        const recBody = await recs.json() as { content?: Recommendation[]; message?: string };
+        if (!recs.ok) throw new Error(recBody.message ?? "Decision engine is unavailable");
+        setRecommendations(recBody.content ?? []);
+      } else {
+        setRecommendations([]);
+      }
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "Dashboard is unavailable");
       setData(null);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [stage6Enabled]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { void load(); }, 0);
@@ -59,7 +82,7 @@ export function DashboardWorkbench() {
   }, [load]);
 
   async function confirmReview() {
-    if (!pending) return;
+    if (pending?.kind !== "review") return;
     const itemReason = (reasons[pending.uuid] ?? "").trim();
     if (pending.action === "reject" && !itemReason) {
       setError("A rejection reason is required.");
@@ -91,6 +114,59 @@ export function DashboardWorkbench() {
     }
   }
 
+  async function confirmGenerate() {
+    if (pending?.kind !== "generate") return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await fetch("/api/decision-recommendations/generate", { method: "POST", cache: "no-store" });
+      const body = await response.json() as { message?: string };
+      if (!response.ok) throw new Error(body.message ?? "Unable to generate suggestions");
+      setPending(null);
+      await load();
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "Unable to generate suggestions");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmOptimize() {
+    if (pending?.kind !== "optimize") return;
+    const itemReason = (reasons[pending.uuid] ?? "").trim();
+    if (pending.action === "reject" && !itemReason) {
+      setError("A rejection reason is required.");
+      return;
+    }
+    const item = recommendations.find((recommendation) => recommendation.recommendationUuid === pending.uuid);
+    if (!item) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await fetch(`/api/decision-recommendations/${pending.uuid}/${pending.action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "If-Match": `W/"${item.version}"` },
+        body: JSON.stringify(pending.action === "approve" ? {} : { reason: itemReason }),
+      });
+      const body = await response.json() as { message?: string };
+      if (!response.ok) throw new Error(body.message ?? "Unable to record the operator decision");
+      setPending(null);
+      setNotice("Ads state did not change. Approval records the operator decision only.");
+      setReasons((current) => {
+        const next = { ...current };
+        delete next[pending.uuid];
+        return next;
+      });
+      await load();
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "Unable to record the operator decision");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <main>
       <div className="page-stack">
@@ -104,6 +180,7 @@ export function DashboardWorkbench() {
         </header>
         {loading && <div className="state-card" role="status">載入 Dashboard…</div>}
         {error && <div className="state-card error-state" role="alert">{error}</div>}
+        {notice && <div className="state-card" role="status">{notice}</div>}
         {data && (
           <div className="dashboard-grid">
             <section className="content-card" aria-labelledby="todos-heading">
@@ -184,7 +261,7 @@ export function DashboardWorkbench() {
                   </div>
                   <div className="form-grid">
                     <button className="primary-button" disabled={busy || item.approvalBlocked}
-                      onClick={() => setPending({ uuid: item.generationOutputUuid, action: "approve" })}>
+                      onClick={() => setPending({ kind: "review", uuid: item.generationOutputUuid, action: "approve" })}>
                       Approve output
                     </button>
                     <label>Rejection reason
@@ -195,11 +272,11 @@ export function DashboardWorkbench() {
                         }))} />
                     </label>
                     <button className="secondary-button" disabled={busy || !(reasons[item.generationOutputUuid] ?? "").trim()}
-                      onClick={() => setPending({ uuid: item.generationOutputUuid, action: "reject" })}>
+                      onClick={() => setPending({ kind: "review", uuid: item.generationOutputUuid, action: "reject" })}>
                       Reject output
                     </button>
                   </div>
-                  {pending?.uuid === item.generationOutputUuid && (
+                  {pending?.kind === "review" && pending.uuid === item.generationOutputUuid && (
                     <div className="form-grid">
                       <button className="primary-button" disabled={busy || (pending.action === "reject" && !(reasons[item.generationOutputUuid] ?? "").trim())}
                         onClick={() => void confirmReview()}>
@@ -211,6 +288,63 @@ export function DashboardWorkbench() {
                 </article>
               ))}
             </section>
+            {stage6Enabled && (
+              <section className="content-card optimization-card" aria-labelledby="optimization-heading">
+                <h2 id="optimization-heading">優化建議</h2>
+                <p className="summary">Deterministic FAKE suggestions only. No real provider or spend. Null metrics mean unknown. Approval does not execute.</p>
+                <button className="primary-button" disabled={busy} onClick={() => setPending({ kind: "generate" })}>
+                  Generate suggestions
+                </button>
+                {pending?.kind === "generate" && (
+                  <div className="form-grid">
+                    <button className="primary-button" disabled={busy} onClick={() => void confirmGenerate()}>
+                      Confirm generate suggestions
+                    </button>
+                    <button className="secondary-button" disabled={busy} onClick={() => setPending(null)}>Cancel</button>
+                  </div>
+                )}
+                {recommendations.length === 0
+                  ? <p className="summary">目前沒有優化建議。</p>
+                  : recommendations.map((item) => (
+                    <article className="creative-item" data-recommendation-uuid={item.recommendationUuid} key={item.recommendationUuid}>
+                      <div>
+                        <strong>{item.recommendationType}</strong>
+                        <p className="summary">{item.campaignName} · {item.status}</p>
+                        <p className="summary">{item.reasonSummary}</p>
+                        <p className="summary">{item.riskSummary}</p>
+                        <p className="summary">ROAS {item.evidence.roas ?? "unknown"} · CPA {item.evidence.cpa ?? "unknown"} · CTR {item.evidence.ctr ?? "unknown"}</p>
+                        <Link href={item.href}>Open linked workflow</Link>
+                      </div>
+                      <div className="form-grid">
+                        <button className="primary-button" disabled={busy || item.status !== "PENDING"}
+                          onClick={() => setPending({ kind: "optimize", uuid: item.recommendationUuid, action: "approve" })}>
+                          Approve suggestion
+                        </button>
+                        <label>Rejection reason
+                          <input maxLength={2000} value={reasons[item.recommendationUuid] ?? ""}
+                            onChange={(event) => setReasons((current) => ({
+                              ...current,
+                              [item.recommendationUuid]: event.target.value,
+                            }))} />
+                        </label>
+                        <button className="secondary-button" disabled={busy || item.status !== "PENDING" || !(reasons[item.recommendationUuid] ?? "").trim()}
+                          onClick={() => setPending({ kind: "optimize", uuid: item.recommendationUuid, action: "reject" })}>
+                          Reject suggestion
+                        </button>
+                      </div>
+                      {pending?.kind === "optimize" && pending.uuid === item.recommendationUuid && (
+                        <div className="form-grid">
+                          <button className="primary-button" disabled={busy || (pending.action === "reject" && !(reasons[item.recommendationUuid] ?? "").trim())}
+                            onClick={() => void confirmOptimize()}>
+                            {pending.action === "approve" ? "Confirm approve suggestion" : "Confirm reject suggestion"}
+                          </button>
+                          <button className="secondary-button" disabled={busy} onClick={() => setPending(null)}>Cancel</button>
+                        </div>
+                      )}
+                    </article>
+                  ))}
+              </section>
+            )}
             <section className="content-card" aria-labelledby="anomalies-heading">
               <h2 id="anomalies-heading">異常事件</h2>
               <ItemList available={data.anomalies.available} empty="目前沒有異常事件。" truncated={data.anomalies.truncated}

@@ -17,27 +17,28 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 
 | Item | Value |
 | --- | --- |
-| Gate | Stage 06 Decision Engine **specification** |
-| Branch | `codex/stage-06-decision-engine-specification` |
-| PR | Draft [#72](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/72) |
-| Base | `3d3b7b3` (PR #71 squash merge) |
+| Gate | Stage 06 Decision Engine **runtime** |
+| Branch | `codex/stage-06-decision-engine-runtime` |
+| PR | Draft [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73) |
+| Base | `d77b2e0` (PR #72 squash merge) |
+| Stage 06 spec | Closed — PR [#72](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/72) squash-merged at `d77b2e043e97179e5235ee50c68677757f36bd63`; post-merge main CI Run `32804409128` passed |
 | Stage 05 | Closed — spec PR [#69](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/69) at `3bbbc69`; runtime PR [#70](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/70) at `9e0f4b4`; close-out PR [#71](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/71) at `3d3b7b3`; post-merge main CI Run `32795522589` passed |
 | Stage 04 | Closed FAKE 4A–4E; tag `stage-04-complete`; post-merge main CI Run `32754399607` passed |
-| Manager Decision | Cycle 2 `APPROVE` for content Head `aea9193`; merge after approval-record exact-head CI |
+| Manager Decision | `APPROVE` for implementation Head `50fcd8b`; merge after approval-record exact-head CI |
 | Optional Meta paused proof | **Locked** until a separate human record |
 
-## Assigned now (Stage 06 specification)
+## Assigned now (Stage 06 runtime)
 
 | Agent | Duty | Status |
 | --- | --- | --- |
-| AI Workflow / Architecture | Author the suggestion-only specification; no runtime | In progress |
-| Backend / Frontend / QA | Idle until the specification `APPROVE` + merge | Idle |
-| Documentation | Keep Stage 06 spec, assignments, and Architecture aligned | In progress |
-| Project Manager | Idle until a Stage 06 Draft PR + exact-head CI | Idle |
-| Review | Idle until Manager Review is requested | Idle |
+| AI Workflow / Backend / Frontend / QA | Suggestion-only runtime delivered on Draft PR [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73) | Delivered |
+| Architecture | Guard V16 additive-only and no execute-on-approve | Delivered for this slice |
+| Documentation | Keep Stage 06 gate, assignments, and completion report aligned | Assigned |
+| Project Manager | Cycle-1 `APPROVE` recorded; merge owner after approval-record exact-head CI | Assigned |
+| Review | Cycle-1 complete — `docs/management/reviews/stage-06-runtime-manager-review.md` | Delivered |
 | Product Owner | Idle. Do not add auto-execute | Idle |
 
-Human review required for a FAKE suggestion-only Stage 06 specification: **No**, unless the Manager finds an escalation trigger (credentials, Meta smoke, spend, Auth/RBAC/Tenant, Decision Engine auto-execute, or approve that calls pause/resume/budget/refresh/execute). Additive V16 for recommendation tables in a later **runtime** PR is not itself an escalation trigger. **Yes** immediately if any auto-execute or execute-on-approve path appears.
+Human review required for FAKE suggestion-only Stage 06 runtime: **No**, unless auto-execute or execute-on-approve appears. **Yes** immediately if approve/reject calls pause, resume, budget, refresh, publication, or AI execute.
 
 ## Roster for later Stages
 
@@ -67,6 +68,6 @@ Escalate immediately; do not merge around them:
 
 ## Sequence after this assignment
 
-1. Stage 05 close-out PR [#71](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/71) is squash-merged at `3d3b7b3`. Post-merge main CI Run `32795522589` passed.
-2. Complete Stage 06 specification on `codex/stage-06-decision-engine-specification`. Do not start Stage 06 runtime, V16 files, or optional Meta proof until the specification is approved, merged, and post-merge `main` CI has passed.
-3. Stage 06 remains suggestion-only: unapproved recommendations must not execute. Approved recommendations in this Stage also must not execute.
+1. Stage 06 specification PR [#72](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/72) is squash-merged at `d77b2e0`. Post-merge main CI Run `32804409128` passed.
+2. Stage 06 runtime is on Draft PR [#73](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/73). Manager `APPROVE` is recorded for implementation Head `50fcd8b`. Merge only the approval-record Head after its exact-head CI.
+3. Stage 06 remains suggestion-only: unapproved recommendations must not execute. Approved recommendations in this Stage also must not execute. Do not start Stage 07 until merge and post-merge `main` CI.

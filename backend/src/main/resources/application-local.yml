@@ -27,3 +27,5 @@ platform:
     enabled: true
   stage5:
     enabled: true
+  stage6:
+    enabled: true

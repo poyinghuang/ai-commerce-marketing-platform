@@ -1,6 +1,6 @@
 # AI Commerce Marketing Platform
 
-以 AI 為核心的電商素材、廣告投放、成效分析與決策平台。本 Repository 已完成 Stage 01、完整 Stage 02 Product Knowledge Center、完整 Stage 03 AI Creative Factory、Stage 04 Meta Ads Adapter 的 4A–4E FAKE LOCAL/TEST 切片（tag `stage-04-complete`），以及 Stage 05 Dashboard FAKE LOCAL/TEST runtime。目前 Gate 是 Stage 06 Decision Engine **specification**（建議型、不自動執行）；runtime 在規格核准並合併前不得開始。
+以 AI 為核心的電商素材、廣告投放、成效分析與決策平台。本 Repository 已完成 Stage 01、完整 Stage 02 Product Knowledge Center、完整 Stage 03 AI Creative Factory、Stage 04 Meta Ads Adapter 的 4A–4E FAKE LOCAL/TEST 切片（tag `stage-04-complete`），以及 Stage 05 Dashboard FAKE LOCAL/TEST runtime。目前 Gate 是 Stage 06 Decision Engine **runtime**（建議型、不自動執行）。
 
 ## Stage 01 技術基線
 
