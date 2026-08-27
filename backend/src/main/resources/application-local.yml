@@ -19,6 +19,8 @@ platform:
   adapter: fake
   image:
     provider: stub
+  sheets:
+    provider: stub
   storage:
     provider: stub
   web:

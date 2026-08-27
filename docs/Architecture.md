@@ -35,6 +35,7 @@ Stage 05 已交付該工作台，只讀既有 Product Quality、Campaign Plan、
 - StorageProvider（Stage 02E Drive stub；Stage 07B 增加第二個 FAKE bean；Stage 08B 可 opt-in 既有 Google Drive bean）
 - PlatformAdapter（Stage 04 Meta FAKE；Stage 07C 增加 `FAKE_GOOGLE`，不改 Domain）
 - AnalyticsProvider（Stage 08C 把 Meta Insights 接到既有 `PlatformMetricsReadPort` / `PlatformDeliveryReadPort`）
+- SheetValuesProvider（Stage 02E stub；Stage 08A 可 opt-in 既有 Google Sheets `values.get` bean）
 
 ## 建議技術方向
 
