@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status: Specification in progress on `codex/stage-08-live-connector-reads-specification`
+- Status: Specification Draft PR [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82)
 - Branch: `codex/stage-08-live-connector-reads-specification`
 - Base: `49b73d6c4dd741f446344476fc8622d40e678c14` (PR [#81](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/81) squash merge)
 - Stage 07 prerequisite: Passed — spec PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) at `2851003`; 7A PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) at `eb2618d`; 7B PR [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78) at `da01b13`; 7C-1 PR [#79](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/79) at `f5faa28`; 7C-2 PR [#80](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/80) at `ed3f4cf`; close-out PR [#81](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/81) at `49b73d6`; post-merge `main` CI Run `32996644069` passed
@@ -246,7 +246,7 @@ After that record exists, Manager may `APPROVE` this specification. 8A runtime s
 
 - [x] Stage 07 FAKE complete: spec #76, 7A #77, 7B #78, 7C-1 #79, 7C-2 #80, close-out #81 at `49b73d6`; post-merge `main` CI Run `32996644069` passed.
 - [ ] Independent Manager Review. Decision is `ESCALATE_TO_HUMAN` until the human secret/test-resource record exists, then `APPROVE` or `REQUEST_CHANGES`.
-- [ ] Specification Head exact-head Push and Pull Request CI (`quality-and-compose` and `secret-scan`).
+- [ ] Specification Draft PR [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82) exact-head Push and Pull Request CI (`quality-and-compose` and `secret-scan`).
 - [ ] Specification squash-merge and post-merge `main` CI.
 - [ ] 8A runtime (locked until the previous row).
 

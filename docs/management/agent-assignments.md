@@ -19,7 +19,7 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 | --- | --- |
 | Gate | Stage 08 Live Connector Reads **specification** |
 | Branch | `codex/stage-08-live-connector-reads-specification` |
-| PR | Not opened |
+| PR | Draft [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82) |
 | Stage 07 | Closed FAKE — spec PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) at `2851003`; 7A PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) at `eb2618d`; 7B PR [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78) at `da01b13`; 7C-1 PR [#79](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/79) at `f5faa28`; 7C-2 PR [#80](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/80) at `ed3f4cf`; close-out PR [#81](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/81) at `49b73d6`; post-merge main CI Run `32996644069` passed |
 | Base | `49b73d6` (PR #81 squash merge) |
 | Manager Decision | `ESCALATE_TO_HUMAN` until a recorded human test-resource and secret-handling decision; then `APPROVE` / `REQUEST_CHANGES` |
@@ -34,7 +34,7 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 | Documentation | Keep Stage 08 gate headers and assignments aligned | Assigned |
 | Research | Idle until 8A runtime; Graph/Sheets/Drive contracts are named in the spec | Idle |
 | Backend / Frontend / QA | Idle until specification `APPROVE` + merge | Idle |
-| Project Manager | Idle until a Draft PR + exact-head CI, then `ESCALATE_TO_HUMAN` | Idle |
+| Project Manager | Idle until exact-head CI on Draft PR [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82), then `ESCALATE_TO_HUMAN` | Idle |
 | Review | Idle until Manager Review is requested | Idle |
 | Product Owner / AI Workflow | Idle. Do not add auto-execute or live ads writes | Idle |
 
