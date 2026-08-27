@@ -4,8 +4,8 @@
 
 - Scope: Stage 07 FAKE LOCAL/TEST expansion proofs (second Image Provider, second Storage Provider, `FAKE_GOOGLE` adapter + gated UI)
 - Specification: PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) squash-merged at `2851003`; post-merge main CI Run `32928585609` passed
-- Status: FAKE slices squash-merged; close-out Draft PR [#81](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/81)
-- Manager Decision: Not started for this close-out
+- Status: Close-out PR [#81](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/81) squash-merged at `49b73d6`; post-merge main CI Run `32996644069` passed
+- Manager Decision: Merged on `main`
 
 ## Closed slices
 
@@ -16,6 +16,7 @@
 | 7B fake-object storage | [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78) | `da01b13` | [`32944155884`](https://github.com/poyinghuang/ai-commerce-marketing-platform/actions/runs/32944155884) |
 | 7C-1 `FAKE_GOOGLE` adapter + V17 | [#79](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/79) | `f5faa28` | [`32971029793`](https://github.com/poyinghuang/ai-commerce-marketing-platform/actions/runs/32971029793) |
 | 7C-2 gated `/platforms/google` | [#80](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/80) | `ed3f4cf` | [`32974606066`](https://github.com/poyinghuang/ai-commerce-marketing-platform/actions/runs/32974606066) |
+| FAKE close-out | [#81](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/81) | `49b73d6` | [`32996644069`](https://github.com/poyinghuang/ai-commerce-marketing-platform/actions/runs/32996644069) |
 
 Per-slice reports: `docs/stages/stage-07a-implementation-completion.md`, `docs/stages/stage-07b-implementation-completion.md`, `docs/stages/stage-07c-1-implementation-completion.md`, `docs/stages/stage-07c-2-implementation-completion.md`. Contract: `docs/stages/stage-07-expansion.md`.
 
@@ -31,4 +32,4 @@ Flyway V1–V16 stay immutable. 7C-1 added additive V17 only. 7A, 7B, and 7C-2 a
 
 ## Next gate
 
-Do not start 7D/7E LINE/TikTok or live Sheets/Drive/Meta Insights from this close-out. Those need a separate specification and a recorded human decision. Optional Meta paused proof stays locked.
+Stage 07 FAKE is closed on `main`. Stage 08 Live Connector Reads specification is the next gate. 7D/7E LINE/TikTok, live Google Ads, optional Meta paused proof, and auto-execute stay locked.

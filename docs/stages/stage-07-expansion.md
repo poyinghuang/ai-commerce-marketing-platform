@@ -2,7 +2,7 @@
 
 ## Gate status
 
-- Status: Specification, 7A, 7B, 7C-1, and 7C-2 merged; Stage 07 FAKE close-out Draft PR [#81](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/81)
+- Status: Specification, 7A, 7B, 7C-1, 7C-2, and close-out merged; Stage 07 FAKE closed
 - Specification: PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) squash-merged at `2851003`; post-merge `main` CI Run `32928585609` passed
 - 7A: PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) squash-merged at `eb2618d`; post-merge `main` CI Run `32940348609` passed
 - 7B: PR [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78) squash-merged at `da01b13`; post-merge `main` CI Run `32944155884` passed
@@ -15,7 +15,8 @@
 - Stage 04 prerequisite: Passed — 4A–4E FAKE; tag `stage-04-complete` peels to `031d657`
 - Implementation: Merged
 - Manager Decision: Merged on `main`
-- Merge: Specification, 7A, 7B, 7C-1, and 7C-2 merged
+- Merge: Specification, 7A, 7B, 7C-1, 7C-2, and close-out PR [#81](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/81) squash-merged at `49b73d6`; post-merge `main` CI Run `32996644069` passed
+- Stage 08 Live Connector Reads specification: In progress on `codex/stage-08-live-connector-reads-specification`
 - Optional Meta paused proof: **Locked** (separate human record)
 - Live ads / paid providers / second **live** ads platform: **Locked** until a recorded human decision (`ESCALATE_TO_HUMAN`)
 - Auto-execute: **Forbidden**
@@ -222,6 +223,6 @@ Docs-only specification: **No**, unless credentials, spend, a second live ads pl
 - [x] 7B runtime squash-merged: PR [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78) at `da01b13`; post-merge `main` CI Run `32944155884` passed.
 - [x] 7C-1 runtime squash-merged: PR [#79](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/79) at `f5faa28`; post-merge `main` CI Run `32971029793` passed.
 - [x] 7C-2 runtime squash-merged: PR [#80](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/80) at `ed3f4cf`; post-merge `main` CI Run `32974606066` passed.
-- [ ] Stage 07 FAKE close-out Manager `APPROVE` + merge + post-merge `main` CI.
+- [x] Stage 07 FAKE close-out squash-merged: PR [#81](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/81) at `49b73d6`; post-merge `main` CI Run `32996644069` passed.
 
-Stage 07 FAKE runtime is closed. Current gate is this docs-only close-out. 7D/7E LINE/TikTok and live Sheets/Drive/Meta Insights stay locked until a separate specification and a recorded human decision. Live ads stay locked.
+Stage 07 FAKE is closed. Stage 08 Live Connector Reads specification is the current gate. 7D/7E LINE/TikTok, live Google Ads, optional Meta paused proof, and auto-execute stay locked.
