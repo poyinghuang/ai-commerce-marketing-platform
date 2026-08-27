@@ -1,6 +1,6 @@
 # AI Commerce Marketing Platform
 
-以 AI 為核心的電商素材、廣告投放、成效分析與決策平台。本 Repository 已完成 Stage 01、完整 Stage 02 Product Knowledge Center、完整 Stage 03 AI Creative Factory、Stage 04 Meta Ads Adapter 的 4A–4E FAKE LOCAL/TEST 切片（tag `stage-04-complete`）、Stage 05 Dashboard FAKE LOCAL/TEST runtime、Stage 06 Decision Engine FAKE LOCAL/TEST runtime（建議型、不自動執行），以及 Stage 07 Expansion FAKE LOCAL/TEST（7A 第二 Image Provider、7B 第二 Storage Provider、7C `FAKE_GOOGLE` adapter + gated `/platforms/google` UI）。Live Google Ads / LINE / TikTok、live Sheets/Drive/Meta Insights 與 Decision Engine auto-execute 仍鎖定。
+以 AI 為核心的電商素材、廣告投放、成效分析與決策平台。本 Repository 已完成 Stage 01、完整 Stage 02 Product Knowledge Center、完整 Stage 03 AI Creative Factory、Stage 04 Meta Ads Adapter 的 4A–4E FAKE LOCAL/TEST 切片（tag `stage-04-complete`）、Stage 05 Dashboard FAKE LOCAL/TEST runtime、Stage 06 Decision Engine FAKE LOCAL/TEST runtime（建議型、不自動執行），以及 Stage 07 Expansion FAKE LOCAL/TEST（7A 第二 Image Provider、7B 第二 Storage Provider、7C `FAKE_GOOGLE` adapter + gated `/platforms/google` UI）。目前 Gate 是 Stage 08 Live Connector Reads **specification**（opt-in LOCAL live Sheets / Drive / Meta Insights；CI 仍走 stub/FAKE）。Live Google Ads / LINE / TikTok、production credential 與 Decision Engine auto-execute 仍鎖定。
 
 ## Stage 01 技術基線
 
