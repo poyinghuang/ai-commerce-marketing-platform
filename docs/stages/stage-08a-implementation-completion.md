@@ -6,7 +6,7 @@
 - Base: `21aca71932a5d3d92bf608435a0fb389f514590a` (PR [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82) squash merge)
 - Scope: LOCAL/TEST opt-in `GoogleSheetValuesProvider` behind `platform.sheets.provider`; default stub; no migration; no Drive; no Meta Insights; no Google Ads
 - Specification: PR [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82) squash-merged at `21aca71`; post-merge main CI Run `33090522880` passed
-- Status: Runtime Draft PR not opened
+- Status: Runtime Draft PR [#83](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/83); Manager Review not started
 - Manager Decision: Not started. Human test-spreadsheet record is still required before merge per `docs/stages/stage-08-live-connector-reads.md`
 
 ## Implemented scope
