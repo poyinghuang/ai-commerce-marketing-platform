@@ -23,7 +23,7 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 | Specification | PR [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82) squash-merged at `21aca71`; post-merge main CI Run `33090522880` passed |
 | Base | `91a8297` (PR [#83](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/83) squash merge); 8A post-merge main CI Run `33143102962` passed |
 | Stage 07 | Closed FAKE — close-out PR [#81](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/81) at `49b73d6`; post-merge main CI Run `32996644069` passed |
-| Manager Decision | Not started for 8B runtime |
+| Manager Decision | `APPROVE` — merge after approval-record Head CI on Draft [#84](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/84) |
 | Optional Meta paused proof | **Locked** until a separate human record |
 | Next after 8B | 8C live Meta Insights. Live Google Ads stays locked |
 
@@ -31,11 +31,11 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 
 | Agent | Duty | Status |
 | --- | --- | --- |
-| Backend | Deliver `platform.storage.provider=google` on LOCAL/TEST without changing folder roles, V7, or Product-tree semantics | In progress |
-| QA | Profile matrix (stub / fake-object / google), MockRest search-hit / miss-create / duplicate conflict / missing root, existing storage-folder tests on stub | In progress |
-| Documentation | Keep Stage 08 gate headers and 8B completion report aligned | In progress |
-| Project Manager | Idle until exact-head CI on Draft PR [#84](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/84) | Idle |
-| Review | Idle until Manager Review is requested | Idle |
+| Backend | Deliver `platform.storage.provider=google` on LOCAL/TEST without changing folder roles, V7, or Product-tree semantics | Done at `2edf23a` |
+| QA | Profile matrix (stub / fake-object / google), MockRest search-hit / miss-create / duplicate conflict / missing root, existing storage-folder tests on stub | Done |
+| Documentation | Keep Stage 08 gate headers and 8B completion report aligned | Done |
+| Project Manager | Manager Review Passed. Idle until approval-record exact-head CI, then Ready + squash-merge | In progress |
+| Review | Idle. Formal review recorded in `docs/management/reviews/stage-08b-runtime-manager-review.md` | Done |
 | Architecture / Frontend / AI Workflow / Product Owner | Idle. Do not start 8C or live ads | Idle |
 
 Human review required for this opt-in LOCAL Drive flag: **Yes** before merge if a live Drive-root/ADC record is still missing, or if credentials appear in git/CI. **No** additional product meeting for the stub-default CI path itself. **Yes** immediately before live Google Ads / LINE / TikTok / Insights 8C / production credentials.
@@ -72,5 +72,5 @@ Escalate immediately; do not merge around them:
 
 1. Stage 08 specification PR [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82) is squash-merged at `21aca71`. Post-merge main CI Run `33090522880` passed.
 2. 8A runtime PR [#83](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/83) is squash-merged at `91a8297`. Post-merge main CI Run `33143102962` passed.
-3. Complete 8B runtime. Do not start 8C, live Google Ads, or LINE/TikTok until 8B is approved, merged, and post-merge `main` CI has passed.
+3. Approval-record CI on PR [#84](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/84), then Ready and squash-merge. Do not start 8C, live Google Ads, or LINE/TikTok until 8B is merged and post-merge `main` CI has passed.
 4. Compose/CI stay `platform.storage.provider=stub`. Operators opt in locally with ADC and `GOOGLE_DRIVE_ROOT_FOLDER_ID` outside the repository.

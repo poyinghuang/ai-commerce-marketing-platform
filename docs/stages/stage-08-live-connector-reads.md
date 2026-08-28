@@ -8,7 +8,8 @@
 - Base: `91a82978c0701ac360c84508db9f7ddfafd45eb0` (PR [#83](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/83) squash merge)
 - Stage 07 prerequisite: Passed — spec PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) at `2851003`; 7A PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) at `eb2618d`; 7B PR [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78) at `da01b13`; 7C-1 PR [#79](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/79) at `f5faa28`; 7C-2 PR [#80](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/80) at `ed3f4cf`; close-out PR [#81](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/81) at `49b73d6`; post-merge `main` CI Run `32996644069` passed
 - Implementation: 8B unlocked after 8A merge + post-merge CI
-- Manager Decision: 8B runtime Manager Review not started
+- Manager Review: Passed at implementation Head `2edf23a`; Decision `APPROVE`. Merge allowed after this approval-record Head’s exact-head CI
+- Manager Decision: `APPROVE`
 - Merge: Specification squash-merged at `21aca71`. 8A runtime squash-merged at `91a8297`; post-merge `main` CI Run `33143102962` passed. 8B runtime not merged
 - Optional Meta paused proof (`META_TEST_READ_WRITE_PAUSED` / `META_TEST_DELIVERY`): **Locked**
 - Live Google Ads / LINE / TikTok / spend / production: **Locked**
@@ -249,6 +250,6 @@ After that record exists, Manager may `APPROVE` this specification. 8A runtime s
 - [x] Stage 07 FAKE complete: spec #76, 7A #77, 7B #78, 7C-1 #79, 7C-2 #80, close-out #81 at `49b73d6`; post-merge `main` CI Run `32996644069` passed.
 - [x] Specification squash-merged: PR [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82) at `21aca71`; post-merge `main` CI Run `33090522880` passed.
 - [x] 8A runtime squash-merged: PR [#83](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/83) at `91a8297`; post-merge `main` CI Run `33143102962` passed.
-- [ ] 8B runtime Manager `APPROVE` + merge + post-merge `main` CI.
+- [x] 8B runtime Manager `APPROVE` at implementation Head `2edf23a` (review: `docs/management/reviews/stage-08b-runtime-manager-review.md`). Merge + post-merge `main` CI still required.
 
-Current gate is 8B runtime. 8C, 7D/7E, live Google Ads, optional Meta paused proof, and auto-execute stay locked.
+Current gate is 8B runtime merge after the approval-record Head CI. 8C, 7D/7E, live Google Ads, optional Meta paused proof, and auto-execute stay locked.

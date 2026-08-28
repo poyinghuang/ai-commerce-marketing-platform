@@ -7,8 +7,8 @@
 - Scope: LOCAL/TEST opt-in `GoogleDriveStorageProvider` behind `platform.storage.provider`; default stub; no migration; no file-byte I/O; no Meta Insights; no Google Ads
 - Specification: PR [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82) squash-merged at `21aca71`; post-merge main CI Run `33090522880` passed
 - Prerequisite: 8A runtime PR [#83](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/83) squash-merged at `91a8297`; post-merge main CI Run `33143102962` passed
-- Status: Runtime Draft PR [#84](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/84); Manager Review not started
-- Manager Decision: Not started. Human test-Drive-root record is still required before merge per `docs/stages/stage-08-live-connector-reads.md`
+- Status: Runtime Draft PR [#84](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/84); Manager Review Passed
+- Manager Decision: `APPROVE` — see `docs/management/reviews/stage-08b-runtime-manager-review.md`. Merge after the approval-record Head’s exact-head CI
 
 ## Implemented scope
 
@@ -38,8 +38,13 @@ Recorded on this runtime branch before exact-head CI. Unrun checks are not Passe
 
 ## Exact-head CI
 
-Not yet recorded. Fill after Push and Pull Request `quality-and-compose` plus `secret-scan` pass on the reviewed Head.
+Implementation Head `2edf23a2e4642c29a8b77d921069a7dc9372c9fb`:
+
+- Push [`33161897827`](https://github.com/poyinghuang/ai-commerce-marketing-platform/actions/runs/33161897827) `quality-and-compose` + `secret-scan` SUCCESS
+- Pull Request [`33161900484`](https://github.com/poyinghuang/ai-commerce-marketing-platform/actions/runs/33161900484) `quality-and-compose` + `secret-scan` SUCCESS
+
+The approval-record commit after this report must pass a new exact-head pair before merge.
 
 ## Next gate
 
-8C live Meta Insights stays locked until this 8B runtime is Manager `APPROVE`, squash-merged, and post-merge `main` CI passes. Optional human ensure against a test Drive root is not CI and is not 8C.
+8C live Meta Insights stays locked until this 8B runtime is squash-merged and post-merge `main` CI passes. Optional human ensure against a test Drive root is not CI and is not 8C.
