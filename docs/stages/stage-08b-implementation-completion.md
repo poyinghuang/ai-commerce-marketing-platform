@@ -7,7 +7,7 @@
 - Scope: LOCAL/TEST opt-in `GoogleDriveStorageProvider` behind `platform.storage.provider`; default stub; no migration; no file-byte I/O; no Meta Insights; no Google Ads
 - Specification: PR [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82) squash-merged at `21aca71`; post-merge main CI Run `33090522880` passed
 - Prerequisite: 8A runtime PR [#83](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/83) squash-merged at `91a8297`; post-merge main CI Run `33143102962` passed
-- Status: Runtime Draft PR not opened yet; Manager Review not started
+- Status: Runtime Draft PR [#84](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/84); Manager Review not started
 - Manager Decision: Not started. Human test-Drive-root record is still required before merge per `docs/stages/stage-08-live-connector-reads.md`
 
 ## Implemented scope

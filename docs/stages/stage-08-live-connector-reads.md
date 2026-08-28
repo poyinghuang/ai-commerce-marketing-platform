@@ -3,7 +3,7 @@
 ## Gate status
 
 - Specification: PR [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82) squash-merged at `21aca71`; post-merge `main` CI Run `33090522880` passed
-- Status: Specification squash-merged; **8A runtime** squash-merged PR [#83](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/83); **8B runtime** in progress on `codex/stage-08b-live-drive`
+- Status: Specification squash-merged; **8A runtime** squash-merged PR [#83](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/83); **8B runtime** Draft PR [#84](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/84)
 - Branch: `codex/stage-08b-live-drive`
 - Base: `91a82978c0701ac360c84508db9f7ddfafd45eb0` (PR [#83](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/83) squash merge)
 - Stage 07 prerequisite: Passed — spec PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) at `2851003`; 7A PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) at `eb2618d`; 7B PR [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78) at `da01b13`; 7C-1 PR [#79](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/79) at `f5faa28`; 7C-2 PR [#80](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/80) at `ed3f4cf`; close-out PR [#81](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/81) at `49b73d6`; post-merge `main` CI Run `32996644069` passed

@@ -19,7 +19,7 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 | --- | --- |
 | Gate | Stage 08 **8B** opt-in LOCAL live Drive folder ensure |
 | Branch | `codex/stage-08b-live-drive` |
-| PR | Draft not opened yet |
+| PR | Draft [#84](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/84) |
 | Specification | PR [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82) squash-merged at `21aca71`; post-merge main CI Run `33090522880` passed |
 | Base | `91a8297` (PR [#83](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/83) squash merge); 8A post-merge main CI Run `33143102962` passed |
 | Stage 07 | Closed FAKE — close-out PR [#81](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/81) at `49b73d6`; post-merge main CI Run `32996644069` passed |
@@ -34,7 +34,7 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 | Backend | Deliver `platform.storage.provider=google` on LOCAL/TEST without changing folder roles, V7, or Product-tree semantics | In progress |
 | QA | Profile matrix (stub / fake-object / google), MockRest search-hit / miss-create / duplicate conflict / missing root, existing storage-folder tests on stub | In progress |
 | Documentation | Keep Stage 08 gate headers and 8B completion report aligned | In progress |
-| Project Manager | Idle until exact-head CI on the 8B Draft PR | Idle |
+| Project Manager | Idle until exact-head CI on Draft PR [#84](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/84) | Idle |
 | Review | Idle until Manager Review is requested | Idle |
 | Architecture / Frontend / AI Workflow / Product Owner | Idle. Do not start 8C or live ads | Idle |
 
