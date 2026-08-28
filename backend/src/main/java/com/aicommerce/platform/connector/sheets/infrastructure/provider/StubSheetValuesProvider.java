@@ -9,11 +9,13 @@ import com.aicommerce.platform.connector.sheets.application.SheetProviderExcepti
 import com.aicommerce.platform.connector.sheets.application.SheetSource;
 import com.aicommerce.platform.connector.sheets.application.SheetValuesProvider;
 import com.aicommerce.platform.connector.sheets.application.SheetValuesSnapshot;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
 @Profile("(local | test) & !production")
+@ConditionalOnProperty(name = "platform.sheets.provider", havingValue = "stub", matchIfMissing = true)
 public class StubSheetValuesProvider implements SheetValuesProvider {
 
     static final String MIXED_PREFIX = "stub-products-mixed_";

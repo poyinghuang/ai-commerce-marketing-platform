@@ -84,6 +84,41 @@ class GoogleSheetValuesProviderTest {
     }
 
     @Test
+    void authenticationFailureIsNotRetriedAndProviderBodyIsNotExposed() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("https://sheets.googleapis.com");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(once(), request -> { })
+                .andRespond(withStatus(HttpStatus.UNAUTHORIZED)
+                        .body("token-value").contentType(MediaType.TEXT_PLAIN));
+        GoogleSheetValuesProvider provider = new GoogleSheetValuesProvider(builder.build(), this::credentials);
+
+        assertThatThrownBy(() -> provider.read(new SheetSource("sheet_123", "Products", "'Products'!A1:M1001")))
+                .isInstanceOfSatisfying(SheetProviderException.class, exception -> {
+                    assertThat(exception.getCode()).isEqualTo("GOOGLE_AUTH_UNAVAILABLE");
+                    assertThat(exception.getMessage()).doesNotContain("token-value");
+                });
+        server.verify();
+    }
+
+    @Test
+    void retriesOnceOnTooManyRequestsThenReturnsFormattedRows() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("https://sheets.googleapis.com");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(once(), request -> { })
+                .andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS)
+                        .body("secret provider details").contentType(MediaType.TEXT_PLAIN));
+        server.expect(once(), request -> { })
+                .andExpect(header("Authorization", "Bearer test-token"))
+                .andRespond(withSuccess("{\"values\":[[\"product_name\"],[\"Retry\"]]}", MediaType.APPLICATION_JSON));
+        GoogleSheetValuesProvider provider = new GoogleSheetValuesProvider(builder.build(), this::credentials);
+
+        var result = provider.read(new SheetSource("sheet_123", "Products", "'Products'!A1:M1001"));
+
+        assertThat(result.values().get(1)).containsExactly("Retry");
+        server.verify();
+    }
+
+    @Test
     void missingCredentialsFailClosedWithSanitizedAuthError() {
         GoogleSheetValuesProvider provider = new GoogleSheetValuesProvider(RestClient.create(),
                 () -> { throw new java.io.IOException("credential file location"); });

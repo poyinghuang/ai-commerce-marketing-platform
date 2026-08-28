@@ -2,12 +2,14 @@
 
 ## Gate status
 
-- Status: Specification Draft PR [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82)
-- Branch: `codex/stage-08-live-connector-reads-specification`
-- Base: `49b73d6c4dd741f446344476fc8622d40e678c14` (PR [#81](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/81) squash merge)
+- Specification: PR [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82) squash-merged at `21aca71`; post-merge `main` CI Run `33090522880` passed
+- Status: Specification squash-merged; **8A runtime** Draft PR [#83](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/83)
+- Branch: `codex/stage-08a-live-sheets`
+- Base: `21aca71932a5d3d92bf608435a0fb389f514590a` (PR [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82) squash merge)
 - Stage 07 prerequisite: Passed — spec PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) at `2851003`; 7A PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) at `eb2618d`; 7B PR [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78) at `da01b13`; 7C-1 PR [#79](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/79) at `f5faa28`; 7C-2 PR [#80](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/80) at `ed3f4cf`; close-out PR [#81](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/81) at `49b73d6`; post-merge `main` CI Run `32996644069` passed
-- Implementation: Not started. This PR is docs-only
-- Manager Decision: `ESCALATE_TO_HUMAN` until a recorded human decision accepts the test-resource and secret-handling rules below
+- Implementation: 8A unlocked after specification merge + post-merge CI
+- Manager Decision: 8A runtime Manager Review not started
+- Merge: Specification squash-merged at `21aca71`. 8A runtime not merged
 - Optional Meta paused proof (`META_TEST_READ_WRITE_PAUSED` / `META_TEST_DELIVERY`): **Locked**
 - Live Google Ads / LINE / TikTok / spend / production: **Locked**
 - Auto-execute: **Forbidden**
@@ -245,9 +247,7 @@ After that record exists, Manager may `APPROVE` this specification. 8A runtime s
 ## Stage gate
 
 - [x] Stage 07 FAKE complete: spec #76, 7A #77, 7B #78, 7C-1 #79, 7C-2 #80, close-out #81 at `49b73d6`; post-merge `main` CI Run `32996644069` passed.
-- [ ] Independent Manager Review. Decision is `ESCALATE_TO_HUMAN` until the human secret/test-resource record exists, then `APPROVE` or `REQUEST_CHANGES`.
-- [ ] Specification Draft PR [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82) exact-head Push and Pull Request CI (`quality-and-compose` and `secret-scan`).
-- [ ] Specification squash-merge and post-merge `main` CI.
-- [ ] 8A runtime (locked until the previous row).
+- [x] Specification squash-merged: PR [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82) at `21aca71`; post-merge `main` CI Run `33090522880` passed.
+- [ ] 8A runtime Manager `APPROVE` + merge + post-merge `main` CI.
 
-Current gate is this Stage 08 specification. 8A stays locked. 7D/7E, live Google Ads, optional Meta paused proof, and auto-execute stay locked.
+Current gate is 8A runtime. 8B/8C, 7D/7E, live Google Ads, optional Meta paused proof, and auto-execute stay locked.

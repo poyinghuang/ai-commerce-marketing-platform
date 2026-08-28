@@ -10,7 +10,7 @@ import com.aicommerce.platform.connector.sheets.application.SheetSource;
 import com.aicommerce.platform.connector.sheets.application.SheetValuesProvider;
 import com.aicommerce.platform.connector.sheets.application.SheetValuesSnapshot;
 import com.google.auth.oauth2.GoogleCredentials;
-import org.springframework.context.annotation.Profile;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -19,7 +19,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
 @Component
-@Profile("production | (!local & !test)")
+@Conditional(GoogleSheetValuesProviderCondition.class)
 public class GoogleSheetValuesProvider implements SheetValuesProvider {
 
     private static final String READ_SCOPE = "https://www.googleapis.com/auth/spreadsheets.readonly";
