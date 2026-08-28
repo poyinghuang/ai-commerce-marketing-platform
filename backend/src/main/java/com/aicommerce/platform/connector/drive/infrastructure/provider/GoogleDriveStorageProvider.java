@@ -9,14 +9,14 @@ import java.time.Duration;
 import java.util.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Profile;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.*;
 
 @Component
-@Profile("production | (!local & !test)")
+@Conditional(GoogleDriveStorageProviderCondition.class)
 public class GoogleDriveStorageProvider implements StorageProvider {
     private static final String SCOPE="https://www.googleapis.com/auth/drive.file"; private static final int ATTEMPTS=2;
     private final RestClient client; private final CredentialsSource credentials; private final String rootFolderId; private final String sharedDriveId;

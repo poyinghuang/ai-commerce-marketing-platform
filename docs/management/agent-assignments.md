@@ -11,34 +11,34 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 2. Manager Decision is only `APPROVE`, `REQUEST_CHANGES`, or `ESCALATE_TO_HUMAN`.
 3. Agents must not lower acceptance, skip required checks, or treat unrun tests as Passed.
 4. Flyway V1–V17 stay immutable. 8A and 8B add no migration. 8C may add additive V18 only, as named in `docs/stages/stage-08-live-connector-reads.md`.
-5. Deterministic `FAKE` / stub in `LOCAL`/`TEST` remains the default CI path. Opt-in live Sheets requires `platform.sheets.provider=google` plus operator ADC outside git. Real Google Ads, LINE, TikTok, spend, production, Auth/RBAC/Tenant, and System of Record changes stay frozen.
+5. Deterministic `FAKE` / stub in `LOCAL`/`TEST` remains the default CI path. Opt-in live Drive requires `platform.storage.provider=google` plus operator ADC and `GOOGLE_DRIVE_ROOT_FOLDER_ID` outside git. Real Google Ads, LINE, TikTok, spend, production, Auth/RBAC/Tenant, and System of Record changes stay frozen.
 
 ## Current gate
 
 | Item | Value |
 | --- | --- |
-| Gate | Stage 08 **8A** opt-in LOCAL live Sheets |
-| Branch | `codex/stage-08a-live-sheets` |
-| PR | Draft [#83](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/83) |
+| Gate | Stage 08 **8B** opt-in LOCAL live Drive folder ensure |
+| Branch | `codex/stage-08b-live-drive` |
+| PR | Draft not opened yet |
 | Specification | PR [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82) squash-merged at `21aca71`; post-merge main CI Run `33090522880` passed |
-| Base | `21aca71` (PR #82 squash merge) |
+| Base | `91a8297` (PR [#83](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/83) squash merge); 8A post-merge main CI Run `33143102962` passed |
 | Stage 07 | Closed FAKE — close-out PR [#81](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/81) at `49b73d6`; post-merge main CI Run `32996644069` passed |
-| Manager Decision | Not started for 8A runtime |
+| Manager Decision | Not started for 8B runtime |
 | Optional Meta paused proof | **Locked** until a separate human record |
-| Next after 8A | 8B live Drive folder ensure. 8C stays locked |
+| Next after 8B | 8C live Meta Insights. Live Google Ads stays locked |
 
-## Assigned now (8A runtime)
+## Assigned now (8B runtime)
 
 | Agent | Duty | Status |
 | --- | --- | --- |
-| Backend | Deliver `platform.sheets.provider=google` on LOCAL/TEST without changing Preview/Execute | In progress |
-| QA | Profile matrix, MockRest sanitization, existing 2E execute tests on stub | In progress |
-| Documentation | Keep Stage 08 gate headers and 8A completion report aligned | In progress |
-| Project Manager | Idle until exact-head CI on Draft PR [#83](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/83) | Idle |
+| Backend | Deliver `platform.storage.provider=google` on LOCAL/TEST without changing folder roles, V7, or Product-tree semantics | In progress |
+| QA | Profile matrix (stub / fake-object / google), MockRest search-hit / miss-create / duplicate conflict / missing root, existing storage-folder tests on stub | In progress |
+| Documentation | Keep Stage 08 gate headers and 8B completion report aligned | In progress |
+| Project Manager | Idle until exact-head CI on the 8B Draft PR | Idle |
 | Review | Idle until Manager Review is requested | Idle |
-| Architecture / Frontend / AI Workflow / Product Owner | Idle. Do not start 8B/8C or live ads | Idle |
+| Architecture / Frontend / AI Workflow / Product Owner | Idle. Do not start 8C or live ads | Idle |
 
-Human review required for this opt-in LOCAL Sheets flag: **Yes** before merge if a live spreadsheet/ADC record is still missing, or if credentials appear in git/CI. **No** additional product meeting for the stub-default CI path itself. **Yes** immediately before live Google Ads / LINE / TikTok / Drive 8B / Insights 8C / production credentials.
+Human review required for this opt-in LOCAL Drive flag: **Yes** before merge if a live Drive-root/ADC record is still missing, or if credentials appear in git/CI. **No** additional product meeting for the stub-default CI path itself. **Yes** immediately before live Google Ads / LINE / TikTok / Insights 8C / production credentials.
 
 ## Roster for later Stages
 
@@ -47,8 +47,8 @@ Do not start a later row until the previous row is merged and post-merge `main` 
 | Stage | Lead | Supporting agents | Human required | Unlock condition |
 | --- | --- | --- | --- | --- |
 | 08 Live connector reads spec | Architecture | Research, Documentation, Project Manager | **Yes** — credentials and live APIs | Stage 07 FAKE complete — **merged** PR #82 |
-| 08A live Sheets runtime | Backend | QA, Project Manager | **Yes** — Google ADC / test spreadsheet before merge | 08 spec merge + post-merge CI — **unlocked** |
-| 08B live Drive folder ensure | Backend | QA, Project Manager | **Yes** — Drive root + ADC | 8A merged + post-merge CI |
+| 08A live Sheets runtime | Backend | QA, Project Manager | **Yes** — Google ADC / test spreadsheet before merge | 08 spec merge + post-merge CI — **merged** PR #83 |
+| 08B live Drive folder ensure | Backend | QA, Project Manager | **Yes** — Drive root + ADC | 8A merged + post-merge CI — **unlocked** |
 | 08C live Meta Insights | Backend | Architecture, QA, Project Manager | **Yes** — Meta `ads_read` test token | 8B merged + post-merge CI |
 | 4E optional Meta paused proof | Research + Project Manager | Backend, QA | **Yes** — credentials, test-account access | Separate human record; `META_TEST_DELIVERY` stays disabled |
 | 07D/07E LINE / TikTok | Architecture | Research, Backend, Project Manager | **Yes** before a second live ads platform | Separate specification |
@@ -71,5 +71,6 @@ Escalate immediately; do not merge around them:
 ## Sequence after this assignment
 
 1. Stage 08 specification PR [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82) is squash-merged at `21aca71`. Post-merge main CI Run `33090522880` passed.
-2. Complete 8A runtime. Do not start 8B/8C, live Google Ads, or LINE/TikTok until 8A is approved, merged, and post-merge `main` CI has passed.
-3. Compose/CI stay `platform.sheets.provider=stub`. Operators opt in locally with ADC outside the repository.
+2. 8A runtime PR [#83](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/83) is squash-merged at `91a8297`. Post-merge main CI Run `33143102962` passed.
+3. Complete 8B runtime. Do not start 8C, live Google Ads, or LINE/TikTok until 8B is approved, merged, and post-merge `main` CI has passed.
+4. Compose/CI stay `platform.storage.provider=stub`. Operators opt in locally with ADC and `GOOGLE_DRIVE_ROOT_FOLDER_ID` outside the repository.
