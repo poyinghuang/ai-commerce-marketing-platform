@@ -19,6 +19,17 @@ class GoogleDriveStorageProviderTest {
     @Test void failsClosedWithoutConfiguredRoot(){var provider=new GoogleDriveStorageProvider(RestClient.create(),credentials(),"","");
         assertThatThrownBy(()->provider.ensureProductTree(new StorageEnsureRequest(UUID.randomUUID(),"PROD-00000001")))
                 .isInstanceOfSatisfying(StorageProviderException.class,e->assertThat(e.getCode()).isEqualTo("CONNECTOR_NOT_CONFIGURED"));}
+    @Test void duplicateSearchResultsFailClosedWithoutCreating(){
+        RestClient.Builder builder=RestClient.builder().baseUrl("https://www.googleapis.com");
+        MockRestServiceServer server=MockRestServiceServer.bindTo(builder).build();
+        server.expect(once(),request->{assertThat(request.getURI().getHost()).isEqualTo("www.googleapis.com");
+                    assertThat(request.getURI().getPath()).isEqualTo("/drive/v3/files");})
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("{\"files\":[{\"id\":\"dup-a\"},{\"id\":\"dup-b\"}]}",MediaType.APPLICATION_JSON));
+        var provider=new GoogleDriveStorageProvider(builder.build(),credentials(),"root-folder","");
+        assertThatThrownBy(()->provider.ensureProductTree(new StorageEnsureRequest(UUID.randomUUID(),"PROD-00000001")))
+                .isInstanceOfSatisfying(StorageProviderException.class,e->assertThat(e.getCode()).isEqualTo("STORAGE_FOLDER_STATE_CONFLICT"));
+        server.verify();}
     @Test void sharedDriveSearchUsesFixedOriginAndRequiredParametersAndReusesFolders(){
         RestClient.Builder builder=RestClient.builder().baseUrl("https://www.googleapis.com");MockRestServiceServer server=MockRestServiceServer.bindTo(builder).build();
         for(int i=0;i<7;i++){String id="folder-id-"+i;server.expect(once(),request->{var uri=request.getURI();assertThat(uri.getHost()).isEqualTo("www.googleapis.com");assertThat(uri.getPath()).isEqualTo("/drive/v3/files");

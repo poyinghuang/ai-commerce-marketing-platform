@@ -45,7 +45,7 @@ class StorageProviderProfileTest {
     }
 
     @Test
-    void localWrongStorageProviderValueLoadsNoStubOrFakeObjectBean() {
+    void localWrongStorageProviderValueLoadsNoStubFakeObjectOrGoogleBean() {
         try (var context = new AnnotationConfigApplicationContext()) {
             context.getEnvironment().setActiveProfiles("local");
             context.getEnvironment().getPropertySources().addFirst(
@@ -54,6 +54,7 @@ class StorageProviderProfileTest {
             context.refresh();
             assertThat(context.getBeansOfType(StorageProvider.class)).isEmpty();
             assertThat(context.getBeansOfType(FakeObjectStorageProvider.class)).isEmpty();
+            assertThat(context.getBeansOfType(GoogleDriveStorageProvider.class)).isEmpty();
         }
     }
 
@@ -73,9 +74,17 @@ class StorageProviderProfileTest {
                 Arguments.of("local-stub", new String[] {"local"}, "stub", StubStorageProvider.class),
                 Arguments.of("test-fake-object", new String[] {"test"}, "fake-object", FakeObjectStorageProvider.class),
                 Arguments.of("local-fake-object", new String[] {"local"}, "fake-object", FakeObjectStorageProvider.class),
+                Arguments.of("local-google", new String[] {"local"}, "google", GoogleDriveStorageProvider.class),
+                Arguments.of("test-google", new String[] {"test"}, "google", GoogleDriveStorageProvider.class),
+                Arguments.of("production-ignores-stub-flag", new String[] {"production"}, "stub",
+                        GoogleDriveStorageProvider.class),
                 Arguments.of("production-ignores-fake-object", new String[] {"production"}, "fake-object",
                         GoogleDriveStorageProvider.class),
+                Arguments.of("production-ignores-google-flag", new String[] {"production"}, "google",
+                        GoogleDriveStorageProvider.class),
                 Arguments.of("production-local-ignores-fake-object", new String[] {"production", "local"}, "fake-object",
+                        GoogleDriveStorageProvider.class),
+                Arguments.of("production-local-stays-google", new String[] {"production", "local"}, "google",
                         GoogleDriveStorageProvider.class));
     }
 }
