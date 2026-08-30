@@ -26,6 +26,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @Primary
 @Profile("(local | test) & !production")
 @ConditionalOnProperty(name = "platform.adapter", havingValue = "fake")
+@ConditionalOnProperty(name = "platform.stage8.insights.live", havingValue = "false", matchIfMissing = true)
 public class DeterministicFakePlatformReadAdapter implements PlatformDeliveryReadPort, PlatformMetricsReadPort {
     public static final long SUCCESS_IMPRESSIONS = 10_000L;
     public static final long SUCCESS_REACH = 8_000L;
