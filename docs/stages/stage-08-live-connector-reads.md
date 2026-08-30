@@ -3,7 +3,7 @@
 ## Gate status
 
 - Specification: PR [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82) squash-merged at `21aca71`; post-merge `main` CI Run `33090522880` passed
-- Status: Specification squash-merged; **8A runtime** squash-merged PR [#83](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/83); **8B runtime** squash-merged PR [#84](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/84); **8C runtime** in progress
+- Status: Specification squash-merged; **8A runtime** squash-merged PR [#83](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/83); **8B runtime** squash-merged PR [#84](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/84); **8C runtime** Draft PR [#85](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/85)
 - Branch: `codex/stage-08c-live-insights`
 - Base: `14e03d0849d60eb261c64380dbcd3aeff71e5c95` (PR [#84](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/84) squash merge)
 - Stage 07 prerequisite: Passed — spec PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) at `2851003`; 7A PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) at `eb2618d`; 7B PR [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78) at `da01b13`; 7C-1 PR [#79](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/79) at `f5faa28`; 7C-2 PR [#80](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/80) at `ed3f4cf`; close-out PR [#81](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/81) at `49b73d6`; post-merge `main` CI Run `32996644069` passed
@@ -251,6 +251,6 @@ After that record exists, Manager may `APPROVE` this specification. 8A runtime s
 - [x] Specification squash-merged: PR [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82) at `21aca71`; post-merge `main` CI Run `33090522880` passed.
 - [x] 8A runtime squash-merged: PR [#83](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/83) at `91a8297`; post-merge `main` CI Run `33143102962` passed.
 - [x] 8B runtime squash-merged: PR [#84](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/84) at `14e03d0`; post-merge `main` CI Run `33264670377` passed.
-- [ ] 8C runtime Draft PR, exact-head CI, and Manager Decision
+- [ ] 8C runtime Draft PR [#85](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/85), exact-head CI, and Manager Decision
 
 Current gate is 8C runtime. Live Google Ads, LINE/TikTok, `META_TEST_DELIVERY`, optional Meta paused proof, and auto-execute stay locked.

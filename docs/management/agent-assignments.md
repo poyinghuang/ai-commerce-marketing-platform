@@ -19,7 +19,7 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 | --- | --- |
 | Gate | Stage 08 **8C** opt-in LOCAL live Meta Insights + delivery read |
 | Branch | `codex/stage-08c-live-insights` |
-| PR | Draft (number recorded after open) |
+| PR | Draft [#85](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/85) |
 | Specification | PR [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82) squash-merged at `21aca71`; post-merge main CI Run `33090522880` passed |
 | Base | `14e03d0` (PR [#84](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/84) squash merge); 8B post-merge main CI Run `33264670377` passed |
 | Stage 07 | Closed FAKE — close-out PR [#81](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/81) at `49b73d6`; post-merge main CI Run `32996644069` passed |
