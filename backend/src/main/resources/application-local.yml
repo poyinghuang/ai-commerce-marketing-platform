@@ -39,3 +39,6 @@ platform:
     google:
       web:
         enabled: true
+  stage8:
+    insights:
+      live: false

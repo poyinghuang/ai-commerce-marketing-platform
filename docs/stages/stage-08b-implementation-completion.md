@@ -7,8 +7,8 @@
 - Scope: LOCAL/TEST opt-in `GoogleDriveStorageProvider` behind `platform.storage.provider`; default stub; no migration; no file-byte I/O; no Meta Insights; no Google Ads
 - Specification: PR [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82) squash-merged at `21aca71`; post-merge main CI Run `33090522880` passed
 - Prerequisite: 8A runtime PR [#83](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/83) squash-merged at `91a8297`; post-merge main CI Run `33143102962` passed
-- Status: Runtime Draft PR [#84](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/84); Manager Review Passed
-- Manager Decision: `APPROVE` — see `docs/management/reviews/stage-08b-runtime-manager-review.md`. Merge after the approval-record Head’s exact-head CI
+- Status: Runtime squash-merged PR [#84](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/84) at `14e03d0`; post-merge `main` CI Run `33264670377` passed
+- Manager Decision: `APPROVE` — see `docs/management/reviews/stage-08b-runtime-manager-review.md`
 
 ## Implemented scope
 
@@ -47,4 +47,4 @@ The approval-record commit after this report must pass a new exact-head pair bef
 
 ## Next gate
 
-8C live Meta Insights stays locked until this 8B runtime is squash-merged and post-merge `main` CI passes. Optional human ensure against a test Drive root is not CI and is not 8C.
+8C live Meta Insights is unlocked. Optional human ensure against a test Drive root is not CI and is not 8C.
