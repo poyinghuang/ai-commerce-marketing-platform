@@ -107,4 +107,4 @@
 - Approved CI Run：
 - Commands actually executed：
 - Merge allowed：Yes
-- Next Stage allowed：Only after merge and post-merge verification
+- Next Stage allowed：After merge and post-merge CI; Manager starts the next authorized stage immediately when no escalation applies

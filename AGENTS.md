@@ -7,7 +7,7 @@
 - 每個 Stage／Milestone 必須有核准規格、獨立分支、可驗收範圍與明確排除項目。
 - PostgreSQL、API、安全與外部 Provider 邊界必須遵守已核准的 Architecture 與 Stage 文件。
 - 已合併的 Flyway Migration 不得修改；只能新增版本。
-- 開發完成不等於可合併。只有 Manager Decision 為 `APPROVE`，且必要人工核准已完成時，才可合併。
+- 開發完成不等於可合併。只有 Manager Decision 為 `APPROVE`，且無 escalation、必要人工核准已完成時，才可由 Manager squash-merge。不要等待 Owner「請確認合併」。
 - 不得因時間、工具限制或既有實作而自行降低驗收標準。
 
 ## Required reading
@@ -23,7 +23,7 @@
 
 ## Project Manager and Stage Gate Owner
 
-Project Manager 同時擔任 Lead Reviewer、Stage Gate Owner 與 Integration Owner。主要職責是驗證交付證據、列出 Findings、做出 Gate Decision，以及在全部 Gate 通過後管理合併與下一 Stage。
+Project Manager 同時擔任 Lead Reviewer、Stage Gate Owner 與 Integration Owner。主要職責是驗證交付證據、列出 Findings、做出 Gate Decision，以及在 Automatic merge 條件成立時 squash-merge，並在 post-merge CI 通過後立刻開下一已授權 Stage。
 
 Manager 不得只依賴開發者或 Agent 的文字報告。必須檢查實際程式碼、Diff、Migration、測試與 Remote CI；無法執行的驗證必須標記為未驗證。
 
@@ -61,13 +61,16 @@ Manager Decision 只能是：
 
 ## Current manager-gate phase
 
-目前採用人工 Manager Gate：
+目前採用 Manager-first Gate：
 
 1. Developer 建立 Draft PR。
 2. Required CI 完整通過。
-3. 手動啟動 Manager Review。
+3. Manager 執行 Review（實際 Diff、Migration、測試、Remote CI），不是 Owner。
 4. Manager 更新 Review Report、PR 與 Stage 文件。
-5. Manager Decision 為 `APPROVE` 後才允許合併。
+5. Manager Decision 為 `APPROVE` 且 Automatic merge 條件成立時，Manager 將 PR 標為 Ready 並 squash-merge，無需再等 Owner「請確認合併」。
+6. 合併後驗證 post-merge `main` CI。通過後關閉 Stage，並立刻開下一已授權 Stage。
+
+缺少 live credential 不阻擋驗收允許 stub／FAKE 的切片。人工只在 `docs/management/escalation-policy.md` 觸發時發生。
 
 Repository 目前尚未啟用自動 `manager-gate` Required Check 或對應 Branch Protection。不得建立永遠成功、只驗證文字或可由 PR 作者自行繞過的假 Gate。
 

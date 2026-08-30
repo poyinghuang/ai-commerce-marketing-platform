@@ -1,5 +1,13 @@
 # Stage Gate Escalation Policy
 
+## Manager-first
+
+Manager 處理例行工程決策、普通 CI 失敗與普通 merge conflict。人工只在本文件觸發條件成立時介入。
+
+不得用「Please confirm merge」或「請確認合併」升級人工。Automatic merge 條件成立時，Manager 依 `docs/management/manager-policy.md` 直接 squash-merge。
+
+缺少 live credential **不構成** escalation，若該 Stage 已核准範圍是 fixture、mock、sandbox 或 FAKE／stub。啟用 live transport、正式 Credential 或 spend 仍必須升級。
+
 ## Decision
 
 符合本政策任一條件時，Manager Decision 必須為：
