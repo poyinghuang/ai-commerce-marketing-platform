@@ -17,11 +17,15 @@ import org.junit.jupiter.api.Test;
 class DeliveryApplicationPortIsolationTest {
     private static final List<String> FORBIDDEN = List.of(
             "DeterministicFakeGooglePlatformAdapter",
+            "LiveMetaInsightsReadAdapter",
             "com.google.ads",
             "google.ads.googleads",
+            "com.facebook.ads",
             "com/aicommerce/platform/delivery/infrastructure/provider/DeterministicFakeGoogle",
+            "com/aicommerce/platform/delivery/infrastructure/provider/LiveMetaInsightsReadAdapter",
             "com/google/ads",
-            "google/ads/googleads");
+            "google/ads/googleads",
+            "com/facebook/ads");
 
     @Test
     void domainAndApplicationDoNotImportTheGoogleFakeAdapterOrGoogleAdsSdk() throws Exception {

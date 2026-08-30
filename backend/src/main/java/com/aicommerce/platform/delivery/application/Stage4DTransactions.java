@@ -5,6 +5,7 @@ import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -24,7 +25,9 @@ import com.aicommerce.platform.delivery.domain.PlatformDesiredState;
 import com.aicommerce.platform.delivery.domain.PlatformEntityType;
 import com.aicommerce.platform.delivery.domain.PlatformObservedState;
 import com.aicommerce.platform.delivery.domain.PlatformOperationType;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.env.Environment;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -47,13 +50,18 @@ public class Stage4DTransactions {
     private final Stage4BTransactions stage4b;
     private final PlatformAuditWriter audit;
     private final AuditOperationContextFactory contexts;
+    private final Environment environment;
+    private final boolean liveInsights;
 
     public Stage4DTransactions(JdbcTemplate jdbc, Stage4BTransactions stage4b, PlatformAuditWriter audit,
-            AuditOperationContextFactory contexts) {
+            AuditOperationContextFactory contexts, Environment environment,
+            @Value("${platform.stage8.insights.live:false}") boolean liveInsights) {
         this.jdbc = jdbc;
         this.stage4b = stage4b;
         this.audit = audit;
         this.contexts = contexts;
+        this.environment = environment;
+        this.liveInsights = liveInsights;
     }
 
     @Transactional(readOnly = true)
@@ -329,7 +337,30 @@ public class Stage4DTransactions {
     }
 
     private UUID account() {
-        return stage4b.account();
+        return liveInsights ? metaLiveAccount() : stage4b.account();
+    }
+
+    private UUID metaLiveAccount() {
+        boolean test = Arrays.asList(environment.getActiveProfiles()).contains("test");
+        UUID id = test ? Stage8CAccountInitializer.TEST_UUID : Stage8CAccountInitializer.LOCAL_UUID;
+        String reference = test ? "stage8c-meta-test" : "stage8c-meta-local";
+        String expectedEnvironment = test ? "TEST" : "LOCAL";
+        String fingerprint = test ? Stage8CAccountInitializer.TEST_FINGERPRINT : Stage8CAccountInitializer.LOCAL_FINGERPRINT;
+        List<UUID> candidates = jdbc.query(
+                "SELECT platform_account_uuid FROM platform_accounts WHERE provider_key=? AND account_reference=?",
+                (rs, n) -> rs.getObject(1, UUID.class), "META", reference);
+        if (candidates.size() != 1 || !id.equals(candidates.getFirst())) {
+            throw new Stage4BException("PLATFORM_ACCOUNT_CONFIGURATION_INVALID", HttpStatus.SERVICE_UNAVAILABLE);
+        }
+        Integer exact = jdbc.queryForObject("""
+                SELECT count(*) FROM platform_accounts WHERE platform_account_uuid=? AND provider_key='META'
+                  AND environment=? AND account_reference=? AND external_account_fingerprint=?
+                  AND lifecycle_status='ACTIVE' AND archived_at IS NULL AND currency='TWD' AND timezone='Asia/Taipei'
+                """, Integer.class, id, expectedEnvironment, reference, fingerprint);
+        if (exact == null || exact != 1) {
+            throw new Stage4BException("PLATFORM_ACCOUNT_CONFIGURATION_INVALID", HttpStatus.SERVICE_UNAVAILABLE);
+        }
+        return id;
     }
 
     private static String table(PlatformEntityType type) {

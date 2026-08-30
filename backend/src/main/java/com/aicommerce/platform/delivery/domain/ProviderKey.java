@@ -1,2 +1,2 @@
 package com.aicommerce.platform.delivery.domain;
-public enum ProviderKey { FAKE, FAKE_GOOGLE }
+public enum ProviderKey { FAKE, FAKE_GOOGLE, META }
