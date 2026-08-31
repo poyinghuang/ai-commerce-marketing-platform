@@ -47,4 +47,4 @@ The approval-record commit after this report must pass a new exact-head pair bef
 
 ## Next gate
 
-8C live Meta Insights is unlocked. Optional human ensure against a test Drive root is not CI and is not 8C.
+Stage 08B is closed on `main`. Stage 08 close-out is the current gate. Optional human ensure against a test Drive root is not CI.

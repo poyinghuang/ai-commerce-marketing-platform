@@ -17,7 +17,7 @@
 包含 Creative Planner、Copywriter、Image Agent、Video Agent 與 QA Agent。
 
 ### Marketing Platform Engine
-透過統一 Platform Adapter 對接 Meta、Google、LINE、TikTok 等平台。Stage 04 已交付 Meta 的 FAKE LOCAL/TEST 切片。Stage 07 FAKE 已用同一組 ports 證明可擴充：第二個 FAKE Image / Storage bean，以及 `FAKE_GOOGLE` adapter（additive V17）與 gated `/platforms/google` UI。Stage 08A 已把 opt-in LOCAL live Sheets `values.get` 接到既有 `SheetValuesProvider`。Stage 08B 已把 opt-in LOCAL live Drive folder ensure 接到既有 `StorageProvider`。目前 Gate 是 8C：LOCAL 可用 `platform.stage8.insights.live=true` 把 Meta Graph 讀取接到既有 `PlatformDeliveryReadPort` / `PlatformMetricsReadPort`；CI 預設仍是 stub/FAKE。Live Google Ads / LINE / TikTok、production credential 與 spend 仍要人工核准。
+透過統一 Platform Adapter 對接 Meta、Google、LINE、TikTok 等平台。Stage 04 已交付 Meta 的 FAKE LOCAL/TEST 切片。Stage 07 FAKE 已用同一組 ports 證明可擴充：第二個 FAKE Image / Storage bean，以及 `FAKE_GOOGLE` adapter（additive V17）與 gated `/platforms/google` UI。Stage 08 已把 opt-in LOCAL live Sheets、Drive folder ensure 與 Meta Insights 接到既有 ports；CI 預設仍是 stub/FAKE。Live Google Ads / LINE / TikTok、production credential 與 spend 仍要人工核准。
 
 ### Decision Engine
 讀取標準化成效資料，產生加碼、降預算、停投、換素材等建議。AI 只輸出建議，不直接執行外部操作。Stage 06 FAKE 切片是確定性規則引擎（`RULE_SET_V1`），建議需含原因、數據與風險，並由人工批准或拒絕；批准在該切片只寫決策紀錄，不呼叫平台寫入或刷新 Port。Dashboard 的「AI 建議」仍是 Stage 03 素材審核，與 Decision Engine「優化建議」分開。Frequency／受眾疲乏延後，直到成效快照有獨立 Frequency 欄位。

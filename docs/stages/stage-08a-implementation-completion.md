@@ -40,4 +40,4 @@ Recorded after squash-merge of PR [#83](https://github.com/poyinghuang/ai-commer
 
 ## Next gate
 
-8B live Drive folder ensure is unlocked. Optional human Preview/Execute against a test spreadsheet is not CI and is not 8B.
+Stage 08A is closed on `main`. Stage 08 close-out is the current gate. Optional human Preview/Execute against a test spreadsheet is not CI.
