@@ -20,7 +20,7 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 | --- | --- |
 | Gate | Stage 08 Live Connector Reads **close-out** |
 | Branch | `docs/stage-08-closeout` |
-| PR | This close-out Draft |
+| PR | Draft [#87](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/87) |
 | Specification | PR [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82) squash-merged at `21aca71`; post-merge main CI Run `33090522880` passed |
 | 8A | PR [#83](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/83) at `91a8297`; post-merge main CI Run `33143102962` passed |
 | 8B | PR [#84](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/84) at `14e03d0`; post-merge main CI Run `33264670377` passed |

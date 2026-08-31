@@ -4,7 +4,7 @@
 
 - Scope: Stage 08 Live Connector Reads (opt-in LOCAL Sheets, Drive folder ensure, Meta Insights)
 - Specification: PR [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82) squash-merged at `21aca71`; post-merge main CI Run `33090522880` passed
-- Status: Close-out in progress on `docs/stage-08-closeout`. Runtime slices are on `main`.
+- Status: Close-out Draft PR [#87](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/87). Runtime slices are on `main`.
 - Manager Decision: 8A–8C merged on `main`
 
 ## Closed slices
