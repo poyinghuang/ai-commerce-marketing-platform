@@ -32,4 +32,4 @@ Flyway V1–V16 stay immutable. 7C-1 added additive V17 only. 7A, 7B, and 7C-2 a
 
 ## Next gate
 
-Stage 07 FAKE is closed on `main`. Stage 08 Live Connector Reads specification is the next gate. 7D/7E LINE/TikTok, live Google Ads, optional Meta paused proof, and auto-execute stay locked.
+Stage 07 FAKE is closed on `main`. Stage 08 Live Connector Reads is closed after its close-out merges. 7D/7E LINE/TikTok, live Google Ads, optional Meta paused proof, and auto-execute stay locked.

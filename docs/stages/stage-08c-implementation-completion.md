@@ -7,8 +7,8 @@
 - Scope: LOCAL/TEST opt-in `LiveMetaInsightsReadAdapter` behind `platform.stage8.insights.live`; additive V18 `META` provider key; default FAKE 4D; no live writes
 - Specification: PR [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82) squash-merged at `21aca71`; post-merge main CI Run `33090522880` passed
 - Prerequisite: 8B runtime PR [#84](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/84) squash-merged at `14e03d0`; post-merge `main` CI Run `33264670377` passed
-- Status: Runtime Draft PR [#85](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/85)
-- Manager Decision: Pending
+- Status: Runtime squash-merged PR [#85](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/85) at `5a0cf95`; post-merge `main` CI Run `33326133854` passed
+- Manager Decision: Merged on `main`
 
 ## Implemented scope
 
@@ -38,8 +38,8 @@ Recorded on this runtime branch before exact-head CI. Unrun checks are not Passe
 
 ## Exact-head CI
 
-Not recorded yet. Wait for the implementation Head’s `quality-and-compose` + `secret-scan` pair after the Draft PR opens.
+Recorded after squash-merge of PR [#85](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/85): post-merge `main` CI Run [`33326133854`](https://github.com/poyinghuang/ai-commerce-marketing-platform/actions/runs/33326133854) passed.
 
 ## Next gate
 
-Do not start live Google Ads, LINE/TikTok, or `META_TEST_DELIVERY`. Optional human confirm-refresh of one paused test Campaign is not CI.
+Stage 08C is closed on `main`. Stage 08 close-out is the current gate. Do not start live Google Ads, LINE/TikTok, or `META_TEST_DELIVERY`. Optional human confirm-refresh of one paused test Campaign is not CI.

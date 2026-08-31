@@ -16,7 +16,7 @@
 - Implementation: Merged
 - Manager Decision: Merged on `main`
 - Merge: Specification, 7A, 7B, 7C-1, 7C-2, and close-out PR [#81](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/81) squash-merged at `49b73d6`; post-merge `main` CI Run `32996644069` passed
-- Stage 08 Live Connector Reads specification: In progress on `codex/stage-08-live-connector-reads-specification`
+- Stage 08 Live Connector Reads: Closed — spec #82, 8A #83, 8B #84, 8C #85, Manager-authority #86; close-out in progress
 - Optional Meta paused proof: **Locked** (separate human record)
 - Live ads / paid providers / second **live** ads platform: **Locked** until a recorded human decision (`ESCALATE_TO_HUMAN`)
 - Auto-execute: **Forbidden**
@@ -225,4 +225,4 @@ Docs-only specification: **No**, unless credentials, spend, a second live ads pl
 - [x] 7C-2 runtime squash-merged: PR [#80](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/80) at `ed3f4cf`; post-merge `main` CI Run `32974606066` passed.
 - [x] Stage 07 FAKE close-out squash-merged: PR [#81](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/81) at `49b73d6`; post-merge `main` CI Run `32996644069` passed.
 
-Stage 07 FAKE is closed. Stage 08 Live Connector Reads specification is the current gate. 7D/7E LINE/TikTok, live Google Ads, optional Meta paused proof, and auto-execute stay locked.
+Stage 07 FAKE is closed. Stage 08 Live Connector Reads is closed on `main` after its close-out merges. 7D/7E LINE/TikTok, live Google Ads, optional Meta paused proof, and auto-execute stay locked.

@@ -3,14 +3,14 @@
 ## Gate status
 
 - Specification: PR [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82) squash-merged at `21aca71`; post-merge `main` CI Run `33090522880` passed
-- Status: Specification squash-merged; **8A runtime** squash-merged PR [#83](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/83); **8B runtime** squash-merged PR [#84](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/84); **8C runtime** Draft PR [#85](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/85)
-- Branch: `codex/stage-08c-live-insights`
+- Status: Specification, 8A, 8B, 8C, and Manager-authority PR [#86](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/86) merged; Stage 08 Live Connector Reads closed pending this close-out
+- Branch: `codex/stage-08c-live-insights` (merged)
 - Base: `14e03d0849d60eb261c64380dbcd3aeff71e5c95` (PR [#84](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/84) squash merge)
 - Stage 07 prerequisite: Passed — spec PR [#76](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/76) at `2851003`; 7A PR [#77](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/77) at `eb2618d`; 7B PR [#78](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/78) at `da01b13`; 7C-1 PR [#79](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/79) at `f5faa28`; 7C-2 PR [#80](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/80) at `ed3f4cf`; close-out PR [#81](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/81) at `49b73d6`; post-merge `main` CI Run `32996644069` passed
-- Implementation: 8C unlocked after 8B merge + post-merge CI
-- Manager Review: Not started for 8C runtime
-- Manager Decision: Pending
-- Merge: Specification squash-merged at `21aca71`. 8A runtime squash-merged at `91a8297`; post-merge `main` CI Run `33143102962` passed. 8B runtime squash-merged at `14e03d0`; post-merge `main` CI Run `33264670377` passed. 8C runtime not merged
+- Implementation: Merged
+- Manager Review: 8C runtime merged on `main`
+- Manager Decision: Merged on `main`
+- Merge: Specification squash-merged at `21aca71`. 8A runtime squash-merged at `91a8297`; post-merge `main` CI Run `33143102962` passed. 8B runtime squash-merged at `14e03d0`; post-merge `main` CI Run `33264670377` passed. 8C runtime squash-merged at `5a0cf95`; post-merge `main` CI Run `33326133854` passed. Manager-authority PR [#86](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/86) squash-merged at `93c363e`; post-merge `main` CI Run `33346538110` passed
 - Optional Meta paused proof (`META_TEST_READ_WRITE_PAUSED` / `META_TEST_DELIVERY`): **Locked**
 - Live Google Ads / LINE / TikTok / spend / production: **Locked**
 - Auto-execute: **Forbidden**
@@ -251,6 +251,7 @@ After that record exists, Manager may `APPROVE` this specification. 8A runtime s
 - [x] Specification squash-merged: PR [#82](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/82) at `21aca71`; post-merge `main` CI Run `33090522880` passed.
 - [x] 8A runtime squash-merged: PR [#83](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/83) at `91a8297`; post-merge `main` CI Run `33143102962` passed.
 - [x] 8B runtime squash-merged: PR [#84](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/84) at `14e03d0`; post-merge `main` CI Run `33264670377` passed.
-- [ ] 8C runtime Draft PR [#85](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/85), exact-head CI, and Manager Decision
+- [x] 8C runtime squash-merged: PR [#85](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/85) at `5a0cf95`; post-merge `main` CI Run `33326133854` passed
+- [x] Manager-authority squash-merged: PR [#86](https://github.com/poyinghuang/ai-commerce-marketing-platform/pull/86) at `93c363e`; post-merge `main` CI Run `33346538110` passed
 
-Current gate is 8C runtime. Live Google Ads, LINE/TikTok, `META_TEST_DELIVERY`, optional Meta paused proof, and auto-execute stay locked.
+Stage 08 Live Connector Reads is closed on `main` after this close-out merges. Live Google Ads, LINE/TikTok, `META_TEST_DELIVERY`, optional Meta paused proof, and auto-execute stay locked.
