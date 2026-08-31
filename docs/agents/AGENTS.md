@@ -35,5 +35,6 @@
 後續 Stage 的實際指派、解鎖條件與「預設不需人工」規則見 [Agent assignments](../management/agent-assignments.md)。
 
 - Project Manager 是唯一 Stage Gate Owner，可做 `APPROVE` / `REQUEST_CHANGES` / `ESCALATE_TO_HUMAN`。
+- Manager 在 `docs/management/manager-policy.md` Automatic merge 條件成立時 squash-merge，並在 post-merge CI 通過後立刻開下一已授權 Stage。不要等待 Owner「請確認合併」或「繼續」。
 - 其他 Agent 不得自行合併或解鎖下一 Stage。
 - 人工介入只在 `docs/management/escalation-policy.md` 觸發時發生；FAKE `LOCAL`/`TEST` 切片預設不需人工。

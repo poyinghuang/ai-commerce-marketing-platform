@@ -10,8 +10,9 @@ The Project Manager Agent is the sole Stage Gate Owner. Other agents deliver evi
 1. One Stage or Milestone at a time. No dependent work until merge and post-merge `main` CI pass.
 2. Manager Decision is only `APPROVE`, `REQUEST_CHANGES`, or `ESCALATE_TO_HUMAN`.
 3. Agents must not lower acceptance, skip required checks, or treat unrun tests as Passed.
-4. Flyway V1–V17 stay immutable. 8C may add additive V18 only, as named in `docs/stages/stage-08-live-connector-reads.md`.
-5. Deterministic `FAKE` / stub in `LOCAL`/`TEST` remains the default CI path. Opt-in live Insights requires `platform.stage8.insights.live=true` plus `META_TEST_ACCESS_TOKEN` outside git. Real Google Ads, LINE, TikTok, spend, production, Auth/RBAC/Tenant, and System of Record changes stay frozen.
+4. When Automatic merge conditions in `docs/management/manager-policy.md` hold, Manager squash-merges without waiting for Owner to confirm merge, then starts the next authorized stage after post-merge CI.
+5. Flyway V1–V17 stay immutable. 8C may add additive V18 only, as named in `docs/stages/stage-08-live-connector-reads.md`.
+6. Deterministic `FAKE` / stub in `LOCAL`/`TEST` remains the default CI path. Opt-in live Insights requires `platform.stage8.insights.live=true` plus `META_TEST_ACCESS_TOKEN` outside git. Real Google Ads, LINE, TikTok, spend, production, Auth/RBAC/Tenant, and System of Record changes stay frozen.
 
 ## Current gate
 

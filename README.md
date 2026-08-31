@@ -164,7 +164,7 @@ Ads, or Decision Engine behavior.
 
 ## Stage Gate governance
 
-Repository 採用人工 Manager Gate。每個 Stage／Milestone 必須在 Remote CI 通過後接受實際 Diff、Migration、Contract、安全與測試審查；只有 `Manager Decision: APPROVE` 才允許合併。規則與報告格式請見：
+Repository 採用 Manager-first Gate。每個 Stage／Milestone 必須在 Remote CI 通過後接受實際 Diff、Migration、Contract、安全與測試審查。`Manager Decision: APPROVE` 且 Automatic merge 條件成立時，由 Manager squash-merge，無需再等 Owner「請確認合併」。Owner 只在 escalation 時介入。規則與報告格式請見：
 
 - [Repository Agent Instructions](AGENTS.md)
 - [Manager Policy](docs/management/manager-policy.md)
